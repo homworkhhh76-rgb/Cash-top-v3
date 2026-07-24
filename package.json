@@ -1,0 +1,9 @@
+{
+  "name": "cash-top-firestore",
+  "private": true,
+  "version": "2.63.0",
+  "description": "Cash Top frontend using Google Cloud Firestore",
+  "engines": {
+    "node": "22.x"
+  }
+}

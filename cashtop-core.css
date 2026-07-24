@@ -1,0 +1,1642 @@
+:root {
+  --ct-primary: #605ca8;
+  --ct-primary-dark: #4b4885;
+  --ct-success: #00a65a;
+  --ct-danger: #dd4b39;
+  --ct-bg: #f4f6f9;
+  --ct-border: #e1e4e8;
+  --ct-topbar-height: 58px;
+  --ct-bottom-height: 60px;
+  --ct-sidebar-width: 260px;
+  --ct-page-padding: 20px;
+}
+
+html.ct-app-page,
+html.ct-app-page body {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--ct-bg);
+}
+
+html.ct-shell-ready body { visibility: visible; }
+
+.ct-app-shell {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  direction: rtl;
+  overflow: hidden;
+  background: var(--ct-bg);
+  font-family: 'Cairo', sans-serif;
+}
+
+.ct-main-wrapper {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.ct-topbar {
+  height: var(--ct-topbar-height);
+  min-height: var(--ct-topbar-height);
+  padding: 7px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--ct-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  position: relative;
+  z-index: 1600;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .05);
+}
+
+.ct-topbar-start,
+.ct-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ct-topbar-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(96, 92, 168, .22);
+}
+
+.ct-title-block {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.ct-title-block strong {
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-title-block small {
+  font-size: 10px;
+  color: #7b8493;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-icon-button {
+  width: 35px;
+  height: 35px;
+  border-radius: 4px;
+  border: 1px solid #d2d6de;
+  background: #f8f9fa;
+  color: #555;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: .18s ease;
+  flex: 0 0 auto;
+}
+
+.ct-icon-button:hover {
+  background: var(--ct-primary);
+  color: #fff;
+  border-color: var(--ct-primary);
+}
+
+.ct-icon-button.ct-syncing i { animation: ctSyncAccelerate 1.65s linear infinite; transform-origin: center; }
+@keyframes ctSpin { to { transform: rotate(360deg); } }
+
+.ct-net-status {
+  border-radius: 20px;
+  padding: 5px 10px;
+  background: #eef8f2;
+  color: var(--ct-success);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.ct-net-status i { font-size: 7px; }
+.ct-net-status.offline { background: #fff0ef; color: var(--ct-danger); }
+
+.ct-user-chip {
+  min-height: 35px;
+  padding: 5px 10px;
+  border: 1px solid #e3e6ea;
+  background: #fff;
+  color: #555;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 180px;
+}
+
+.ct-user-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ct-page-host {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  position: relative;
+  padding: var(--ct-page-padding);
+  padding-bottom: calc(var(--ct-page-padding) + var(--ct-bottom-height));
+  background: var(--ct-bg);
+  -webkit-overflow-scrolling: touch;
+}
+
+.ct-page-host > script,
+.ct-page-host > link,
+.ct-page-host > style { display: none !important; }
+
+.ct-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--ct-sidebar-width);
+  background: #fff;
+  border-left: 1px solid var(--ct-border);
+  z-index: 2200;
+  transform: translateX(105%);
+  transition: transform .24s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 26px rgba(15, 23, 42, .18);
+  overflow: hidden;
+}
+
+.ct-sidebar.open { transform: translateX(0); }
+
+.ct-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  background: rgba(15, 23, 42, .42);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: .22s ease;
+}
+
+.ct-sidebar-overlay.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ct-sidebar-brand {
+  min-height: 92px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #edf0f3;
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 11px;
+  align-items: center;
+}
+
+.ct-sidebar-brand img {
+  grid-row: 1 / 3;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid rgba(96, 92, 168, .25);
+}
+
+.ct-sidebar-brand strong { font-size: 15px; color: var(--ct-primary); align-self: end; }
+.ct-sidebar-brand small { font-size: 11px; color: #777; align-self: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ct-sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  scrollbar-width: thin;
+}
+
+.ct-menu-link,
+.ct-menu-group > summary {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 28px 1fr 18px;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  border: 1px solid #eff1f4;
+  border-radius: 5px;
+  color: #555;
+  background: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: .18s ease;
+  list-style: none;
+}
+
+.ct-menu-link::after { content: ''; }
+.ct-menu-group > summary::-webkit-details-marker { display: none; }
+.ct-menu-link i:first-child,
+.ct-menu-group > summary i:first-child { font-size: 16px; color: #6b7280; text-align: center; }
+
+.ct-menu-link:hover,
+.ct-menu-link.active,
+.ct-menu-group > summary:hover,
+.ct-menu-group[open] > summary {
+  color: var(--ct-primary);
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  box-shadow: none;
+}
+
+.ct-menu-link:hover i,
+.ct-menu-link.active i,
+.ct-menu-group > summary:hover i,
+.ct-menu-group[open] > summary i { color: var(--ct-primary); }
+
+.ct-menu-arrow { font-size: 10px; transition: transform .2s ease; }
+.ct-menu-group[open] .ct-menu-arrow { transform: rotate(180deg); }
+
+.ct-submenu {
+  margin: -1px 8px 7px 8px;
+  padding: 5px;
+  border: 1px solid #e5e8ed;
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  background: #f8fafc;
+  display: grid;
+  gap: 3px;
+}
+
+.ct-submenu a {
+  padding: 7px 9px;
+  border-radius: 4px;
+  color: #616977;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ct-submenu a:hover,
+.ct-submenu a.active { background: var(--ct-primary); color: #fff; }
+
+.ct-sidebar-logout {
+  min-height: 48px;
+  border: 0;
+  border-top: 1px solid #edf0f3;
+  background: #fff5f4;
+  color: var(--ct-danger);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ct-sidebar-logout:hover { background: var(--ct-danger); color: #fff; }
+
+.ct-bottom-nav {
+  position: fixed;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  height: var(--ct-bottom-height);
+  background: #fff;
+  border-top: 1px solid var(--ct-border);
+  z-index: 1650;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  box-shadow: 0 -2px 10px rgba(15, 23, 42, .05);
+}
+
+.ct-bottom-nav a {
+  color: #777;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.ct-bottom-nav a i { font-size: 17px; }
+.ct-bottom-nav a.active,
+.ct-bottom-nav a:hover { color: var(--ct-primary); }
+
+.ct-core-toast-wrap {
+  position: fixed;
+  left: 18px;
+  bottom: calc(var(--ct-bottom-height) + 15px);
+  z-index: 5000;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.ct-core-toast {
+  min-width: 240px;
+  max-width: min(420px, calc(100vw - 30px));
+  padding: 11px 14px;
+  border-radius: 5px;
+  color: #fff;
+  font: 700 12px/1.7 'Cairo', sans-serif;
+  box-shadow: 0 7px 20px rgba(15, 23, 42, .2);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: .2s ease;
+}
+
+.ct-core-toast.show { opacity: 1; transform: translateY(0); }
+.ct-core-toast.success { background: var(--ct-success); color:#fff !important; }
+.ct-core-toast.error { background: var(--ct-danger); }
+.ct-core-toast.warning { background: #f39c12; }
+.ct-core-toast.info { background: #3c8dbc; }
+
+.ct-license-banner {
+  position: fixed;
+  top: calc(var(--ct-topbar-height) + 8px);
+  left: 12px;
+  z-index: 1700;
+  background: #fff7e6;
+  color: #a15c00;
+  border: 1px solid #ffd28a;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, .08);
+}
+
+/* إبقاء نوافذ الصفحات فوق الهيكل المشترك */
+.ct-page-host .modal-overlay { z-index: 3500 !important; }
+.ct-page-host .modal-overlay:not(.active) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+.ct-page-host .modal-overlay.active {
+  visibility: visible !important;
+  pointer-events: auto !important;
+  display: flex !important;
+}
+
+.ct-page-host #toast-container { z-index: 4500 !important; }
+.ct-page-host .desktop-fixed-footer { bottom: var(--ct-bottom-height) !important; }
+
+@media (min-width: 769px) {
+  .ct-bottom-nav { display: none; }
+  .ct-page-host { padding-bottom: var(--ct-page-padding); }
+  .ct-core-toast-wrap { bottom: 18px; }
+}
+
+@media (max-width: 768px) {
+  :root { --ct-page-padding: 10px; }
+  .ct-topbar { height: 56px; min-height: 56px; padding: 6px 10px; background: var(--ct-primary); color: #fff; }
+  .ct-topbar-logo { width: 34px; height: 34px; border-color: rgba(255,255,255,.45); }
+  .ct-title-block strong,
+  .ct-title-block small { color: #fff; }
+  .ct-title-block small { opacity: .8; }
+  .ct-topbar-actions { gap: 6px; }
+  .ct-user-chip { display: none; }
+  .ct-icon-button { width: 34px; height: 34px; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.2); color: #fff; }
+  .ct-icon-button:hover { background: rgba(255,255,255,.22); }
+  .ct-logout-top { display: none; }
+  .ct-net-status { padding: 4px 7px; background: rgba(255,255,255,.14); color: #fff; }
+  .ct-net-status.offline { background: rgba(221,75,57,.2); color: #fff; }
+  .ct-sidebar { width: min(280px, 86vw); }
+  .ct-page-host { padding-bottom: calc(var(--ct-bottom-height) + 12px); }
+  .ct-license-banner { top: 64px; left: 8px; right: 8px; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .ct-title-block small { display: none; }
+  .ct-topbar { gap: 7px; }
+}
+
+
+/* ================================================================
+   Embedded original-page sizing fixes
+   Keeps each original HTML interface intact while preventing overflow.
+   ================================================================ */
+html.ct-app-page,
+html.ct-app-page body {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  min-height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+.ct-app-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+}
+
+.ct-page-host {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+.ct-original-page {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  position: relative;
+}
+
+.ct-original-page > * {
+  max-width: 100%;
+}
+
+.ct-original-page img,
+.ct-original-page video,
+.ct-original-page canvas,
+.ct-original-page svg {
+  max-width: 100%;
+}
+
+.ct-original-page .dashboard-container,
+.ct-original-page .container,
+.ct-original-page .main-container,
+.ct-original-page .page-container,
+.ct-original-page .content-container,
+.ct-original-page .app-container,
+.ct-original-page .pos-container,
+.ct-original-page .settings-container,
+.ct-original-page .reports-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.ct-original-page .table-container,
+.ct-original-page .table-responsive,
+.ct-original-page .table-wrapper,
+.ct-original-page .table-wrap,
+.ct-original-page [style*="overflow-x"] {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ct-original-page input,
+.ct-original-page select,
+.ct-original-page textarea,
+.ct-original-page button {
+  max-width: 100%;
+}
+
+.ct-original-page [style*="left: -9999"],
+.ct-original-page [style*="left:-9999"],
+.ct-original-page .export-template-container,
+.ct-original-page #pdfExportContainer,
+.ct-original-page #pdfHistoryContainer,
+.ct-original-page #hiddenStatement,
+.ct-original-page #detailedReportContainer,
+.ct-original-page #transferExportTemplate {
+  position: fixed !important;
+}
+
+.ct-original-page .modal-content,
+.ct-original-page .modal-box,
+.ct-original-page .modal-container {
+  max-width: min(96vw, 980px) !important;
+  max-height: calc(100dvh - 24px) !important;
+  overflow-y: auto !important;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --ct-topbar-height: 54px;
+    --ct-bottom-height: 60px;
+    --ct-page-padding: 7px;
+  }
+
+  .ct-topbar {
+    height: var(--ct-topbar-height) !important;
+    min-height: var(--ct-topbar-height) !important;
+    padding: 5px 8px !important;
+  }
+
+  .ct-topbar-start,
+  .ct-topbar-actions { gap: 5px !important; }
+  .ct-title-block strong { font-size: 12px !important; }
+  .ct-icon-button { width: 32px !important; height: 32px !important; }
+  .ct-topbar-logo { width: 32px !important; height: 32px !important; }
+  .ct-bottom-nav { height: var(--ct-bottom-height) !important; }
+  .ct-bottom-nav a { font-size: 10px !important; }
+  .ct-bottom-nav a i { font-size: 18px !important; }
+
+  .ct-page-host {
+    padding: 7px 6px calc(var(--ct-bottom-height) + 8px) !important;
+  }
+
+  .ct-original-page .dashboard-container { gap: 9px !important; }
+
+  .ct-original-page .top-cards-grid,
+  .ct-original-page .side-cards-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .ct-original-page .main-card {
+    min-width: 0 !important;
+    min-height: 98px !important;
+    padding: 10px !important;
+  }
+
+  .ct-original-page .card-header-title {
+    font-size: 13px !important;
+    gap: 5px !important;
+  }
+
+  .ct-original-page .card-header-title i { font-size: 17px !important; }
+  .ct-original-page .card-links { font-size: 10px !important; gap: 5px !important; line-height: 1.8 !important; }
+
+  .ct-original-page .bottom-section {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .ct-original-page .side-card { height: 72px !important; min-width: 0 !important; }
+  .ct-original-page .side-card-info { padding: 7px 9px !important; min-width: 0 !important; }
+  .ct-original-page .side-card-info h3 { font-size: 12px !important; }
+  .ct-original-page .side-card-info p { font-size: 10px !important; }
+  .ct-original-page .side-card-info strong { font-size: 14px !important; }
+  .ct-original-page .side-card-icon { width: 48px !important; font-size: 20px !important; }
+
+  .ct-original-page .table-container { padding: 10px !important; }
+  .ct-original-page .table-header { gap: 8px !important; flex-wrap: wrap !important; }
+  .ct-original-page .table-title { font-size: 14px !important; }
+  .ct-original-page .btn-print { font-size: 11px !important; padding: 6px 9px !important; }
+
+  .ct-original-page .form-row,
+  .ct-original-page .form-grid,
+  .ct-original-page .filters-row,
+  .ct-original-page .stats-grid,
+  .ct-original-page .cards-grid {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .ct-original-page .main-card { min-height: 92px !important; padding: 8px !important; }
+  .ct-original-page .card-header-title { font-size: 12px !important; }
+  .ct-original-page .card-links { font-size: 9px !important; }
+  .ct-original-page .side-card-icon { width: 42px !important; }
+  .ct-original-page .side-card-info { padding: 6px 7px !important; }
+  .ct-original-page .table-footer-buttons { gap: 6px !important; }
+  .ct-original-page .table-footer-buttons button { padding: 6px 8px !important; font-size: 10px !important; }
+}
+
+
+/* ===== 2026 professional shell based on the supplied header/sidebar design ===== */
+.ct-topbar-logo { display: none !important; }
+.ct-svg-icon { width: 1.2em; height: 1.2em; fill: none; color: currentColor; flex: 0 0 auto; }
+.ct-icon-badge {
+  position: absolute; top: -5px; left: -7px; right: auto; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: #dd4b39; color: #fff; font-size: 9px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+.ct-notification-button { position: relative; text-decoration: none; }
+.ct-quick-actions { display: flex; align-items: center; gap: 8px; }
+.ct-quick-button {
+  min-height: 34px; padding: 6px 11px; background: #f8f9fa; border: 1px solid #d2d6de;
+  color: #555; border-radius: 3px; text-decoration: none; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: .15s ease;
+}
+.ct-quick-button:hover { background: var(--ct-primary); color: #fff; border-color: var(--ct-primary); }
+
+/* The original page keeps its own closed-select appearance.
+   Only the opened option list is replaced with a modern custom popover. */
+.ct-original-page select,
+select[data-ct-enhanced="true"] { cursor: pointer; }
+
+.ct-select-backdrop {
+  position: fixed; inset: 0; z-index: 5990; background: transparent;
+}
+.ct-select-popover {
+  position: fixed; z-index: 6000; width: min(420px, calc(100vw - 20px));
+  max-height: min(420px, calc(100dvh - 24px)); overflow: hidden;
+  background: #fff; border: 1px solid #dfe3ea; border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(15,23,42,.2); direction: rtl;
+  display: flex; flex-direction: column; font-family: 'Cairo', sans-serif;
+  animation: ctSelectOpen .16s ease-out;
+}
+@keyframes ctSelectOpen { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: none; } }
+.ct-select-search-wrap { padding: 10px; border-bottom: 1px solid #edf0f3; background: #fbfcfd; }
+.ct-select-search {
+  width: 100%; min-height: 38px; padding: 8px 12px; border: 1px solid #d7dce4;
+  border-radius: 8px; outline: none; font: 600 12px 'Cairo', sans-serif;
+}
+.ct-select-search:focus { border-color: #605ca8; box-shadow: 0 0 0 3px rgba(96,92,168,.12); }
+.ct-select-options { overflow: auto; overscroll-behavior: contain; padding: 6px; }
+.ct-select-group {
+  padding: 7px 10px 4px; color: #7b8190; font-size: 10px; font-weight: 800;
+  background: #fff; position: sticky; top: 0; z-index: 1;
+}
+.ct-select-option {
+  width: 100%; min-height: 40px; border: 0; background: #fff; color: #334155;
+  border-radius: 8px; padding: 8px 11px; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; text-align: right;
+  font: 700 12px 'Cairo', sans-serif; cursor: pointer;
+}
+.ct-select-option:hover, .ct-select-option:focus { background: #f1f0fa; color: #514d96; outline: none; }
+.ct-select-option.is-selected { background: #eeedf8; color: #514d96; }
+.ct-select-option:disabled { opacity: .45; cursor: not-allowed; background: #f8fafc; }
+.ct-select-check { width: 22px; flex: 0 0 22px; text-align: center; font-size: 15px; }
+.ct-select-empty { padding: 22px 12px; text-align: center; color: #8a91a0; font-size: 12px; }
+.ct-select-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 9px 10px; border-top: 1px solid #edf0f3; }
+.ct-select-done { border: 0; border-radius: 7px; background: #605ca8; color: #fff; padding: 8px 18px; font: 700 12px 'Cairo'; cursor: pointer; }
+.ct-select-popover * { box-sizing: border-box; }
+
+/* Text replaces the old white connectivity dot on every screen size. */
+.ct-net-status > i, .ct-net-status > svg { display: none !important; }
+.ct-net-status > span { display: inline !important; }
+
+.ct-original-page .suggestions-box,
+.ct-original-page .multiselect-dropdown,
+.ct-original-page .dropdown-menu {
+  border-radius: 10px !important; border-color: #dfe3ea !important;
+  box-shadow: 0 14px 34px rgba(15,23,42,.14) !important; overflow: auto;
+}
+
+@media (max-width: 600px) {
+  .ct-select-backdrop { background: rgba(15,23,42,.38); backdrop-filter: blur(1px); }
+  .ct-select-popover {
+    left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
+    width: 100% !important; max-width: none !important; max-height: 72dvh;
+    border-radius: 18px 18px 0 0; border-bottom: 0;
+    animation: ctSelectSheetOpen .2s ease-out;
+  }
+  @keyframes ctSelectSheetOpen { from { opacity: .6; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+  .ct-select-option { min-height: 46px; font-size: 13px; }
+}
+@media (min-width: 769px) {
+  .ct-app-shell { display: flex !important; flex-direction: row !important; }
+  .ct-sidebar {
+    position: relative !important; inset: auto !important; transform: none !important;
+    width: 115px !important; min-width: 115px !important; height: 100% !important;
+    box-shadow: none !important; border-left: 1px solid #e1e4e8 !important;
+    align-items: center; padding-top: 15px; z-index: 1000;
+  }
+  .ct-sidebar-overlay { display: none !important; }
+  .ct-sidebar-brand {
+    width: 100%; min-height: auto; display: flex !important; justify-content: center; align-items: center;
+    padding: 0 0 15px; margin-bottom: 12px; border-bottom: 1px solid #f4f4f4;
+  }
+  .ct-sidebar-brand img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--ct-primary); }
+  .ct-sidebar-brand strong, .ct-sidebar-brand small { display: none !important; }
+  .ct-sidebar-nav { width: 100%; padding: 0 10px 12px; scrollbar-width: none; }
+  .ct-sidebar-nav::-webkit-scrollbar { display: none; }
+  .ct-menu-link, .ct-menu-group > summary {
+    width: 95px; min-height: 64px; padding: 10px 5px; margin: 0 0 9px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px;
+    grid-template-columns: none; text-align: center; border-radius: 4px; position: relative;
+  }
+  .ct-menu-link span, .ct-menu-group > summary span { font-size: 10.5px; white-space: normal; line-height: 1.35; }
+  .ct-menu-link .ct-svg-icon, .ct-menu-group > summary .ct-svg-icon:first-child { width: 21px; height: 21px; }
+  .ct-menu-group > summary .ct-menu-arrow,
+  .ct-menu-group > summary .ct-svg-icon:last-child { position: absolute; left: 6px; top: 6px; width: 10px; height: 10px; }
+  .ct-submenu { width: 95px; margin: -9px 0 9px; padding: 4px 2px; border-radius: 0 0 4px 4px; }
+  .ct-submenu a { padding: 6px 3px; font-size: 9.5px; text-align: center; }
+  .ct-sidebar-logout { width: 100%; min-height: 48px; font-size: 10px; flex-direction: column; gap: 3px; }
+  .ct-main-wrapper { flex: 1; width: calc(100% - 115px); }
+  .ct-topbar { min-height: 55px; height: 55px; padding: 8px 20px; box-shadow: none; }
+  .ct-topbar-start .ct-icon-button[data-ct-action="open-sidebar"] { display: none !important; }
+  .ct-title-block strong { font-size: 15px; }
+  .ct-title-block small { display: none; }
+}
+
+@media (max-width: 768px) {
+  .ct-sidebar {
+    width: 115px !important; min-width: 115px !important; right: 0 !important;
+    transform: translateX(120px) !important; box-shadow: -4px 0 15px rgba(0,0,0,.1) !important;
+    padding-top: 15px; align-items: center;
+  }
+  .ct-sidebar.open { transform: translateX(0) !important; }
+  .ct-sidebar-brand { min-height: auto; width: 100%; display: flex !important; justify-content: center; padding: 0 0 15px; }
+  .ct-sidebar-brand img { width: 50px; height: 50px; border-radius: 50%; }
+  .ct-sidebar-brand strong, .ct-sidebar-brand small { display: none !important; }
+  .ct-sidebar-nav { width: 100%; padding: 0 10px 10px; }
+  .ct-menu-link, .ct-menu-group > summary {
+    width: 95px; min-height: 62px; padding: 9px 4px; margin-bottom: 8px; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 5px; position: relative; text-align: center;
+  }
+  .ct-menu-link span, .ct-menu-group > summary span { font-size: 10px; white-space: normal; line-height: 1.25; }
+  .ct-menu-group > summary .ct-svg-icon:last-child { position: absolute; left: 5px; top: 5px; width: 9px; height: 9px; }
+  .ct-submenu { width: 95px; margin: -8px 0 8px; padding: 3px; }
+  .ct-submenu a { padding: 6px 2px; font-size: 9px; text-align: center; }
+  .ct-topbar { background: var(--ct-primary) !important; }
+  .ct-title-block strong { font-size: 15px !important; }
+  .ct-title-block small { display: none !important; }
+  .ct-quick-actions { display: none !important; }
+  .ct-user-chip, .ct-logout-top { display: none !important; }
+}
+
+
+/* ===== CASH TOP 2: compact dialogs, anchored selects, offline queue and mobile nav ===== */
+.ct-sidebar-logout {
+  background: #605ca8 !important;
+  color: #fff !important;
+  border-top-color: #514d96 !important;
+}
+.ct-sidebar-logout:hover { background: #4b4885 !important; color: #fff !important; }
+
+#ctSyncButton { position: relative; overflow: visible; }
+.ct-sync-badge {
+  position: absolute; top: -7px; left: -7px; min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 999px; background: #00a65a; color: #fff; border: 2px solid #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 800 8px/1 'Cairo', sans-serif; box-sizing: border-box;
+}
+.ct-sync-badge[hidden] { display: none !important; }
+.ct-icon-button.ct-syncing .ct-svg-icon { animation: ctSyncPulse .72s ease-in-out infinite alternate; transform-origin: 50% 50%; }
+@keyframes ctSyncPulse { from { transform: translateY(1px) scale(.9); opacity: .55; } to { transform: translateY(-1px) scale(1.08); opacity: 1; } }
+
+.ct-sync-progress {
+  position: absolute; right: 5px; left: 5px; bottom: -5px; height: 3px;
+  border-radius: 999px; overflow: hidden; background: rgba(96,92,168,.16);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.75);
+  pointer-events: none;
+}
+.ct-sync-progress[hidden] { display: none !important; }
+.ct-sync-progress-bar {
+  display: block; width: 0%; height: 100%; border-radius: inherit;
+  background: currentColor; transition: width .18s ease;
+}
+.ct-sync-progress-indeterminate .ct-sync-progress-bar { animation: ctSyncProgressSlide 1s ease-in-out infinite; }
+@keyframes ctSyncProgressSlide {
+  0% { transform: translateX(150%); }
+  50% { transform: translateX(0); }
+  100% { transform: translateX(-250%); }
+}
+
+/* Revision 43: لا نظهر أي دائرة مزامنة بجانب بيانات السجلات. */
+.ct-records-pulling tbody tr > td:first-child::before,
+tbody tr > td .ct-row-spinner,
+tbody tr > td .record-spinner,
+tbody tr > td .fa-spinner,
+tbody tr > td .fa-circle-notch {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+
+/* Compact all page dialogs instead of full-screen forms. */
+.ct-original-page .modal-overlay { padding: 14px !important; }
+.ct-original-page .modal-box {
+  width: min(660px, 92vw) !important;
+  max-width: 660px !important;
+  max-height: 82dvh !important;
+  min-height: 0 !important;
+  padding: 16px !important;
+  border-radius: 4px !important;
+  overflow-y: auto !important;
+}
+.ct-original-page .modal-box.modal-lg,
+.ct-original-page .modal-box.large-modal { width: min(780px, 94vw) !important; max-width: 780px !important; }
+.ct-original-page .modal-header { padding-bottom: 9px !important; margin-bottom: 13px !important; }
+.ct-original-page .modal-title { font-size: 15px !important; }
+.ct-original-page .modal-footer { padding-top: 10px !important; margin-top: 10px !important; }
+.ct-original-page .modal-box .form-row { gap: 13px 10px !important; margin-bottom: 12px !important; }
+.ct-original-page .modal-box .form-control { min-height: 36px !important; height: auto; padding: 7px 10px !important; font-size: 11px !important; }
+.ct-original-page .modal-box textarea.form-control { min-height: 66px !important; }
+
+
+/* Professional five-item navigation on phones. */
+@media (max-width: 768px) {
+  .ct-bottom-nav {
+    height: 62px !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    padding: 3px 4px max(3px, env(safe-area-inset-bottom)) !important;
+    border-top: 1px solid #dfe3ea !important;
+    box-shadow: 0 -5px 18px rgba(15,23,42,.11) !important;
+  }
+  .ct-bottom-nav a { position: relative; gap: 2px !important; font-size: 9px !important; border-radius: 5px; }
+  .ct-bottom-nav a .ct-svg-icon, .ct-bottom-nav a i { width: 20px !important; height: 20px !important; font-size: 19px !important; }
+  .ct-bottom-nav a.active { background: rgba(96,92,168,.09); color: #605ca8 !important; }
+  .ct-bottom-nav a.active::before {
+    content: ''; position: absolute; top: -4px; width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: #605ca8;
+  }
+  .ct-original-page .modal-overlay { padding: 10px !important; align-items: center !important; }
+  .ct-original-page .modal-box {
+    width: min(92vw, 570px) !important; max-width: 570px !important; max-height: 78dvh !important;
+    border-radius: 4px !important; padding: 13px !important;
+  }
+  .ct-sync-badge { border-color: #605ca8; }
+}
+
+
+/* ===== Revision 4: cashier desktop drawer and restored fixed totals bar ===== */
+@media (min-width: 769px) {
+  /* The cashier uses the whole screen; its sidebar is an off-canvas drawer. */
+  html.ct-cashier-page .ct-app-shell { position: relative !important; }
+  html.ct-cashier-page .ct-main-wrapper {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+  }
+  html.ct-cashier-page .ct-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+    width: 115px !important;
+    min-width: 115px !important;
+    height: 100vh !important;
+    transform: translateX(120px) !important;
+    transition: transform .28s cubic-bezier(.4,0,.2,1) !important;
+    z-index: 2600 !important;
+    box-shadow: -6px 0 20px rgba(15,23,42,.22) !important;
+    border-left: 1px solid #e1e4e8 !important;
+  }
+  html.ct-cashier-page .ct-sidebar.open { transform: translateX(0) !important; }
+  html.ct-cashier-page .ct-sidebar-overlay {
+    display: block !important;
+    z-index: 2500 !important;
+  }
+  html.ct-cashier-page .ct-topbar-start .ct-icon-button[data-ct-action="open-sidebar"] {
+    display: inline-flex !important;
+  }
+  html.ct-cashier-page .ct-page-host {
+    padding-bottom: 94px !important;
+  }
+  html.ct-cashier-page .desktop-fixed-footer {
+    position: fixed !important;
+    right: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 25px !important;
+    min-height: initial !important;
+    z-index: 1750 !important;
+  }
+}
+
+/* Sync icon gets a crisp professional presence without changing the button dimensions. */
+#ctSyncButton .ct-svg-icon { width: 21px; height: 21px; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Revision 5: scrolling over an enhanced select never counts as an intentional open. */
+select[data-ct-enhanced="true"] { touch-action: pan-y; }
+
+/* ===== Requested UI refinements ===== */
+.ct-net-status {
+  min-height: 35px !important;
+  height: 35px !important;
+  border-radius: 4px !important;
+  padding: 5px 10px !important;
+  box-sizing: border-box;
+}
+.ct-sync-badge,
+.ct-sync-badge::before,
+.ct-sync-badge::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+.ct-sidebar-logout,
+.ct-logout-top { display: none !important; }
+.ct-menu-group > summary > i.fa-gear:first-child {
+  width: 21px;
+  height: 21px;
+  line-height: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: none !important;
+}
+.ct-menu-group > summary > i.fa-gear:first-child::before {
+  display: block;
+  line-height: 1;
+  margin: 0;
+}
+
+
+/* ===== Revision 17: instant cached navigation and smooth rendering ===== */
+#nprogress, #nprogress .bar, .pace, .pace-progress, .page-loading-bar,
+.loading-bar, .top-loading-bar, .ct-page-loading, progress[aria-label="loading"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+body { overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+a, button, input, select, textarea { touch-action: manipulation; }
+.ct-page-host, .ct-original-page { transform: translateZ(0); backface-visibility: hidden; }
+.ct-sidebar, .ct-sidebar-overlay, .modal-overlay, .ct-bottom-nav { backface-visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .ct-sidebar, .modal-overlay, .ct-sidebar-overlay { will-change: transform, opacity; }
+}
+
+
+/* ===== Revision 19: installed-PWA viewport, safe bottom navigation and portrait layout ===== */
+:root {
+  --ct-visual-viewport-height: 100dvh;
+  --ct-safe-top: env(safe-area-inset-top, 0px);
+  --ct-safe-right: env(safe-area-inset-right, 0px);
+  --ct-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ct-safe-left: env(safe-area-inset-left, 0px);
+}
+
+html.ct-app-page,
+html.ct-app-page body,
+.ct-app-shell {
+  height: var(--ct-visual-viewport-height, 100dvh) !important;
+  min-height: var(--ct-visual-viewport-height, 100dvh) !important;
+  max-height: var(--ct-visual-viewport-height, 100dvh) !important;
+}
+
+.ct-main-wrapper {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.ct-page-host {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  scroll-behavior: auto !important;
+}
+
+@media (max-width: 768px) {
+  :root { --ct-bottom-height: 62px; }
+
+  .ct-bottom-nav {
+    bottom: 0 !important;
+    height: calc(var(--ct-bottom-height) + var(--ct-safe-bottom)) !important;
+    min-height: calc(var(--ct-bottom-height) + var(--ct-safe-bottom)) !important;
+    padding: 3px max(4px, var(--ct-safe-right)) max(3px, var(--ct-safe-bottom)) max(4px, var(--ct-safe-left)) !important;
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  .ct-page-host {
+    padding-bottom: calc(var(--ct-bottom-height) + var(--ct-safe-bottom) + 24px) !important;
+    scroll-padding-bottom: calc(var(--ct-bottom-height) + var(--ct-safe-bottom) + 24px) !important;
+  }
+
+  .ct-original-page {
+    min-height: min-content !important;
+    padding-bottom: 2px !important;
+  }
+
+  /* The final control/card must always be scrollable completely above the fixed app nav. */
+  .ct-original-page::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 12px;
+    pointer-events: none;
+  }
+
+  .ct-core-toast-wrap,
+  .ct-page-host #toast-container {
+    bottom: calc(var(--ct-bottom-height) + var(--ct-safe-bottom) + 12px) !important;
+  }
+
+  .ct-page-host .desktop-fixed-footer {
+    bottom: calc(var(--ct-bottom-height) + var(--ct-safe-bottom)) !important;
+  }
+}
+
+@supports not (height: 100dvh) {
+  html.ct-app-page,
+  html.ct-app-page body,
+  .ct-app-shell { height: var(--ct-visual-viewport-height, 100vh) !important; min-height: var(--ct-visual-viewport-height, 100vh) !important; }
+}
+
+/* ===== Revision 20: viewport-centered dialogs in browser and installed PWA =====
+   Fixed-position dialogs must not live inside a transformed ancestor.  The old
+   GPU promotion on the page host/original page made mobile PWA dialogs use the
+   scrollable page as their containing block, so camera and long forms could
+   open pinned to the top.  Keep the page itself untransformed and center every
+   modal in the real visible application area. */
+.ct-page-host,
+.ct-original-page {
+  transform: none !important;
+}
+
+.ct-page-host .modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+.ct-page-host .modal-overlay.active {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ct-page-host .modal-overlay > .modal-box,
+.ct-page-host .modal-overlay > .modal-content,
+.ct-page-host .modal-overlay > .modal-container {
+  margin: auto !important;
+  box-sizing: border-box !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  /* Keep installed-app dialogs inside the same content viewport as the site:
+     below the fixed header and above the fixed bottom navigation. */
+  .ct-page-host .modal-overlay {
+    top: var(--ct-topbar-height) !important;
+    right: 0 !important;
+    bottom: calc(var(--ct-bottom-height) + var(--ct-safe-bottom)) !important;
+    left: 0 !important;
+    padding: 10px max(10px, var(--ct-safe-right)) 10px max(10px, var(--ct-safe-left)) !important;
+  }
+
+  .ct-page-host .modal-overlay > .modal-box,
+  .ct-page-host .modal-overlay > .modal-content,
+  .ct-page-host .modal-overlay > .modal-container {
+    max-height: calc(var(--ct-visual-viewport-height, 100dvh) - var(--ct-topbar-height) - var(--ct-bottom-height) - var(--ct-safe-bottom) - 20px) !important;
+    margin: auto !important;
+  }
+
+  /* Camera/scanner dialogs stay compact and centered instead of expanding to
+     the generic mobile dialog width. */
+  .ct-page-host #cameraModal .modal-box { width: min(92vw, 400px) !important; max-width: 400px !important; }
+  .ct-page-host #scannerModal .modal-box { width: min(92vw, 500px) !important; max-width: 500px !important; }
+}
+
+
+/* إزالة الوميض/الظل الأزرق عند الضغط على العناصر التفاعلية في الجوال والمتصفح */
+html, body, a, button, input, select, textarea, [role="button"], [tabindex] {
+  -webkit-tap-highlight-color: transparent !important;
+}
+a:focus, a:active,
+button:focus, button:active,
+input[type="button"]:focus, input[type="button"]:active,
+input[type="submit"]:focus, input[type="submit"]:active,
+input:focus, input:active,
+select:focus, select:active,
+textarea:focus, textarea:active,
+[role="button"]:focus, [role="button"]:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ===== Revision 41: 120Hz-ready UI + instant lightweight dialogs =====
+   requestAnimationFrame follows the device refresh rate automatically. These
+   rules keep animations compositor-only and remove hidden dialogs from layout,
+   paint and GPU-layer work until they are actually opened. */
+:root {
+  --ct-fast-motion: 90ms;
+  --ct-frame-budget-120hz: 8.333ms;
+}
+
+/* Revision 52: keep touch interactions and scrolling on the compositor path where possible. */
+html { scroll-behavior: auto; }
+body { overscroll-behavior-y: none; }
+a, button, [role="button"], input, select { touch-action: manipulation; }
+.ct-page-host, .ct-original-page, .table-responsive-box, .table-wrap { -webkit-overflow-scrolling: touch; }
+
+/* Hidden dialogs must be truly dormant. The previous opacity-only hiding kept
+   large forms/tables in layout and, together with will-change, could retain many
+   expensive compositor layers. */
+.ct-page-host .modal-overlay:not(.active),
+.ct-original-page .modal-overlay:not(.active),
+.ct-page-host .ct-modal:not(.open),
+.ct-original-page .ct-modal:not(.open) {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  content-visibility: hidden !important;
+}
+
+.ct-page-host .modal-overlay.active,
+.ct-original-page .modal-overlay.active,
+.ct-page-host .ct-modal.open,
+.ct-original-page .ct-modal.open {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  contain: layout paint style;
+  isolation: isolate;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.ct-page-host .modal-overlay.active > .modal-box,
+.ct-page-host .modal-overlay.active > .modal-content,
+.ct-page-host .modal-overlay.active > .modal-container,
+.ct-page-host .ct-modal.open > .ct-modal-box,
+.ct-original-page .modal-overlay.active > .modal-box,
+.ct-original-page .modal-overlay.active > .modal-content,
+.ct-original-page .ct-modal.open > .ct-modal-box {
+  contain: layout paint style;
+  transform: translate3d(0, 0, 0) !important;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .16) !important;
+}
+
+/* Do not reserve GPU layers for every closed modal. */
+.modal-overlay:not(.active), .ct-modal:not(.open) { will-change: auto !important; }
+.modal-overlay.active, .ct-modal.open { will-change: opacity; }
+.modal-overlay.active > .modal-box,
+.modal-overlay.active > .modal-content,
+.modal-overlay.active > .modal-container,
+.ct-modal.open > .ct-modal-box { will-change: transform, opacity; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ct-page-host .modal-overlay.active,
+  .ct-original-page .modal-overlay.active,
+  .ct-page-host .ct-modal.open,
+  .ct-original-page .ct-modal.open {
+    animation: ctModalFastFade var(--ct-fast-motion) linear both !important;
+  }
+  .ct-page-host .modal-overlay.active > .modal-box,
+  .ct-page-host .modal-overlay.active > .modal-content,
+  .ct-page-host .modal-overlay.active > .modal-container,
+  .ct-page-host .ct-modal.open > .ct-modal-box,
+  .ct-original-page .modal-overlay.active > .modal-box,
+  .ct-original-page .modal-overlay.active > .modal-content,
+  .ct-original-page .ct-modal.open > .ct-modal-box {
+    animation: ctModalFastPop var(--ct-fast-motion) cubic-bezier(.2,.7,.2,1) both !important;
+  }
+}
+
+@keyframes ctModalFastFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ctModalFastPop {
+  from { opacity: .92; transform: translate3d(0, 6px, 0) scale(.992); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Keep scrolling/interaction on the compositor path where browsers support it. */
+.ct-page-host,
+.ct-original-page,
+.modal-box,
+.modal-content,
+.modal-container,
+.ct-modal-box {
+  scroll-behavior: auto !important;
+  overscroll-behavior: contain;
+}
+
+/*
+ * Revision 38: never trap vertical page scrolling inside table wrappers.
+ * Tables may still pan horizontally, but when an inner table reaches its
+ * vertical top/bottom edge the gesture chains immediately to the page.
+ * This fixes the Android/WebView "frozen page unless I swipe outside table"
+ * behaviour caused by overscroll-behavior: contain on table containers.
+ */
+.table-responsive-box,
+.table-responsive,
+.table-wrap,
+.ct-table-wrap {
+  scroll-behavior: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-x pan-y !important;
+}
+
+/* Avoid expensive paint effects during high-frequency interactions. */
+.modal-overlay, .ct-modal { filter: none !important; }
+@media (hover: none), (pointer: coarse) {
+  .modal-box, .modal-content, .modal-container, .ct-modal-box {
+    box-shadow: 0 5px 16px rgba(15,23,42,.14) !important;
+  }
+}
+
+
+/* ===== Revision 40: smoother menu interactions / no blocking loaders ===== */
+.ct-loader,.loader-overlay,.global-loader,.loading-overlay,.spinner-overlay,.page-spinner{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+.ct-sidebar,.ct-sidebar-overlay,.ct-menu-group>summary,.ct-bottom-nav,.modal-overlay,.modal-content{transform:translateZ(0);backface-visibility:hidden}
+.ct-menu-group>summary,.ct-sidebar a,.ct-bottom-nav a,button{transition:transform 120ms cubic-bezier(.2,.8,.2,1),opacity 120ms linear,background-color 120ms linear,border-color 120ms linear!important}
+.ct-menu-group>summary:active,.ct-sidebar a:active,.ct-bottom-nav a:active,button:active{transform:translateZ(0) scale(.985)}
+@media (prefers-reduced-motion:no-preference){.ct-sidebar,.ct-sidebar-overlay,.modal-overlay,.modal-content{will-change:transform,opacity}}
+
+
+/* Revision 43: منع مؤشرات الدوران داخل أي سجل/صف في جميع الشاشات. */
+.ct-original-page table tbody .fa-spin,
+.ct-original-page table tbody [class*="spinner"],
+.ct-original-page .data-row .fa-spin,
+.ct-original-page .record-row .fa-spin {
+  display: none !important;
+  animation: none !important;
+}
+
+
+/* ===== Revision 46: Ultra-fast cached navigation / high-refresh rendering ===== */
+:root { --ct-ultrafast-motion: 90ms; }
+html { scroll-behavior: auto !important; }
+body { text-rendering: optimizeSpeed; }
+.ct-page-host,
+.ct-original-page,
+.ct-content,
+main {
+  contain: layout style;
+}
+/* لا نحجز طبقة GPU إلا للعناصر المتحركة فعلياً. */
+.ct-sidebar,
+.ct-sidebar-overlay,
+.ct-bottom-nav,
+.modal-overlay.active,
+.ct-modal.open {
+  transform: translate3d(0,0,0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.ct-menu-group > summary,
+.ct-sidebar a,
+.ct-bottom-nav a,
+button,
+.btn {
+  transition-duration: var(--ct-ultrafast-motion) !important;
+  transition-timing-function: cubic-bezier(.2,.8,.2,1) !important;
+}
+/* تقليل إعادة الرسم للعناصر البعيدة عن الشاشة دون التأثير على الجداول أو النماذج. */
+.ct-original-page > section,
+.ct-page-host > section,
+.ct-card-grid > .ct-card,
+.dashboard-grid > .card {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 360px;
+}
+@media (prefers-reduced-motion: no-preference) and (min-resolution: 1dppx) {
+  .ct-sidebar a:hover,
+  .ct-menu-group > summary:hover,
+  button:hover,
+  .btn:hover { transform: translate3d(0,0,0); }
+}
+
+
+/* ===== Revision 47: global viewport/layout repair + stable fixed cashier action bar ===== */
+html, body {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+.ct-app-shell,
+.ct-main-wrapper,
+.ct-page-host,
+.ct-original-page {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Prevent legacy page wrappers from turning into giant white fixed layers on desktop. */
+.ct-original-page > :not(.modal-overlay):not(.desktop-fixed-footer) {
+  max-width: 100% !important;
+}
+.ct-original-page .modal-overlay:not(.active) {
+  pointer-events: none !important;
+}
+
+/* Every main page container must size itself to content, not to a stale 100vh. */
+.ct-original-page .dashboard-container,
+.ct-original-page .main-container,
+.ct-original-page .page-container,
+.ct-original-page .content-container,
+.ct-original-page .app-container,
+.ct-original-page .pos-container,
+.ct-original-page .settings-container,
+.ct-original-page .reports-container {
+  min-height: 0 !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+}
+
+/* Tables/cards stay inside the visible viewport on laptops, tablets and phones. */
+.ct-original-page .table-responsive,
+.ct-original-page .table-container,
+.ct-original-page .table-wrapper,
+.ct-original-page .table-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+}
+.ct-original-page table { max-width: 100% !important; }
+.ct-original-page .card,
+.ct-original-page .settings-card,
+.ct-original-page .pos-section,
+.ct-original-page .panel,
+.ct-original-page .box {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Cashier: the summary/save bar is always a compact fixed bar at the real bottom. */
+@media (min-width: 993px) {
+  html.ct-cashier-page .ct-page-host {
+    padding-bottom: 92px !important;
+    overflow-x: hidden !important;
+  }
+  html.ct-cashier-page .desktop-fixed-footer {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 64px !important;
+    max-height: 92px !important;
+    margin: 0 !important;
+    padding: 10px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    overflow: visible !important;
+    background: #f8fafc !important;
+    z-index: 2400 !important;
+  }
+  html.ct-cashier-page .desktop-fixed-footer .footer-summary-grid,
+  html.ct-cashier-page .desktop-fixed-footer .footer-actions-box {
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+  html.ct-cashier-page .desktop-fixed-footer .footer-summary-grid { gap: 18px !important; }
+  html.ct-cashier-page .desktop-fixed-footer button { white-space: nowrap !important; }
+}
+
+@media (max-width: 1200px) and (min-width: 993px) {
+  html.ct-cashier-page .desktop-fixed-footer { padding: 8px 10px !important; gap: 8px !important; }
+  html.ct-cashier-page .desktop-fixed-footer .footer-summary-grid { gap: 10px !important; }
+  html.ct-cashier-page .desktop-fixed-footer .footer-summary-item span { font-size: 10px !important; }
+  html.ct-cashier-page .desktop-fixed-footer .footer-summary-item strong { font-size: 13px !important; }
+  html.ct-cashier-page .desktop-fixed-footer .footer-summary-item.highlight-total strong { font-size: 17px !important; }
+  html.ct-cashier-page .desktop-fixed-footer .btn-basket-action,
+  html.ct-cashier-page .desktop-fixed-footer .btn-action-invoice { padding: 8px 10px !important; font-size: 11px !important; }
+}
+
+@media (max-width: 992px) {
+  html.ct-cashier-page .desktop-fixed-footer { display: none !important; }
+  .ct-original-page .pos-container { width: 100% !important; }
+}
+
+/* Login/Customers/Warehouses/Branches: keep dialogs inside the viewport.
+   Do not force a desktop width here: each page already defines the intended
+   compact modal width, and overriding it was what made dialogs look full-screen. */
+.ct-original-page .modal-box,
+.ct-original-page .modal-content,
+.ct-original-page .modal-container {
+  max-height: calc(100dvh - 28px) !important;
+}
+@media (max-width: 768px) {
+  .ct-original-page .modal-box,
+  .ct-original-page .modal-content,
+  .ct-original-page .modal-container {
+    width: min(94vw, 620px) !important;
+    max-width: min(94vw, 620px) !important;
+  }
+}
+
+
+/* ===== Revision 48: desktop viewport stability, centered compact dialogs, fixed cashier footer =====
+   Revision 46's layout containment/content-visibility optimization created new
+   containing blocks for fixed descendants on desktop. That made overlays and
+   the cashier footer follow the scrollable page instead of the real viewport,
+   and could leave large blank/white regions while sections were skipped.
+   Keep the phone layout untouched; repair desktop/laptop only. */
+@media (min-width: 769px) {
+  .ct-page-host,
+  .ct-original-page,
+  main.ct-page-host {
+    contain: none !important;
+  }
+
+  .ct-original-page > section,
+  .ct-page-host > section {
+    content-visibility: visible !important;
+    contain: none !important;
+    contain-intrinsic-size: auto !important;
+  }
+
+  .ct-page-host .modal-overlay,
+  .ct-original-page .modal-overlay,
+  .ct-page-host .ct-modal,
+  .ct-original-page .ct-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    overflow: auto !important;
+  }
+
+  .ct-page-host .modal-overlay.active,
+  .ct-original-page .modal-overlay.active,
+  .ct-page-host .ct-modal.open,
+  .ct-original-page .ct-modal.open {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .ct-page-host .modal-overlay > .modal-box,
+  .ct-page-host .modal-overlay > .modal-content,
+  .ct-page-host .modal-overlay > .modal-container,
+  .ct-original-page .modal-overlay > .modal-box,
+  .ct-original-page .modal-overlay > .modal-content,
+  .ct-original-page .modal-overlay > .modal-container,
+  .ct-page-host .ct-modal > .ct-modal-box,
+  .ct-original-page .ct-modal > .ct-modal-box {
+    margin: auto !important;
+    max-height: calc(100dvh - 48px) !important;
+    overflow-y: auto !important;
+  }
+
+  html.ct-cashier-page .ct-page-host {
+    padding-bottom: 92px !important;
+  }
+
+  html.ct-cashier-page .desktop-fixed-footer {
+    position: fixed !important;
+    right: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    transform: none !important;
+    z-index: 2400 !important;
+  }
+}
+
+/* ===== Revision 49: mobile-only centered modals with full reachable scroll =====
+   Desktop/laptop rules are intentionally untouched. On phones, Revision 46's
+   layout containment could become a containing block for fixed dialogs, making
+   them look offset/clipped inside the page host. Keep fixed dialogs anchored to
+   the real visible viewport, remove the dark backdrop edge, and let long forms
+   scroll all the way to their final actions. */
+@media (max-width: 768px) {
+  /* `contain: layout` changes the containing block of position:fixed descendants.
+     Removing containment here does not change page dimensions; it only restores
+     correct viewport anchoring for mobile dialogs. */
+  .ct-page-host,
+  .ct-original-page {
+    contain: none !important;
+  }
+
+  .ct-page-host .modal-overlay,
+  .ct-original-page .modal-overlay,
+  .ct-page-host .ct-modal,
+  .ct-original-page .ct-modal,
+  .ct-page-host .modal,
+  .ct-original-page .modal {
+    position: fixed !important;
+    top: var(--ct-topbar-height) !important;
+    right: 0 !important;
+    bottom: calc(var(--ct-bottom-height) + var(--ct-safe-bottom)) !important;
+    left: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px max(8px, var(--ct-safe-right)) 8px max(8px, var(--ct-safe-left)) !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .ct-page-host .modal-overlay.active,
+  .ct-original-page .modal-overlay.active,
+  .ct-page-host .ct-modal.open,
+  .ct-original-page .ct-modal.open,
+  .ct-page-host .modal.show,
+  .ct-original-page .modal.show {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .ct-page-host .modal-overlay > .modal-box,
+  .ct-page-host .modal-overlay > .modal-content,
+  .ct-page-host .modal-overlay > .modal-container,
+  .ct-original-page .modal-overlay > .modal-box,
+  .ct-original-page .modal-overlay > .modal-content,
+  .ct-original-page .modal-overlay > .modal-container,
+  .ct-page-host .ct-modal > .ct-modal-box,
+  .ct-original-page .ct-modal > .ct-modal-box,
+  .ct-page-host .modal > .modal-card,
+  .ct-original-page .modal > .modal-card {
+    position: relative !important;
+    margin: auto !important;
+    min-height: 0 !important;
+    max-height: calc(var(--ct-visual-viewport-height, 100dvh) - var(--ct-topbar-height) - var(--ct-bottom-height) - var(--ct-safe-bottom) - 16px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+    scroll-behavior: auto !important;
+    scroll-padding-bottom: 20px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, .08) !important;
+  }
+}
+
+
+/* ===== Revision 53: stable phone dialogs (no opening shake) ===== */
+@media (max-width: 768px) {
+  .ct-page-host .modal-overlay.active,
+  .ct-original-page .modal-overlay.active,
+  .ct-page-host .modal-overlay.active > .modal-box,
+  .ct-original-page .modal-overlay.active > .modal-box,
+  .ct-page-host .ct-modal.open,
+  .ct-original-page .ct-modal.open,
+  .ct-page-host .ct-modal.open > .ct-modal-box,
+  .ct-original-page .ct-modal.open > .ct-modal-box,
+  .ct-page-host .modal.show,
+  .ct-original-page .modal.show {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ct-page-host .modal-overlay > .modal-box,
+  .ct-original-page .modal-overlay > .modal-box,
+  .ct-page-host .ct-modal > .ct-modal-box {
+    transform: none !important;
+    will-change: auto !important;
+  }
+}
+
+/* Revision 53: instant company broadcast popup. */
+
+/* ===== Revision 56: sidebar always above bottom navigation and fixed page chrome ===== */
+.ct-sidebar { z-index: 9200 !important; }
+.ct-sidebar-overlay { z-index: 9100 !important; }
+@media (min-width: 769px) {
+  .ct-sidebar { z-index: 9200 !important; }
+}
+@media (max-width: 768px) {
+  .ct-sidebar { z-index: 9200 !important; }
+  .ct-sidebar-overlay { z-index: 9100 !important; }
+}
+html.ct-cashier-page .ct-sidebar { z-index: 9200 !important; }
+html.ct-cashier-page .ct-sidebar-overlay { z-index: 9100 !important; }
+
+/* Revision 56: keep the basket insight dialog light and smooth without reintroducing layout shake. */
+#itemInfoModal.modal-overlay > .modal-box { opacity: 0; transition: opacity .18s ease !important; }
+#itemInfoModal.modal-overlay.active > .modal-box { opacity: 1 !important; transition: opacity .18s ease !important; }

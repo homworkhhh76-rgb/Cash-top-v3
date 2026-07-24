@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>وحدات الأصناف - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات الاحترافية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+        .action-bar { background-color: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; width: 100%; }
+        .search-box { display: flex; align-items: center; flex: 1; max-width: 450px; position: relative; width: 100%; }
+        .search-control { width: 100%; padding: 8px 38px 8px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 3px; outline: none; }
+        .search-control:focus { border-color: #00c0ef; }
+        .search-box i { position: absolute; right: 12px; color: #999; font-size: 14px; }
+        .btn-add-unit { background-color: #00a65a; color: white; border: none; padding: 8px 18px; border-radius: 3px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; }
+        .table-container { background-color: white; border-radius: 4px; border-top: 3px solid #605ca8; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; overflow: hidden; }
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; gap: 15px; width: 100%; }
+        .table-title { font-size: 16px; font-weight: bold; color: #444; white-space: nowrap; }
+        .export-group { display: flex; gap: 8px; align-items: center; }
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; padding: 6px 14px; border-radius: 3px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .btn-export.pdf:hover { color: #dd4b39; border-color: #dd4b39; }
+        .btn-export.excel:hover { color: #00a65a; border-color: #00a65a; }
+        .btn-export.image:hover { color: #00c0ef; border-color: #00c0ef; }
+        .table-responsive-box { width: 100%; overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f9f9f9; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; white-space: nowrap; }
+        .badge-unit-style { background-color: rgba(96, 92, 168, 0.12); color: #605ca8; padding: 4px 10px; border-radius: 4px; font-weight: bold; }
+        .badge-piece-style { background-color: rgba(0, 192, 239, 0.12); color: #00c0ef; padding: 4px 10px; border-radius: 4px; font-weight: bold; }
+        .badge-quantity { background-color: #e6f7ed; color: #00a65a; padding: 3px 8px; border-radius: 3px; font-weight: bold; }
+        .badge-metric { background-color: #f1f5f9; color: #1e40af; padding: 3px 10px; border-radius: 4px; font-family: monospace; font-weight: bold; font-size: 14px; border: 1px solid #cbd5e1; }
+        .actions-wrapper { display: flex; justify-content: center; gap: 4px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px; transition: all 0.2s; }
+        .btn-edit-act { color: #f39c12; } .btn-edit-act:hover { background: rgba(243,156,18,0.1); }
+        .btn-delete-act { color: #dd4b39; } .btn-delete-act:hover { background: rgba(221,75,57,0.1); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: white; width: 100%; max-width: 650px; border-radius: 4px; border-top: 4px solid #00a65a; box-shadow: 0 4px 15px rgba(0,0,0,0.2); padding: 25px 20px 20px 20px; transform: translateY(-15px); transition: transform 0.25s ease; }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; margin-bottom: 25px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #aaa; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 15px; margin-bottom: 15px; width: 100%; }
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; }
+        .form-group label { position: absolute; top: -9px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 10.5px; font-weight: bold; color: #666; z-index: 2; pointer-events: none; }
+        .form-control { width: 100%; padding: 10px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 6px; outline: none; background-color: #fff; position: relative; z-index: 1; text-align: right; }
+        .form-control:focus { border-color: #00a65a; }
+        .form-control:focus + label { color: #00a65a; }
+        .ltr-input { text-align: left; direction: ltr; font-weight: bold; color: #1e40af; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 15px; }
+        .btn-submit { background-color: #00a65a; color: white; border: none; padding: 8px 22px; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-cancel { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; padding: 8px 22px; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600; }
+
+
+        .unit-chain-preview { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px; white-space:normal; }
+        .unit-chain-chip { background:#eef2ff; color:#4f46e5; border:1px solid #c7d2fe; border-radius:999px; padding:4px 9px; font-weight:700; font-size:11px; }
+        .unit-chain-arrow { color:#94a3b8; font-size:11px; }
+        .larger-units-list { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+        .larger-unit-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(110px,.55fr) auto; gap:8px; align-items:center; padding:10px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; }
+        .larger-unit-row .relation-note { grid-column:1/-1; font-size:10px; color:#64748b; }
+        .btn-add-level { border:1px dashed #00a65a; background:#ecfdf5; color:#047857; padding:9px 14px; border-radius:7px; cursor:pointer; font-weight:700; width:100%; margin-top:8px; }
+        .btn-remove-level { width:34px; height:34px; border:0; border-radius:7px; background:#fee2e2; color:#dc2626; cursor:pointer; }
+        @media (max-width:768px){ .larger-unit-row{grid-template-columns:1fr 110px auto;} }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .action-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+            .search-box { max-width: 100%; }
+            .btn-add-unit { justify-content: center; width: 100%; padding: 10px; }
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 12px; }
+            .export-group { display: flex; flex-direction: row; overflow-x: auto; gap: 8px; width: 100%; padding-bottom: 5px; scrollbar-width: none; }
+            .export-group::-webkit-scrollbar { display: none; }
+            .modal-box { padding: 20px 12px 12px 12px; }
+            .form-row { gap: 18px 10px; margin-bottom: 10px; }
+            .data-table { min-width: 1050px; }
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div class="dashboard-container">
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" class="search-control" placeholder="ابحث باسم أي وحدة داخل التسلسل..." oninput="filterTable()">
+            </div>
+            <button class="btn-add-unit" onclick="openModal()"><i class="fa-solid fa-plus"></i> إضافة نظام وحدات</button>
+        </div>
+
+        <div class="table-container" id="unitsExportArea">
+            <div class="table-header-wrapper">
+                <div class="table-title">تسلسل وحدات الأصناف من الأصغر إلى الأكبر</div>
+                <div class="export-group">
+                    <button class="btn-export excel" onclick="exportUnitsExcel()"><i class="fa-solid fa-file-excel"></i> اكسل</button>
+                    <button class="btn-export pdf" onclick="exportUnitsPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                    <button class="btn-export image" onclick="exportUnitsImage()"><i class="fa-solid fa-image"></i> صورة</button>
+                    <button class="btn-export" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة</button>
+                </div>
+            </div>
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead><tr><th>التسلسل</th><th>الوحدة الأساسية</th><th>أكبر وحدة</th><th>معامل الأكبر للأساسية</th><th>الإجراءات</th></tr></thead>
+                    <tbody id="unitsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="unitModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle"><i class="fa-solid fa-boxes-stacked"></i> بناء تسلسل وحدات جديد</div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="unitForm" onsubmit="saveUnit(event)">
+                <input type="hidden" id="editingId">
+                <div class="form-row" style="grid-template-columns:1fr;">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="مثال: قطعة أو كيلو" required id="baseUnitNameInput" autocomplete="off" oninput="refreshLevelRelations()">
+                        <label for="baseUnitNameInput">الوحدة السفلية / الأساسية</label>
+                    </div>
+                </div>
+                <div style="font-size:12px;font-weight:700;color:#475569;margin:8px 0 4px;"><i class="fa-solid fa-arrow-up-wide-short" style="color:#605ca8"></i> الوحدات الأكبر بالترتيب</div>
+                <div id="largerUnitsContainer" class="larger-units-list"></div>
+                <button type="button" class="btn-add-level" onclick="addLargerUnitRow()"><i class="fa-solid fa-plus"></i> إضافة وحدة أكبر</button>
+                <div style="margin-top:10px;padding:9px 11px;background:#f8fafc;border-radius:7px;font-size:11px;color:#64748b;line-height:1.9;">
+                    مثال: قطعة ← كرتونة (24 قطعة) ← مشطاح (24 كرتونة). النظام يحسب المشطاح تلقائياً = 576 قطعة.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">إلغاء</button>
+                    <button type="submit" class="btn-submit">حفظ التسلسل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const legacyDefaults = [
+            { id: "u1", unitName: "كرتونة", pieceName: "قطعة", piecesCount: 24 },
+            { id: "u2", unitName: "شوال", pieceName: "كيلو", piecesCount: 50 }
+        ];
+        let unitsData = window.CashtopMulti?.normalizeUnits(JSON.parse(localStorage.getItem('cashtop_units') || 'null') || legacyDefaults) || legacyDefaults;
+        let levelCounter = 0;
+
+        window.addEventListener('load', () => {
+            persistUnits();
+            renderTable();
+        });
+        window.addEventListener('cashtop:remote-applied', event => {
+            if (event.detail?.key !== 'cashtop_units') return;
+            unitsData = window.CashtopMulti?.normalizeUnits(JSON.parse(localStorage.getItem('cashtop_units') || '[]')) || [];
+            renderTable();
+        });
+
+        function persistUnits() {
+            localStorage.setItem('cashtop_units', JSON.stringify(unitsData));
+        }
+
+        function esc(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+        function renderTable(data = unitsData) {
+            const tbody = document.getElementById('unitsTableBody');
+            const records = Array.isArray(data) ? data : [];
+            const createRow = raw => {
+                const unit = window.CashtopMulti?.normalizeUnitTemplate(raw) || raw;
+                const chain = unit.chain || [];
+                const base = chain[0] || { name: 'قطعة', factorToBase: 1 };
+                const top = chain[chain.length - 1] || base;
+                const chainHtml = chain.map((level, index) => `${index ? '<span class="unit-chain-arrow">←</span>' : ''}<span class="unit-chain-chip">${esc(level.name)}${index ? ` ×${Number(level.factorToPrevious || 1)}` : ''}</span>`).join('');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><div class="unit-chain-preview">${chainHtml}</div></td>
+                    <td><span class="badge-piece-style">${esc(base.name)}</span></td>
+                    <td><span class="badge-unit-style">${esc(top.name)}</span></td>
+                    <td><span class="badge-quantity">1 ${esc(top.name)} = ${Number(top.factorToBase || 1)} ${esc(base.name)}</span></td>
+                    <td><div class="actions-wrapper">
+                        <button class="action-btn btn-edit-act" onclick="editUnit('${esc(unit.id)}')" title="تعديل التسلسل"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn btn-delete-act" onclick="deleteUnit('${esc(unit.id)}')" title="حذف التسلسل"><i class="fa-solid fa-trash-can"></i></button>
+                    </div></td>`;
+                return tr;
+            };
+            if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(tbody, records, createRow, { chunkSize: 100, eagerLimit: 200, colspan: 5, emptyHtml: '<tr><td colspan="5" style="padding:20px;color:#999;">لا توجد أنظمة وحدات مسجلة.</td></tr>' });
+            else { tbody.innerHTML=''; if (!records.length) tbody.innerHTML='<tr><td colspan="5" style="padding:20px;color:#999;">لا توجد أنظمة وحدات مسجلة.</td></tr>'; else records.forEach(unit => tbody.appendChild(createRow(unit))); }
+        }
+
+        function filterTable() {
+            const q = String(document.getElementById('searchInput').value || '').trim().toLowerCase();
+            renderTable(!q ? unitsData : unitsData.filter(unit => (unit.chain || []).some(level => String(level.name || '').toLowerCase().includes(q))));
+        }
+
+        function addLargerUnitRow(data = {}) {
+            const container = document.getElementById('largerUnitsContainer');
+            const row = document.createElement('div');
+            row.className = 'larger-unit-row';
+            row.dataset.levelKey = String(++levelCounter);
+            row.innerHTML = `
+                <input type="text" class="form-control level-name" placeholder="اسم الوحدة الأكبر" value="${esc(data.name || '')}" required oninput="refreshLevelRelations()">
+                <input type="number" min="0.000001" step="any" class="form-control level-factor" placeholder="العدد" value="${Number(data.factorToPrevious || data.factor || 1)}" required oninput="refreshLevelRelations()">
+                <button type="button" class="btn-remove-level" onclick="this.closest('.larger-unit-row').remove();refreshLevelRelations()" title="حذف المستوى"><i class="fa-solid fa-trash"></i></button>
+                <div class="relation-note"></div>`;
+            container.appendChild(row);
+            refreshLevelRelations();
+        }
+
+        function refreshLevelRelations() {
+            let previous = String(document.getElementById('baseUnitNameInput')?.value || 'الوحدة الأساسية').trim() || 'الوحدة الأساسية';
+            let total = 1;
+            document.querySelectorAll('#largerUnitsContainer .larger-unit-row').forEach(row => {
+                const name = String(row.querySelector('.level-name')?.value || 'وحدة أكبر').trim() || 'وحدة أكبر';
+                const factor = Math.max(0.000001, Number(row.querySelector('.level-factor')?.value || 1));
+                total *= factor;
+                row.querySelector('.relation-note').textContent = `1 ${name} = ${factor} ${previous} = ${total} ${document.getElementById('baseUnitNameInput')?.value || 'وحدة أساسية'}`;
+                previous = name;
+            });
+        }
+
+        function openModal() {
+            document.getElementById('unitForm').reset();
+            document.getElementById('editingId').value = '';
+            document.getElementById('largerUnitsContainer').innerHTML = '';
+            document.getElementById('baseUnitNameInput').value = 'قطعة';
+            addLargerUnitRow({ name: 'كرتونة', factorToPrevious: 24 });
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-boxes-stacked"></i> بناء تسلسل وحدات جديد';
+            document.getElementById('unitModal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('unitModal').classList.remove('active'); }
+
+        function collectChain(id) {
+            const baseName = String(document.getElementById('baseUnitNameInput').value || '').trim();
+            if (!baseName) return null;
+            const chain = [{ id: `${id}_L0`, name: baseName, factorToPrevious: 1, factorToBase: 1 }];
+            let total = 1;
+            document.querySelectorAll('#largerUnitsContainer .larger-unit-row').forEach((row, index) => {
+                const name = String(row.querySelector('.level-name')?.value || '').trim();
+                const factor = Math.max(0.000001, Number(row.querySelector('.level-factor')?.value || 1));
+                if (!name) return;
+                total *= factor;
+                chain.push({ id: `${id}_L${index + 1}`, name, factorToPrevious: factor, factorToBase: total });
+            });
+            return chain;
+        }
+
+        function saveUnit(event) {
+            event.preventDefault();
+            const editingId = String(document.getElementById('editingId').value || '');
+            const id = editingId || `U_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            const chain = collectChain(id);
+            if (!chain || !chain.length) return;
+            const normalized = window.CashtopMulti.normalizeUnitTemplate({ id, chain, updatedAt: new Date().toISOString() });
+            const index = unitsData.findIndex(unit => String(unit.id) === id);
+            if (index >= 0) unitsData[index] = normalized; else unitsData.push(normalized);
+            persistUnits();
+            renderTable();
+            closeModal();
+            window.Cashtop?.showToast?.(editingId ? 'تم تحديث تسلسل الوحدات' : 'تم حفظ تسلسل الوحدات', 'success');
+        }
+
+        function editUnit(id) {
+            const unit = unitsData.find(item => String(item.id) === String(id));
+            if (!unit) return;
+            const normalized = window.CashtopMulti.normalizeUnitTemplate(unit);
+            document.getElementById('unitForm').reset();
+            document.getElementById('editingId').value = normalized.id;
+            document.getElementById('largerUnitsContainer').innerHTML = '';
+            document.getElementById('baseUnitNameInput').value = normalized.chain[0]?.name || 'قطعة';
+            normalized.chain.slice(1).forEach(level => addLargerUnitRow(level));
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> تعديل تسلسل الوحدات';
+            refreshLevelRelations();
+            document.getElementById('unitModal').classList.add('active');
+        }
+
+        function deleteUnit(id) {
+            if (!confirm('هل أنت متأكد من حذف تسلسل الوحدات؟ المنتجات الحالية ستحتفظ بنسخة الوحدات المخزنة داخلها.')) return;
+            unitsData = unitsData.filter(unit => String(unit.id) !== String(id));
+            persistUnits();
+            renderTable();
+        }
+
+        function exportUnitsExcel() {
+            const rows = [['كاش توب 2 - تسلسل الوحدات'], ['تاريخ التقرير', new Date().toLocaleString('en-GB')], [], ['#','الوحدة الأساسية','أكبر وحدة','المعامل الكلي','التسلسل']];
+            unitsData.forEach((raw, index) => {
+                const unit = window.CashtopMulti.normalizeUnitTemplate(raw), chain = unit.chain, base = chain[0], top = chain[chain.length - 1];
+                rows.push([index + 1, base.name, top.name, top.factorToBase, window.CashtopMulti.chainText(chain)]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:6},{wch:20},{wch:20},{wch:18},{wch:60}];
+            const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'الوحدات'); XLSX.writeFile(wb,`تسلسل_الوحدات_${Date.now()}.xlsx`);
+        }
+
+        async function exportUnitsPDF() {
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title:'تسلسل وحدات الأصناف', subtitle:`عدد الأنظمة: ${unitsData.length}`,
+                    columns:['#','الوحدة الأساسية','أكبر وحدة','المعامل الكلي','التسلسل'],
+                    rows:unitsData.map((raw,index)=>{const unit=window.CashtopMulti.normalizeUnitTemplate(raw),c=unit.chain,b=c[0],t=c[c.length-1];return[index+1,b.name,t.name,t.factorToBase,window.CashtopMulti.chainText(c)];}),
+                    filename:`تسلسل_الوحدات_${Date.now()}.pdf`, orientation:'landscape'
+                });
+            } catch(error){ console.error(error); alert('تعذر إنشاء ملف PDF للوحدات.'); }
+        }
+
+        async function exportUnitsImage() {
+            const area=document.getElementById('unitsExportArea'); const actions=[...area.querySelectorAll('.actions-wrapper,.export-group')]; const previous=actions.map(n=>n.style.display); actions.forEach(n=>n.style.display='none');
+            try { const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff'}); const link=document.createElement('a'); link.download=`تسلسل_الوحدات_${Date.now()}.png`; link.href=canvas.toDataURL('image/png'); link.click(); }
+            finally { actions.forEach((n,i)=>n.style.display=previous[i]); }
+        }
+
+        document.getElementById('unitModal').addEventListener('click', function(event){ if(event.target===this) closeModal(); });
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"units.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

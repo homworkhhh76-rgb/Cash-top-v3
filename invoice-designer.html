@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تخصيص تصميم الفاتورة - Cash Top 2</title>
+    <!-- خطوط عربية -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- مكتبة الأيقونات الاحترافية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- مكتبة تحويل الفاتورة إلى صورة -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --primary: #1e293b;
+            --border: #cbd5e1;
+            --active-color: #3b82f6;
+            --locked-color: #ef4444;
+        }
+
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        @media (min-width: 768px) { body { flex-direction: row; } }
+
+        /* لوحة التحكم */
+        .sidebar { width: 100%; height: 50vh; background: #fff; padding: 15px; box-shadow: -2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; z-index: 10; display: flex; flex-direction: column; gap: 12px; }
+        @media (min-width: 768px) { .sidebar { width: 360px; height: 100vh; } }
+
+        .control-group { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .control-group h3 { margin: 0 0 10px 0; font-size: 13px; color: #333; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .btn-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+        button { background: var(--primary); color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: 'Cairo', sans-serif; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        button:hover { background: #334155; }
+        
+        .btn-print { background: #10b981; font-size: 14px; font-weight: bold; padding: 10px; width: 100%; }
+        .btn-print:hover { background: #059669; }
+        .btn-download { background: #3b82f6; font-size: 14px; font-weight: bold; padding: 10px; width: 100%; }
+        .btn-download:hover { background: #2563eb; }
+
+        select, input[type="range"], input[type="file"], input[type="number"], textarea { width: 100%; padding: 6px; font-family: 'Cairo', sans-serif; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 12px; }
+
+        /* منطقة التصميم */
+        .workspace { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 30px; overflow: auto; background: #e2e8f0; }
+        .receipt-container { background: #fff; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.15); min-height: 500px; border: 1px dashed #999; color: #000; margin: 0 auto; }
+        
+        .size-58 { width: 220px; }
+        .size-80 { width: 300px; }
+
+        /* العناصر القابلة للسحب */
+        .draggable-item { position: absolute; min-width: 30px; min-height: 20px; user-select: none; }
+        .draggable-item .content { width: 100%; height: 100%; padding: 2px; border: 1px solid transparent; word-wrap: break-word; box-sizing: border-box; }
+        .draggable-item.active .content { border: 2px dashed var(--active-color); background: rgba(59, 130, 246, 0.05); }
+        .draggable-item[data-locked="true"].active .content { border-color: var(--locked-color); background: rgba(239, 68, 68, 0.05); }
+
+        /* نقاط التحكم (المقابض) */
+        .resizer { position: absolute; background: var(--active-color); border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 3px rgba(0,0,0,0.3); display: none; z-index: 20; }
+        .draggable-item.active .resizer { display: block; }
+        .draggable-item[data-locked="true"] .resizer { display: none !important; }
+
+        .resizer.w { width: 12px; height: 12px; top: 50%; left: -6px; transform: translateY(-50%); cursor: ew-resize; }
+        .resizer.h { width: 12px; height: 12px; bottom: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .resizer.wh { width: 14px; height: 14px; bottom: -7px; left: -7px; cursor: nwse-resize; }
+
+        /* التنسيقات الافتراضية للعناصر */
+        .type-line .content { border-bottom: 2px solid #000; height: 0 !important; min-height: 0 !important; padding: 0; margin-top: 10px; }
+        .type-box .content { border: 2px solid #000; background: transparent; }
+        .type-circle .content { border: 2px solid #000; border-radius: 50%; background: transparent; }
+        
+        .receipt-table { width: 100%; border-collapse: collapse; font-size: inherit; text-align: center; }
+        .receipt-table th, .receipt-table td { border-bottom: 1px dashed #000; padding: 4px 2px; min-width: 20px; }
+
+        /* إعدادات الطباعة الدقيقة للطابعات الحرارية */
+        @media print {
+            body * { visibility: hidden; }
+            #receipt, #receipt * { visibility: visible; }
+            body { background: white; margin: 0; padding: 0; display: block; }
+            .workspace { padding: 0; margin: 0; background: white; display: flex; justify-content: center; width: 100%; }
+            #receipt { 
+                position: relative; 
+                margin: 0 auto !important; /* لضمان التوسيط */
+                left: auto !important; right: auto !important; 
+                box-shadow: none; border: none; 
+            }
+            .draggable-item .content { border-color: transparent !important; background: transparent !important; }
+            .type-box .content, .type-circle .content { border: 2px solid #000 !important; }
+            .resizer, .delete-btn { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        }
+
+        /* لوحة التحكم بالاتجاهات */
+        .d-pad-container { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 10px; }
+        .d-pad { display: grid; grid-template-columns: 35px 35px 35px; gap: 5px; justify-content: center; }
+        .d-pad button { padding: 8px; font-size: 14px; background: #e2e8f0; color: #333; }
+        .d-pad button:hover { background: #cbd5e1; }
+    </style>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="btn-grid">
+            <button class="btn-print" onclick="printReceipt()"><i class="fa-solid fa-print"></i> طباعة الفاتورة</button>
+            <button class="btn-download" onclick="downloadImage()"><i class="fa-solid fa-image"></i> تحميل كصورة</button>
+        </div>
+
+        <div class="control-group" style="border:2px solid #c4b5fd;background:#faf5ff;">
+            <h3><i class="fa-solid fa-pen-ruler"></i> تصميم فاتورة Cash Top</h3>
+            <div class="btn-grid">
+                <button onclick="saveCashTopDesign()" style="background:#7c3aed"><i class="fa-solid fa-floppy-disk"></i> حفظ التصميم</button>
+                <button onclick="loadCurrentCashTopDesign()" style="background:#0369a1"><i class="fa-solid fa-cloud-arrow-down"></i> جلب التصميم الحالي</button>
+                <button onclick="restoreDefaultCashTopDesign()" style="background:#b45309"><i class="fa-solid fa-rotate-left"></i> استعادة تصميم الفاتورة</button>
+                <button onclick="window.location.href='printer-settings.html'" style="background:#475569"><i class="fa-solid fa-arrow-right"></i> إعدادات الطابعات</button>
+            </div>
+            <p style="font-size:11px;line-height:1.7;margin:9px 0 0;color:#64748b">الأصناف والمتغيرات تتزامن تلقائياً مع بيانات الفاتورة الفعلية. طول الفاتورة يتمدد تلقائياً عند زيادة عدد الأصناف.</p>
+        </div>
+
+        <div class="control-group">
+            <h3><i class="fa-solid fa-gear"></i> الإعدادات الأساسية</h3>
+            <select id="paperSize" onchange="changeSize()">
+                <option value="size-80">مقاس الورق: 80 مم</option>
+                <option value="size-58">مقاس الورق: 58 مم</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <h3><i class="fa-solid fa-shapes"></i> إضافة عناصر</h3>
+            <div class="btn-grid-3">
+                <button onclick="addElement('text')"><i class="fa-solid fa-t"></i> نص</button>
+                <button onclick="addElement('line')"><i class="fa-solid fa-minus"></i> خط</button>
+                <button onclick="addElement('box')"><i class="fa-regular fa-square"></i> مربع</button>
+                <button onclick="addElement('circle')"><i class="fa-regular fa-circle"></i> دائرة</button>
+                <button onclick="addElement('table')" style="grid-column: span 2;"><i class="fa-solid fa-table"></i> جدول</button>
+            </div>
+            <div style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 10px;">
+                <label style="font-size: 12px; display:block; margin-bottom: 5px;"><i class="fa-solid fa-image"></i> شعار الفاتورة:</label>
+                <button type="button" onclick="useSystemLogo()" style="width:100%;background:#0f766e"><i class="fa-solid fa-wand-magic-sparkles"></i> جلب شعار الموقع</button>
+                <small style="display:block;margin-top:6px;color:#64748b;line-height:1.6">يتم جلب الشعار المحفوظ في إعدادات النظام، وأي تغيير لاحق على شعار الموقع يتزامن تلقائياً مع تصميم الفاتورة.</small>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3><i class="fa-solid fa-wrench"></i> أدوات العنصر المحدد</h3>
+            
+            <label style="font-size: 11px; margin-bottom: 5px; display: block; font-weight: bold;">
+                <input type="checkbox" id="multiSelectToggle"> تفعيل التحديد المتعدد (لدمج العناصر)
+            </label>
+
+            <div class="btn-grid-3" style="margin-bottom: 10px;">
+                <button onclick="groupElements()" style="background: #8b5cf6;"><i class="fa-solid fa-object-group"></i> دمج</button>
+                <button onclick="toggleLock()" style="background: #f59e0b;"><i class="fa-solid fa-lock"></i> قفل</button>
+                <button onclick="copyElement()" style="background: #10b981;"><i class="fa-solid fa-copy"></i> نسخ</button>
+                <button onclick="addTableRow()" style="grid-column: span 3; background: #64748b;"><i class="fa-solid fa-plus"></i> إضافة صنف للجدول المحدد</button>
+                <button onclick="deleteSelected()" style="grid-column: span 3; background: #ef4444;"><i class="fa-solid fa-trash"></i> حذف العنصر</button>
+            </div>
+
+            <div class="control-group" style="background: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-size: 12px;"><i class="fa-solid fa-text-height"></i> حجم الخط:</label>
+                    <input type="number" id="fontSizeInput" value="14" style="width: 70px;" onchange="changeStyle('fontSize')">
+                </div>
+                <div class="btn-grid" style="margin-bottom: 10px;">
+                    <button onclick="formatText('bold')"><i class="fa-solid fa-bold"></i> عريض</button>
+                    <button onclick="formatText('italic')"><i class="fa-solid fa-italic"></i> مائل</button>
+                    <button onclick="formatText('underline')"><i class="fa-solid fa-underline"></i> تسطير</button>
+                    <button onclick="formatText('highlight')"><i class="fa-solid fa-fill"></i> تظليل</button>
+                </div>
+                <label style="font-size: 12px; display:block;"><i class="fa-solid fa-eye-low-vision"></i> الشفافية:</label>
+                <input type="range" id="opacitySlider" min="0.1" max="1" step="0.1" value="1" oninput="changeStyle('opacity')">
+            </div>
+
+            <div class="d-pad-container">
+                <label style="font-size: 11px;"><i class="fa-solid fa-gauge"></i> سرعة الحركة:</label>
+                <input type="range" id="moveSpeed" min="1" max="30" value="5" style="margin-bottom: 5px;">
+                <div class="d-pad">
+                    <div></div>
+                    <button onclick="moveDirection(0, -1)"><i class="fa-solid fa-caret-up"></i></button>
+                    <div></div>
+                    <button onclick="moveDirection(-1, 0)"><i class="fa-solid fa-caret-left"></i></button>
+                    <button onclick="moveDirection(0, 1)"><i class="fa-solid fa-caret-down"></i></button>
+                    <button onclick="moveDirection(1, 0)"><i class="fa-solid fa-caret-right"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3><i class="fa-solid fa-keyboard"></i> تعديل النص والمتغيرات</h3>
+            <textarea id="textInput" rows="2" placeholder="اكتب النص هنا..."></textarea>
+            <button onclick="applyText()" style="width: 100%; margin-top: 5px; margin-bottom: 10px; background: #475569;"><i class="fa-solid fa-check"></i> تطبيق النص</button>
+            <div class="btn-grid">
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{customer_name}}')">العميل</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{customer_phone}}')">جوال العميل</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{invoice_no}}')">رقم الفاتورة</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{date}}')">التاريخ</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{time}}')">الوقت</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{cashier_name}}')">الكاشير</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{branch_name}}')">الفرع</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{payment_method}}')">طريقة الدفع</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{company_name}}')">اسم الشركة</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{item_name}}')">اسم الصنف</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{item_unit}}')">الوحدة</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{item_qty}}')">الكمية</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{item_price}}')">سعر الصنف</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{item_total}}')">إجمالي الصنف</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{items_count}}')">عدد الأصناف</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{subtotal}}')">المجموع</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{discount}}')">الخصم</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{tax}}')">الضريبة</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{total}}')">الإجمالي</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{paid}}')">المدفوع</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333" onclick="insertVar('{{remaining}}')">المتبقي</button>
+                <button class="var-btn" style="background:#e2e8f0;color:#333;grid-column:span 2" onclick="insertVar('{{notes}}')">ملاحظات</button>
+            </div>
+            <div style="margin-top:8px;padding:8px;background:#fff;border:1px dashed #cbd5e1;border-radius:6px;font-size:11px;color:#475569">جدول الأصناف عنصر ديناميكي واحد ويحافظ على نفس أعمدة طباعة Cash Top: الصنف، الوحدة، الكمية، السعر، الإجمالي.</div>
+        </div>
+    </div>
+
+    <div class="workspace" id="workspace">
+        <div id="receipt" class="receipt-container size-80"></div>
+    </div>
+
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="cashtop-core.js"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-sync.js?v=61"></script>
+    <script>
+        let selectedElements = new Set();
+        let zIndexCounter = 10;
+        let groupIdCounter = 1;
+
+        const mockData = {
+            customer_name: "عميل نقدي", customer_phone: "0590000000", invoice_no: "1784475236",
+            date: "19/07/2026", time: "18:33:56", cashier_name: "مدير الشركة",
+            total: "40.00", paid: "40.00", remaining: "0.00"
+        };
+
+        function changeSize() {
+            document.getElementById('receipt').className = 'receipt-container ' + document.getElementById('paperSize').value;
+        }
+
+        // إدارة التحديد
+        function setActive(el, isClick = false) {
+            const isMulti = document.getElementById('multiSelectToggle').checked;
+            
+            if (isClick && !isMulti && !el.dataset.group) {
+                clearSelection();
+            }
+
+            if (el.dataset.group && !isMulti) {
+                clearSelection();
+                document.querySelectorAll(`[data-group="${el.dataset.group}"]`).forEach(gEl => addToSelection(gEl));
+            } else {
+                addToSelection(el);
+            }
+            updateControlsForSelection();
+        }
+
+        function addToSelection(el) {
+            selectedElements.add(el);
+            el.classList.add('active');
+            el.style.zIndex = zIndexCounter++;
+        }
+
+        function clearSelection() {
+            selectedElements.forEach(el => el.classList.remove('active'));
+            selectedElements.clear();
+        }
+
+        document.getElementById('workspace').addEventListener('mousedown', function(e) {
+            if (e.target === this || e.target.id === 'receipt') {
+                clearSelection();
+                document.getElementById('textInput').value = "";
+            }
+        });
+
+        // تحديث أدوات التحكم بناءً على العنصر
+        function updateControlsForSelection() {
+            if (selectedElements.size === 1) {
+                const el = Array.from(selectedElements)[0];
+                const content = el.querySelector('.content');
+                document.getElementById('opacitySlider').value = content.style.opacity || 1;
+                document.getElementById('fontSizeInput').value = parseInt(window.getComputedStyle(content).fontSize) || 14;
+                
+                if (el.classList.contains('type-text')) {
+                    document.getElementById('textInput').value = content.innerHTML.replace(/<br\s*[\/]?>/gi, '\n');
+                }
+            }
+        }
+
+        // إضافة العناصر
+        function addElement(type, textContent = "نص جديد") {
+            const el = document.createElement('div');
+            el.className = `draggable-item type-${type}`;
+            el.style.left = '20px'; el.style.top = '20px';
+            el.style.zIndex = zIndexCounter++;
+            el.style.width = (type === 'line' || type === 'box' || type === 'table') ? '250px' : (type === 'circle' ? '80px' : '150px');
+            
+            if(type === 'box') el.style.height = '80px';
+            if(type === 'circle') el.style.height = '80px';
+            if(type === 'line') el.style.height = '10px';
+
+            let innerContent = "";
+            if (type === 'text') innerContent = textContent;
+            else if (type === 'table') {
+                innerContent = `
+                <table class="receipt-table">
+                    <tbody>
+                        <tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th></tr>
+                        <tr><td contenteditable="true">منتج</td><td contenteditable="true">حبة</td><td contenteditable="true">1</td><td contenteditable="true">10</td><td contenteditable="true">10</td></tr>
+                    </tbody>
+                </table>`;
+            }
+
+            el.innerHTML = `<div class="content" style="font-size: 14px;">${innerContent}</div>
+                <div class="resizer w"></div><div class="resizer h"></div><div class="resizer wh"></div>`;
+            
+            document.getElementById('receipt').appendChild(el);
+            makeInteractable(el);
+            clearSelection();
+            setActive(el);
+        }
+
+        function addLogo(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const el = document.createElement('div');
+                    el.className = 'draggable-item type-image';
+                    el.style.left = '20px'; el.style.top = '20px';
+                    el.style.width = '100px'; el.style.height = '100px';
+                    el.style.zIndex = zIndexCounter++;
+                    el.innerHTML = `<div class="content" style="background-image: url('${e.target.result}'); background-size: contain; background-position: center; background-repeat: no-repeat;"></div>
+                        <div class="resizer w"></div><div class="resizer h"></div><div class="resizer wh"></div>`;
+                    document.getElementById('receipt').appendChild(el);
+                    makeInteractable(el);
+                    clearSelection();
+                    setActive(el);
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // محرك السحب وتغيير الحجم
+        function makeInteractable(el) {
+            const content = el.querySelector('.content');
+            const resizers = el.querySelectorAll('.resizer');
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0, startW = 0, startH = 0;
+
+            content.addEventListener('mousedown', dragStart);
+            content.addEventListener('touchstart', dragStart, {passive: false});
+
+            function dragStart(e) {
+                if (el.dataset.locked === 'true') return;
+                if (e.target.isContentEditable) return; 
+
+                setActive(el, true);
+                if(e.type === 'touchstart') e.preventDefault();
+                pos3 = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                pos4 = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                
+                document.onmouseup = closeDrag; document.onmousemove = elementDrag;
+                document.ontouchend = closeDrag; document.ontouchmove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                let dx = clientX - pos3; let dy = clientY - pos4;
+                pos3 = clientX; pos4 = clientY;
+                
+                selectedElements.forEach(item => {
+                    if(item.dataset.locked !== 'true') {
+                        item.style.top = (item.offsetTop + dy) + "px";
+                        item.style.left = (item.offsetLeft + dx) + "px";
+                    }
+                });
+            }
+
+            resizers.forEach(resizer => {
+                resizer.addEventListener('mousedown', resizeStart);
+                resizer.addEventListener('touchstart', resizeStart, {passive: false});
+
+                function resizeStart(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    pos3 = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                    pos4 = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                    startW = el.offsetWidth; startH = el.offsetHeight;
+                    const isW = resizer.classList.contains('w'), isH = resizer.classList.contains('h'), isWH = resizer.classList.contains('wh');
+
+                    document.onmousemove = document.ontouchmove = function(ev) {
+                        let clientX = ev.type === 'touchmove' ? ev.touches[0].clientX : ev.clientX;
+                        let clientY = ev.type === 'touchmove' ? ev.touches[0].clientY : ev.clientY;
+                        if (isW || isWH) el.style.width = startW - (clientX - pos3) + "px";
+                        if (isH || isWH) el.style.height = startH + (clientY - pos4) + "px";
+                    };
+                    document.onmouseup = document.ontouchend = function() { document.onmousemove = null; document.onmouseup = null; };
+                }
+            });
+
+            function closeDrag() { document.onmouseup = null; document.onmousemove = null; document.ontouchend = null; document.ontouchmove = null; }
+        }
+
+        // أدوات التحكم (أسهم، نسخ، قفل، دمج، حذف)
+        function moveDirection(dx, dy) {
+            const speed = parseInt(document.getElementById('moveSpeed').value);
+            selectedElements.forEach(item => {
+                if(item.dataset.locked !== 'true') {
+                    item.style.left = (item.offsetLeft + (dx * speed)) + "px";
+                    item.style.top = (item.offsetTop + (dy * speed)) + "px";
+                }
+            });
+        }
+
+        function copyElement() {
+            if (selectedElements.size === 0) return alert("حدد عنصراً لنسخه");
+            const newElements = [];
+            selectedElements.forEach(el => {
+                let clone = el.cloneNode(true);
+                clone.style.left = (el.offsetLeft + 15) + "px"; clone.style.top = (el.offsetTop + 15) + "px";
+                clone.dataset.group = ""; clone.classList.remove('active');
+                document.getElementById('receipt').appendChild(clone);
+                makeInteractable(clone);
+                newElements.push(clone);
+            });
+            clearSelection();
+            newElements.forEach(el => addToSelection(el));
+        }
+
+        function toggleLock() {
+            if (selectedElements.size === 0) return;
+            selectedElements.forEach(el => {
+                el.dataset.locked = el.dataset.locked === 'true' ? 'false' : 'true';
+            });
+        }
+
+        function groupElements() {
+            if (selectedElements.size < 2) return alert("الرجاء تحديد عنصرين على الأقل للدمج");
+            const gId = "group_" + (groupIdCounter++);
+            selectedElements.forEach(el => el.dataset.group = gId);
+            alert("تم دمج العناصر! لتحريكها معاً قم بإلغاء 'التحديد المتعدد' وانقر على أي منها.");
+        }
+
+        function deleteSelected() {
+            selectedElements.forEach(el => el.remove());
+            selectedElements.clear();
+        }
+
+        function addTableRow() {
+            let tableEl = Array.from(selectedElements).find(el => el.classList.contains('type-table'));
+            if(!tableEl) tableEl = document.querySelector('.type-table'); // ابحث عن أول جدول
+            if(!tableEl) return alert("الرجاء تحديد جدول أولاً لإضافة الأصناف.");
+            
+            const tbody = tableEl.querySelector('tbody');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `<td contenteditable="true">صنف جديد</td><td contenteditable="true">حبة</td><td contenteditable="true">1</td><td contenteditable="true">0</td><td contenteditable="true">0</td>`;
+            tbody.appendChild(newRow);
+        }
+
+        // التنسيقات وتعديل النصوص
+        function changeStyle(type) {
+            selectedElements.forEach(el => {
+                const content = el.querySelector('.content');
+                if(type === 'opacity') content.style.opacity = document.getElementById('opacitySlider').value;
+                if(type === 'fontSize') {
+                    const size = document.getElementById('fontSizeInput').value;
+                    content.style.fontSize = size + "px";
+                    // للجدول أيضاً
+                    if(el.classList.contains('type-table')) el.querySelector('table').style.fontSize = size + "px";
+                }
+            });
+        }
+
+        function formatText(command) {
+            selectedElements.forEach(el => {
+                const content = el.querySelector('.content');
+                if (command === 'highlight') {
+                    const isHighlighted = content.style.backgroundColor === 'black';
+                    content.style.backgroundColor = isHighlighted ? 'transparent' : 'black';
+                    content.style.color = isHighlighted ? 'black' : 'white';
+                } else if (el.classList.contains('type-text') || el.classList.contains('type-table')) {
+                    if(command === 'bold') content.style.fontWeight = content.style.fontWeight === 'bold' ? 'normal' : 'bold';
+                    if(command === 'italic') content.style.fontStyle = content.style.fontStyle === 'italic' ? 'normal' : 'italic';
+                    if(command === 'underline') content.style.textDecoration = content.style.textDecoration === 'underline' ? 'none' : 'underline';
+                }
+            });
+        }
+
+        function applyText() {
+            const htmlContent = document.getElementById('textInput').value.replace(/\n/g, '<br>');
+            if (htmlContent.trim() === '') return alert("الرجاء كتابة نص");
+            
+            const textEl = Array.from(selectedElements).find(el => el.classList.contains('type-text'));
+            if (textEl) {
+                textEl.querySelector('.content').innerHTML = htmlContent;
+            } else {
+                addElement('text', htmlContent);
+            }
+        }
+
+        function insertVar(varName) {
+            const textArea = document.getElementById('textInput');
+            textArea.value += " " + varName;
+            textArea.focus();
+        }
+
+        // الطباعة والصور
+        function replaceVariables() {
+            document.querySelectorAll('.draggable-item .content, .receipt-table td').forEach(content => {
+                content.dataset.original = content.innerHTML;
+                let html = content.innerHTML;
+                for (const [key, value] of Object.entries(mockData)) {
+                    const regex = new RegExp(`{{${key}}}`, 'g');
+                    html = html.replace(regex, value);
+                }
+                content.innerHTML = html;
+            });
+        }
+        function restoreVariables() {
+            document.querySelectorAll('[data-original]').forEach(content => {
+                content.innerHTML = content.dataset.original;
+                delete content.dataset.original;
+            });
+        }
+
+        function printReceipt() {
+            clearSelection(); replaceVariables();
+            window.print();
+            setTimeout(restoreVariables, 1000);
+        }
+
+        function downloadImage() {
+            clearSelection(); replaceVariables();
+            const receipt = document.getElementById('receipt');
+            
+            // scale: 4 لجودة تصدير فائقة جداً
+            html2canvas(receipt, { scale: 4, backgroundColor: "#ffffff", useCORS: true, allowTaint: true })
+            .then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Receipt_High_Quality.png';
+                link.href = canvas.toDataURL('image/png', 1.0);
+                link.click();
+                restoreVariables();
+            });
+        }
+
+        // ===== ربط مصمم الفاتورة مع Cash Top =====
+        const CASH_TOP_DESIGN_KEY = 'cashtop_invoice_design';
+
+        function readJson(key, fallback = {}) {
+            try { return JSON.parse(localStorage.getItem(key) || '') || fallback; } catch (_) { return fallback; }
+        }
+
+        function getLatestInvoiceForPreview() {
+            const invoices = readJson('cashtop_invoices', []);
+            if (Array.isArray(invoices) && invoices.length) return invoices[invoices.length - 1];
+            return {
+                id: 'INV_PREVIEW', date: new Date().toISOString(), customer: 'عميل نقدي', phone: '0590000000',
+                user: 'مدير الشركة', branchName: 'الفرع الرئيسي', paymentMethod: 'صندوق الكاش الرئيسي',
+                subtotal: 40, discount: 0, tax: 0, total: 40, paid: 40, debt: 0, notes: '',
+                items: [
+                    {name:'منتج تجريبي', pieceName:'حبة', qty:2, price:5},
+                    {name:'منتج تجريبي 2', pieceName:'حبة', qty:1, price:10},
+                    {name:'منتج تجريبي 3', pieceName:'حبة', qty:2, price:10}
+                ]
+            };
+        }
+
+        function designerItemUnit(item) {
+            const chain = window.CashtopMulti?.normalizeProductChain?.(item) || [];
+            const selected = chain.find(level => String(level.id) === String(item?.selectedUnit))
+                || chain.find((_, index) => (item?.selectedUnit === 'piece' && index === 0) || (item?.selectedUnit === 'unit' && index === chain.length - 1));
+            return selected?.name || (item?.selectedUnit === 'unit' ? (item.unitName || 'وحدة') : (item?.pieceName || 'حبة'));
+        }
+
+        function syncMockDataFromCashTop() {
+            const inv = getLatestInvoiceForPreview();
+            const d = new Date(inv.date || Date.now());
+            mockData.customer_name = inv.customer || 'عميل نقدي';
+            mockData.customer_phone = inv.phone || '-';
+            mockData.invoice_no = String(inv.id || inv.invoiceNo || '-').replace(/^INV_/, '');
+            mockData.date = isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-GB');
+            mockData.time = isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('en-GB', {hour12:false});
+            mockData.cashier_name = inv.user || 'مستخدم';
+            mockData.branch_name = inv.branchName || 'الفرع الرئيسي';
+            mockData.payment_method = inv.paymentMethod || inv.accountName || 'كاش';
+            const settings = readJson('cashtop_settings', {});
+            const firstItem = Array.isArray(inv.items) && inv.items[0] ? inv.items[0] : {};
+            mockData.company_name = settings.companyName || 'كاش توب';
+            mockData.item_name = firstItem.name || 'صنف';
+            mockData.item_unit = designerItemUnit(firstItem);
+            mockData.item_qty = Number(firstItem.qty || 0);
+            mockData.item_price = Number(firstItem.price || 0).toFixed(2);
+            mockData.item_total = (Number(firstItem.qty || 0) * Number(firstItem.price || 0)).toFixed(2);
+            mockData.items_count = Array.isArray(inv.items) ? inv.items.length : 0;
+            mockData.subtotal = Number(inv.subtotal || 0).toFixed(2);
+            mockData.discount = Number(inv.discount || 0).toFixed(2);
+            mockData.tax = Number(inv.tax || 0).toFixed(2);
+            mockData.total = Number(inv.total || 0).toFixed(2);
+            mockData.paid = Number(inv.paid || 0).toFixed(2);
+            mockData.remaining = Number(inv.debt || 0).toFixed(2);
+            mockData.notes = inv.notes || '';
+            return inv;
+        }
+
+        function makeDefaultCashTopDesign() {
+            const receipt = document.getElementById('receipt');
+            receipt.innerHTML = '';
+            receipt.style.height = '720px';
+            const settings = readJson('cashtop_settings', {});
+
+            function addTextAt(text, top, width='250px', left='20px', extra='') {
+                addElement('text', text);
+                const el = Array.from(selectedElements)[0];
+                el.style.top = top + 'px'; el.style.left = left; el.style.width = width;
+                el.querySelector('.content').style.cssText += ';text-align:center;font-weight:600;' + extra;
+                return el;
+            }
+
+            if (settings.logo) {
+                const el = document.createElement('div');
+                el.className = 'draggable-item type-image'; el.dataset.role = 'logo';
+                el.style.cssText = 'left:100px;top:15px;width:100px;height:75px;z-index:'+(zIndexCounter++);
+                el.innerHTML = `<div class="content" style="width:100%;height:100%;background-image:url('${settings.logo}');background-size:contain;background-position:center;background-repeat:no-repeat"></div><div class="resizer w"></div><div class="resizer h"></div><div class="resizer wh"></div>`;
+                receipt.appendChild(el); makeInteractable(el);
+            }
+            addTextAt(settings.companyName || 'كاش توب', 92, '260px', '20px', 'font-size:20px;font-weight:800');
+            addTextAt('{{branch_name}}', 125, '260px', '20px');
+            addTextAt('فاتورة بيع ضريبية', 153, '260px', '20px', 'font-size:16px;font-weight:800');
+            addTextAt('رقم العملية: {{invoice_no}}   |   التاريخ: {{date}}', 195, '260px', '20px', 'text-align:right;font-size:11px');
+            addTextAt('الكاشير: {{cashier_name}}   |   الوقت: {{time}}', 222, '260px', '20px', 'text-align:right;font-size:11px');
+            addTextAt('العميل: {{customer_name}}   |   الجوال: {{customer_phone}}', 249, '260px', '20px', 'text-align:right;font-size:11px');
+            addTextAt('طريقة الدفع: {{payment_method}}', 276, '260px', '20px', 'text-align:right;font-size:11px;font-weight:800');
+            addElement('table');
+            let tableEl = Array.from(selectedElements)[0];
+            tableEl.dataset.role = 'items'; tableEl.style.top='315px'; tableEl.style.left='15px'; tableEl.style.width='270px';
+            tableEl.querySelector('tbody').innerHTML = '<tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th></tr><tr><td>منتج</td><td>حبة</td><td>1</td><td>10</td><td>10</td></tr>';
+            addTextAt('المجموع: {{subtotal}}   الخصم: {{discount}}   الضريبة: {{tax}}', 430, '260px', '20px', 'font-size:11px');
+            addTextAt('الإجمالي: {{total}}   المدفوع: {{paid}}   المتبقي: {{remaining}}', 465, '260px', '20px', 'font-size:12px;font-weight:800');
+            addTextAt('{{notes}}', 505, '260px', '20px', 'font-size:10px');
+            addTextAt('شكراً لزيارتكم!', 555, '260px', '20px', 'font-size:11px');
+            clearSelection();
+            syncDesignerPreview();
+        }
+
+        function syncDesignerPreview() {
+            const inv = syncMockDataFromCashTop();
+            const table = document.querySelector('.type-table[data-role="items"] .receipt-table tbody');
+            if (table) {
+                const items = Array.isArray(inv.items) ? inv.items : [];
+                table.innerHTML = '<tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الاجمالي</th></tr>' + items.map(item => {
+                    const q = Number(item.qty || 0), p = Number(item.price || 0);
+                    const unit = designerItemUnit(item);
+                    return `<tr><td>${item.name || 'صنف'}</td><td>${unit}</td><td>${q}</td><td>${p.toFixed(2)}</td><td>${(q*p).toFixed(2)}</td></tr>`;
+                }).join('');
+                const tableEl = document.querySelector('.type-table[data-role="items"]');
+                if (tableEl) {
+                    const rows = Math.max(1, items.length);
+                    tableEl.style.height = 'auto';
+                    const neededBottom = tableEl.offsetTop + 70 + (rows * 28) + 220;
+                    document.getElementById('receipt').style.height = Math.max(720, neededBottom) + 'px';
+                }
+            }
+            document.querySelectorAll('.type-image[data-role="logo"] .content').forEach(c => {
+                const logo = readJson('cashtop_settings', {}).logo || '';
+                c.style.backgroundImage = logo ? `url('${logo}')` : 'none';
+            });
+        }
+
+        async function saveCashTopDesign() {
+            clearSelection();
+            syncDesignerPreview();
+            const receipt = document.getElementById('receipt');
+            const data = {
+                version: 2,
+                paperSize: document.getElementById('paperSize').value,
+                receiptHTML: receipt.innerHTML,
+                receiptHeight: receipt.style.height || receipt.offsetHeight + 'px',
+                savedAt: new Date().toISOString(),
+                updatedAt: Date.now()
+            };
+            localStorage.setItem(CASH_TOP_DESIGN_KEY, JSON.stringify(data));
+            window.dispatchEvent(new CustomEvent('cashtop:data-changed', { detail: { key: CASH_TOP_DESIGN_KEY, source: 'invoice-designer' } }));
+            try {
+                const uploaded = await window.CashtopFirebase?.uploadDataset?.(CASH_TOP_DESIGN_KEY);
+                if (uploaded === false && window.CashtopFirebase?.flushPendingQueue) await window.CashtopFirebase.flushPendingQueue();
+                window.Cashtop?.showToast?.('تم حفظ تصميم الفاتورة وتطبيقه ومزامنته بنجاح.', 'success', 4200);
+            } catch (error) {
+                console.warn('Invoice design sync:', error);
+                window.Cashtop?.showToast?.('تم حفظ التصميم وتطبيقه محلياً، وسيتم رفعه تلقائياً عند عودة الاتصال.', 'warning', 5200);
+            }
+        }
+
+        function loadCurrentCashTopDesign() {
+            const data = readJson(CASH_TOP_DESIGN_KEY, null);
+            if (!data || !data.receiptHTML) {
+                makeDefaultCashTopDesign();
+                return alert('لا يوجد تصميم مخصص محفوظ؛ تم جلب تصميم الفاتورة الافتراضي الحالي.');
+            }
+            const receipt = document.getElementById('receipt');
+            receipt.innerHTML = data.receiptHTML;
+            receipt.style.height = data.receiptHeight || '720px';
+            if (data.paperSize) { document.getElementById('paperSize').value = data.paperSize; changeSize(); }
+            receipt.querySelectorAll('.draggable-item').forEach(makeInteractable);
+            syncDesignerPreview();
+            clearSelection();
+            alert('تم جلب تصميم الفاتورة الحالي.');
+        }
+
+        async function restoreDefaultCashTopDesign() {
+            localStorage.removeItem(CASH_TOP_DESIGN_KEY);
+            window.dispatchEvent(new CustomEvent('cashtop:data-changed', { detail: { key: CASH_TOP_DESIGN_KEY, source: 'invoice-designer', deleted: true } }));
+            makeDefaultCashTopDesign();
+            try { await window.CashtopFirebase?.uploadDataset?.(CASH_TOP_DESIGN_KEY); } catch (_) {}
+            window.Cashtop?.showToast?.('تمت استعادة تصميم الفاتورة الافتراضي ومزامنة التغيير.', 'success', 4200);
+        }
+
+        // شعار المصمم يُجلب حصراً من إعدادات الموقع لضمان وجود مصدر واحد متزامن.
+        function useSystemLogo() {
+            const logo = readJson('cashtop_settings', {}).logo || '';
+            if (!logo) return alert('لا يوجد شعار محفوظ في إعدادات النظام. أضف شعار الموقع أولاً.');
+            document.querySelectorAll('.type-image[data-role="logo"]').forEach(el => el.remove());
+            const el = document.createElement('div');
+            el.className = 'draggable-item type-image'; el.dataset.role = 'logo';
+            el.style.cssText = 'left:100px;top:15px;width:100px;height:75px;z-index:'+(zIndexCounter++);
+            el.innerHTML = `<div class="content" style="width:100%;height:100%;background-image:url('${logo}');background-size:contain;background-position:center;background-repeat:no-repeat"></div><div class="resizer w"></div><div class="resizer h"></div><div class="resizer wh"></div>`;
+            document.getElementById('receipt').appendChild(el); makeInteractable(el); clearSelection(); setActive(el);
+        }
+
+        window.addEventListener('cashtop:remote-applied', event => { if (event.detail?.key === CASH_TOP_DESIGN_KEY) loadCurrentCashTopDesign(); });
+        window.addEventListener('DOMContentLoaded', () => {
+            syncMockDataFromCashTop();
+            const existing = readJson(CASH_TOP_DESIGN_KEY, null);
+            if (existing?.receiptHTML) loadCurrentCashTopDesign(); else makeDefaultCashTopDesign();
+        });
+
+    </script>
+</body>
+</html>

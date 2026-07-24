@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<title>عروض المبيعات - كاش توب 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="icon" href="icon-192.png"><link rel="stylesheet" href="cashtop-core.css?v=56">
+<script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script><script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script><script src="accounting-engine.js"></script><script src="firebase-sync.js?v=61"></script>
+<style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .offers-page-root { background-color:#f4f6f9; color:#333; overflow-x:hidden; width:100%; }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+        }
+
+        /* شبكة الكروت العلوية للعروض المستمرة */
+        .top-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            width: 100%;
+        }
+
+        .main-card {
+            border-radius: 4px;
+            color: white;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 75px;
+        }
+
+        .card-active-offers { background-color: #605ca8; }   
+        .card-future-offers { background-color: #f39c12; }    
+        .card-used-offers { background-color: #00a65a; }   
+        .card-ended-offers { background-color: #dd4b39; }   
+
+        .card-content-side { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .card-header-title { font-size: 14px; font-weight: 600; }
+        .card-stat { font-size: 18px; font-weight: 700; }
+        .card-icon-side { opacity: 0.25; font-size: 22px; }
+
+        /* شريط العمليات العلوي */
+        .action-bar {
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .page-info-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add-offer {
+            background-color: #00a65a; color: white; border: none; padding: 8px 18px;
+            border-radius: 3px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* سجل العروض وتصدير البيانات */
+        .table-container { 
+            background-color: white; 
+            border-radius: 4px; 
+            border-top: 3px solid #605ca8; 
+            padding: 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .table-header-wrapper { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+            border-bottom: 1px solid #f4f4f4; 
+            padding-bottom: 10px; 
+            gap: 15px;
+            width: 100%;
+        }
+        .table-title { font-size: 16px; font-weight: bold; color: #444; white-space: nowrap; }
+
+        .export-group { display: flex; gap: 8px; align-items: center; }
+        .btn-export {
+            border: 1px solid #ddd; background-color: #fff; color: #555; padding: 6px 14px;
+            border-radius: 3px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+            white-space: nowrap;
+        }
+        .btn-export.pdf:hover { color: #dd4b39; border-color: #dd4b39; }
+        .btn-export.excel:hover { color: #00a65a; border-color: #00a65a; }
+        .btn-export.image:hover { color: #00c0ef; border-color: #00c0ef; }
+
+        .table-responsive-box { width: 100%; overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f9f9f9; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; white-space: nowrap; }
+
+        .badge-active { background-color: #e6f7ed; color: #00a65a; padding: 3px 8px; border-radius: 3px; font-weight: bold; }
+        .badge-offer-type { background-color: #f0f7ff; color: #1d4ed8; padding: 3px 8px; border-radius: 3px; font-weight: bold; }
+
+        .actions-wrapper { display: flex; justify-content: center; gap: 4px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px; transition: all 0.2s; }
+        .btn-view { color: #3c8dbc; } .btn-view:hover { background: rgba(60,141,188,0.1); }
+        .btn-pdf-act { color: #dd4b39; } .btn-pdf-act:hover { background: rgba(221,75,57,0.1); }
+        .btn-excel-act { color: #00a65a; } .btn-excel-act:hover { background: rgba(0,166,90,0.1); }
+        .btn-image-act { color: #00c0ef; } .btn-image-act:hover { background: rgba(0,192,239,0.1); }
+        .btn-print-act { color: #605ca8; } .btn-print-act:hover { background: rgba(96,92,168,0.1); }
+        .btn-edit-act { color: #f39c12; } .btn-edit-act:hover { background: rgba(243,156,18,0.1); }
+        .btn-delete-act { color: #dd4b39; } .btn-delete-act:hover { background: rgba(221,75,57,0.1); }
+
+        /* ========================================== */
+        /*  تنسيق النافذة المنبثقة لإضافة عرض        */
+        /* ========================================== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-box {
+            background: white; width: 100%; max-width: 700px; border-radius: 16px;
+            border-top: 4px solid #00a65a; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            padding: 25px 20px; transform: translateY(-15px); transition: transform 0.25s ease;
+        }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 12px; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: bold; color: #1e293b; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; }
+        .modal-close:hover { background-color: #f1f5f9; }
+
+        .form-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px 15px; 
+            margin-bottom: 15px; 
+            width: 100%;
+        }
+
+        /* لافتة الإشعار والوصف لنوع العرض المأخوذة من الصورة الأولى */
+        .offer-description-banner {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #334155;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; }
+
+        /* Floating Labels المقاسات المحدثة والمطابقة */
+        .form-group label { 
+            position: absolute;
+            top: -10px; 
+            right: 12px;
+            background-color: #fff; 
+            padding: 0 6px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #475569;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .form-control { 
+            width: 100%; 
+            padding: 11px 14px; 
+            font-size: 13px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            outline: none; 
+            background-color: #fff;
+            position: relative;
+            z-index: 1;
+            height: 44px;
+        }
+        .form-control:focus { border-color: #1d4ed8; }
+        
+        /* تمييز حقل نوع العرض بإطار أزرق مريح كالصورة تماماً */
+        .offer-select-highlight { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 15px; }
+        .btn-submit { background-color: #00a65a; color: white; border: none; padding: 10px 28px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .btn-cancel { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; padding: 10px 28px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+
+        /* تجميعة زون الحقول الديناميكية الهامة لطلبك */
+        #dynamicFieldsZone { width: 100%; }
+
+        @media (max-width: 768px) {
+            .offers-page-root { padding: 0; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .main-card { min-height: 65px; padding: 10px; }
+            .card-header-title { font-size: 11px; }
+            .card-stat { font-size: 13px; }
+
+            .action-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+            .btn-add-offer { justify-content: center; width: 100%; }
+
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 12px; }
+            .table-title { text-align: center; font-size: 15px; }
+            .export-group { display: flex; flex-direction: row; overflow-x: auto; gap: 8px; width: 100%; padding-bottom: 5px; }
+            .btn-export { padding: 8px 14px; font-size: 12px; flex-shrink: 0; }
+
+            .modal-box { padding: 20px 12px; width: 96%; border-radius: 12px; }
+            .form-row { gap: 18px 10px; margin-bottom: 10px; }
+            .form-control { padding: 9px 11px; font-size: 12px; border-radius: 6px; }
+            .form-group label { font-size: 10px; top: -9px; right: 8px; }
+
+            .data-table { min-width: 1050px; } 
+        }
+    
+
+.offers-page-root .card-stat { white-space: nowrap; }
+.offers-page-root .form-control[multiple] { height: 44px; overflow: hidden; }
+.offer-products-note { font-size: 10px; color: #64748b; margin-top: 5px; }
+.badge-inactive { background:#fff6df; color:#b26b00; padding:3px 8px; border-radius:3px; font-weight:bold; }
+.badge-ended { background:#fff0ef; color:#c23321; padding:3px 8px; border-radius:3px; font-weight:bold; }
+.offer-details-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; font-size:12px; }
+.offer-details-item { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; }
+.offer-details-item strong { display:block; color:#475569; margin-bottom:4px; }
+#offerExportArea { position:fixed; left:-10000px; top:0; width:900px; background:#fff; padding:30px; direction:rtl; }
+@media (max-width:520px) {
+  .offers-page-root .form-row { grid-template-columns:1fr !important; }
+  .offers-page-root .form-group[style*="visibility: hidden"] { display:none; }
+  .offer-details-grid { grid-template-columns:1fr; }
+}
+</style><script src="cashtop-download-fix.js"></script>
+</head><body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell"><aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+<div class="ct-sidebar-brand"><img src="cashtop-logo.png" alt="كاش توب 2"><strong>كاش توب 2</strong><small id="ctSidebarCompany">كاش توب</small></div>
+<nav class="ct-sidebar-nav">
+<a class="ct-menu-link" href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+<a class="ct-menu-link" href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+<details class="ct-menu-group"><summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary><div class="ct-submenu"><a href="products.html">المنتجات</a><a href="materials.html">الأصناف</a><a href="warehouses.html">المخازن</a><a href="branches.html">الفروع</a><a href="units.html">الوحدات</a><a href="shortages.html">النواقص</a><a href="barcode-generator.html">الباركود</a><a href="ادارة التصنيع.html">التصنيع</a></div></details>
+<details class="ct-menu-group"><summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary><div class="ct-submenu"><a href="invoices.html">فواتير المبيعات</a><a href="المشتريات.html">المشتريات</a><a href="مرجع المشتريات.html">مرتجع المشتريات</a></div></details>
+<details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+<details class="ct-menu-group"><summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary><div class="ct-submenu"><a href="accounts.html">الصناديق والحسابات</a><a href="journal.html">دفتر القيود</a><a href="sands.html">سندات القبض والصرف</a><a href="المصاريف.html">المصاريف</a><a href="التقارير.html">التقارير</a></div></details>
+<details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+<details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+</nav><button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button></aside>
+<section class="ct-main-wrapper"><header class="ct-topbar"><div class="ct-topbar-start"><button class="ct-icon-button" type="button" data-ct-action="open-sidebar"><i class="fa-solid fa-bars"></i></button><div class="ct-title-block"><strong id="ctPageTitle">كاش توب</strong><small id="ctCompanyTitle">نظام المحاسبة والمخزون</small></div></div><div class="ct-topbar-actions"><span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span><button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync"><i class="fa-solid fa-rotate"></i></button><div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div><button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i></button></div></header>
+<main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+<div class="offers-page-root">
+  <div class="dashboard-container">
+    <div class="top-cards-grid">
+      <div class="main-card card-active-offers"><div class="card-content-side"><span class="card-header-title">العروض النشطة:</span><span class="card-stat" id="activeOffersCount">0 عروض حية</span></div><div class="card-icon-side"><i class="fa-solid fa-fire-flame-curved"></i></div></div>
+      <div class="main-card card-future-offers"><div class="card-content-side"><span class="card-header-title">جدولة مستقبلية:</span><span class="card-stat" id="futureOffersCount">0 عرض</span></div><div class="card-icon-side"><i class="fa-solid fa-calendar-days"></i></div></div>
+      <div class="main-card card-used-offers"><div class="card-content-side"><span class="card-header-title">مرات الاستخدام:</span><span class="card-stat" id="usedOffersCount">0 مرة</span></div><div class="card-icon-side"><i class="fa-solid fa-chart-line"></i></div></div>
+      <div class="main-card card-ended-offers"><div class="card-content-side"><span class="card-header-title">عروض منتهية:</span><span class="card-stat" id="endedOffersCount">0 عرض</span></div><div class="card-icon-side"><i class="fa-solid fa-folder-minus"></i></div></div>
+    </div>
+    <div class="action-bar"><div class="page-info-title"><i class="fa-solid fa-tags"></i> حملات وعروض الأسعار الترويجية</div><button class="btn-add-offer" id="openOfferModalBtn"><i class="fa-solid fa-plus"></i> إضافة عرض جديد</button></div>
+    <div class="table-container"><div class="table-header-wrapper"><div class="table-title">سجل مراقبة وجرد الحملات التسويقية</div><div class="export-group">
+      <button class="btn-export excel" onclick="offerPage.exportAll('excel')"><i class="fa-solid fa-file-excel"></i> اكسل</button>
+      <button class="btn-export pdf" onclick="offerPage.exportAll('pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+      <button class="btn-export image" onclick="offerPage.exportAll('image')"><i class="fa-solid fa-image"></i> صورة</button>
+      <button class="btn-export" onclick="offerPage.exportAll('print')"><i class="fa-solid fa-print"></i> طباعة</button>
+    </div></div><div class="table-responsive-box"><table class="data-table"><thead><tr><th>اسم العرض</th><th>نوع العرض التكتيكي</th><th>حالة العرض</th><th>تاريخ البدء</th><th>تاريخ الانتهاء</th><th>الإجراءات</th></tr></thead><tbody id="offersTableBody"></tbody></table></div></div>
+  </div>
+
+  <div class="modal-overlay" id="offerModal"><div class="modal-box"><div class="modal-header"><div class="modal-title"><i class="fa-solid fa-bolt"></i> صياغة وتثبيت عرض ترويجي جديد</div><button class="modal-close" type="button" onclick="offerPage.close()">&times;</button></div>
+    <form id="offerForm"><input type="hidden" id="offerId">
+      <div class="form-row"><div class="form-group"><input type="text" class="form-control" placeholder="مثال: عروض نهاية الأسبوع..." required id="offerNameInput" autocomplete="off"><label for="offerNameInput">اسم العرض</label></div><div class="form-group"><select class="form-control offer-select-highlight" id="offerTypeSelect"><option value="percentage">خصم نسبة</option><option value="fixed">خصم مبلغ ثابت</option><option value="bogo">اشترِ واحد وخذ الآخر</option><option value="quantity">خصومات الكمية</option><option value="cart">عروض السلة</option></select><label for="offerTypeSelect" style="color:#2563eb">نوع العرض</label></div></div>
+      <div class="offer-description-banner" id="offerDescBanner"></div><div id="dynamicFieldsZone"></div>
+      <div class="form-row"><div class="form-group"><select class="form-control" id="offerProducts" multiple></select><label for="offerProducts">المنتجات المشمولة</label><small class="offer-products-note">اترك الاختيار فارغاً لتطبيق العرض على كل المنتجات.</small></div><div class="form-group"><select class="form-control" id="statusSelect"><option value="active">فعال</option><option value="inactive">موقف مؤقتاً</option></select><label for="statusSelect">الحالة</label></div></div>
+      <div class="form-row"><div class="form-group"><input type="date" class="form-control" required id="endDateInput"><label for="endDateInput">تاريخ الانتهاء</label></div><div class="form-group" style="visibility:hidden"></div></div>
+      <div class="modal-footer"><button type="button" class="btn-cancel" onclick="offerPage.close()">إلغاء</button><button type="submit" class="btn-submit">تأكيد وحفظ العرض</button></div>
+    </form></div></div>
+
+  <div class="modal-overlay" id="detailsModal"><div class="modal-box" style="max-width:650px;border-top-color:#605ca8"><div class="modal-header"><div class="modal-title"><i class="fa-solid fa-eye"></i> تفاصيل العرض</div><button class="modal-close" type="button" onclick="offerPage.closeDetails()">&times;</button></div><div id="offerDetailsBody"></div><div class="modal-footer"><button type="button" class="btn-cancel" onclick="offerPage.closeDetails()">إغلاق</button></div></div></div>
+  <div id="offerExportArea"></div>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = 'cashtop_sales_offers';
+  const $ = id => document.getElementById(id);
+  let offers = [];
+  let products = [];
+
+  const modules = {
+    percentage: {
+      banner: 'خصم نسبة مئوية على منتجات محددة أو كل المنتجات كالحملات العامة.',
+      fields: () => `
+        <div class="form-row"><div class="form-group"><input type="number" class="form-control" id="offerValue" value="15" min="0" max="100" step="0.01" required><label for="offerValue">قيمة الخصم %</label></div><div class="form-group"><input type="date" class="form-control" id="offerStartDate" required><label for="offerStartDate">تاريخ البداية</label></div></div>`
+    },
+    fixed: {
+      banner: 'خصم قيمة مالية ثابتة ومقطوعة من سعر كل قطعة مشمولة بالعرض.',
+      fields: () => `
+        <div class="form-row"><div class="form-group"><input type="number" class="form-control" id="offerValue" value="5" min="0" step="0.01" required><label for="offerValue">مبلغ الخصم الثابت للقطعة</label></div><div class="form-group"><input type="date" class="form-control" id="offerStartDate" required><label for="offerStartDate">تاريخ البداية</label></div></div>`
+    },
+    bogo: {
+      banner: 'عرض الهدايا التراكمي: اشترِ كمية معينة واحصل على كمية أخرى مجاناً.',
+      fields: () => `
+        <div class="form-row"><div class="form-group"><input type="number" class="form-control" id="offerBuyQty" value="1" min="1" required><label for="offerBuyQty">الكمية المدفوعة</label></div><div class="form-group"><input type="number" class="form-control" id="offerFreeQty" value="1" min="1" required><label for="offerFreeQty">الكمية المجانية</label></div></div>
+        <div class="form-row"><div class="form-group"><input type="date" class="form-control" id="offerStartDate" required><label for="offerStartDate">تاريخ البداية</label></div><div class="form-group" style="visibility:hidden"></div></div>`
+    },
+    quantity: {
+      banner: 'سعر تشجيعي عند بلوغ العميل حداً أدنى من الكمية للمنتجات المحددة.',
+      fields: () => `
+        <div class="form-row"><div class="form-group"><input type="number" class="form-control" id="offerMinQty" value="5" min="1" required><label for="offerMinQty">الحد الأدنى للكمية</label></div><div class="form-group"><input type="number" class="form-control" id="offerValue" value="20" min="0" max="100" step="0.01" required><label for="offerValue">نسبة الخصم المستحق %</label></div></div>
+        <div class="form-row"><div class="form-group"><input type="date" class="form-control" id="offerStartDate" required><label for="offerStartDate">تاريخ البداية</label></div><div class="form-group" style="visibility:hidden"></div></div>`
+    },
+    cart: {
+      banner: 'تطبيق خصم شامل على الفاتورة بمجرد بلوغ الحد الأدنى لقيمة السلة.',
+      fields: () => `
+        <div class="form-row"><div class="form-group"><input type="number" class="form-control" id="offerMinTotal" value="500" min="0" step="0.01" required><label for="offerMinTotal">الحد الأدنى للفاتورة</label></div><div class="form-group"><input type="number" class="form-control" id="offerValue" value="10" min="0" max="100" step="0.01" required><label for="offerValue">نسبة خصم السلة %</label></div></div>
+        <div class="form-row"><div class="form-group"><input type="date" class="form-control" id="offerStartDate" required><label for="offerStartDate">تاريخ البداية</label></div><div class="form-group" style="visibility:hidden"></div></div>`
+    }
+  };
+
+  function toast(message, type='success') {
+    if (window.Cashtop?.showToast) window.Cashtop.showToast(message, type);
+    else alert(message);
+  }
+  function safeRead(key, fallback=[]) {
+    try { const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : fallback; }
+    catch { return fallback; }
+  }
+  function saveAll() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(offers));
+    window.dispatchEvent(new CustomEvent('cashtop:data-changed', { detail: { key: STORAGE_KEY } }));
+  }
+  function today(offset=0) {
+    const date = new Date(); date.setDate(date.getDate() + offset);
+    return date.toISOString().slice(0,10);
+  }
+  function boundary(value, end=false) {
+    if (!value) return end ? Infinity : 0;
+    const date = new Date(value);
+    if (end && /^\d{4}-\d{2}-\d{2}$/.test(String(value))) date.setHours(23,59,59,999);
+    return date.getTime();
+  }
+  function normalizedType(offer) {
+    if (offer.type === 'percent') return 'percentage';
+    if (offer.type === 'quantity' && offer.buyQty && offer.freeQty && !offer.minQty) return 'bogo';
+    return offer.type || 'percentage';
+  }
+  function stateOf(offer) {
+    if (offer.active === false || offer.status === 'inactive') return { key:'inactive', label:'موقف مؤقتاً', cls:'badge-inactive' };
+    const now = Date.now(), start = boundary(offer.start), end = boundary(offer.end, true);
+    if (start && now < start) return { key:'future', label:'مجدول', cls:'badge-inactive' };
+    if (Number.isFinite(end) && now > end) return { key:'ended', label:'منتهي', cls:'badge-ended' };
+    return { key:'active', label:'فعال كلياً', cls:'badge-active' };
+  }
+  function typeLabel(type) {
+    return ({percentage:'خصم نسبة',fixed:'خصم مبلغ ثابت',bogo:'اشترِ وخذ',quantity:'خصومات الكمية',cart:'عروض السلة'})[type] || type;
+  }
+  function conditionText(offer) {
+    const type = normalizedType(offer);
+    if (type === 'percentage') return `${Number(offer.value||0)}%`;
+    if (type === 'fixed') return `${Number(offer.value||0).toFixed(2)} ₪ لكل قطعة`;
+    if (type === 'bogo') return `اشترِ ${offer.buyQty||1} وخذ ${offer.freeQty||1}`;
+    if (type === 'quantity') return `${Number(offer.value||0)}% عند ${offer.minQty||1} قطع`;
+    if (type === 'cart') return `${Number(offer.value||0)}% عند فاتورة ${Number(offer.minTotal||0).toFixed(2)} ₪`;
+    return '—';
+  }
+  function productText(offer) {
+    if (!Array.isArray(offer.productIds) || !offer.productIds.length) return 'كل المنتجات';
+    const names = offer.productIds.map(id => products.find(p => String(p.id) === String(id))?.name).filter(Boolean);
+    return names.length ? names.join('، ') : `${offer.productIds.length} منتجات`;
+  }
+
+  function renderStats() {
+    const states = offers.map(stateOf);
+    $('activeOffersCount').textContent = `${states.filter(s=>s.key==='active').length} عروض حية`;
+    $('futureOffersCount').textContent = `${states.filter(s=>s.key==='future').length} عرض`;
+    $('usedOffersCount').textContent = `${offers.reduce((sum,o)=>sum+Number(o.used||0),0)} مرة`;
+    $('endedOffersCount').textContent = `${states.filter(s=>s.key==='ended').length} عرض`;
+  }
+  function renderTable() {
+    const body = $('offersTableBody');
+    const records = offers.slice().sort((a,b)=>boundary(b.start)-boundary(a.start));
+    const createRow = offer => {
+      const state = stateOf(offer), type = normalizedType(offer);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(offer.name||'عرض بدون اسم')}</strong><br><small style="color:#64748b">${escapeHtml(conditionText(offer))}</small></td>
+        <td><span class="badge-offer-type">${escapeHtml(typeLabel(type))}</span></td>
+        <td><span class="${state.cls}">${state.label}</span></td>
+        <td>${offer.start || 'فوري'}</td><td>${offer.end || 'مفتوح'}</td>
+        <td><div class="actions-wrapper">
+          <button class="action-btn btn-view" title="عرض التفاصيل" onclick="offerPage.view('${offer.id}')"><i class="fa-solid fa-eye"></i></button>
+          <button class="action-btn btn-pdf-act" title="PDF" onclick="offerPage.exportOne('${offer.id}','pdf')"><i class="fa-solid fa-file-pdf"></i></button>
+          <button class="action-btn btn-excel-act" title="Excel" onclick="offerPage.exportOne('${offer.id}','excel')"><i class="fa-solid fa-file-excel"></i></button>
+          <button class="action-btn btn-image-act" title="صورة" onclick="offerPage.exportOne('${offer.id}','image')"><i class="fa-solid fa-image"></i></button>
+          <button class="action-btn btn-print-act" title="طباعة" onclick="offerPage.exportOne('${offer.id}','print')"><i class="fa-solid fa-print"></i></button>
+          <button class="action-btn btn-edit-act" title="تعديل" onclick="offerPage.edit('${offer.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button class="action-btn btn-delete-act" title="حذف" onclick="offerPage.remove('${offer.id}')"><i class="fa-solid fa-trash-can"></i></button>
+        </div></td>`;
+      return tr;
+    };
+    if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(body, records, createRow, { chunkSize: 90, eagerLimit: 180, colspan: 6, emptyHtml: '<tr><td colspan="6" style="padding:28px;color:#94a3b8">لا توجد عروض مضافة حتى الآن.</td></tr>' });
+    else { body.innerHTML=''; if(!records.length)body.innerHTML='<tr><td colspan="6" style="padding:28px;color:#94a3b8">لا توجد عروض مضافة حتى الآن.</td></tr>'; else records.forEach(offer=>body.appendChild(createRow(offer))); }
+    renderStats();
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  }
+  function populateProducts(selected=[]) {
+    $('offerProducts').innerHTML = products.map(product => `<option value="${escapeHtml(product.id)}" ${selected.map(String).includes(String(product.id))?'selected':''}>${escapeHtml(product.name)}</option>`).join('');
+    $('offerProducts').title = selected.length ? `${selected.length} منتجات محددة` : 'كل المنتجات';
+  }
+  function renderDynamic(type, existing={}) {
+    const module = modules[type] || modules.percentage;
+    $('offerDescBanner').textContent = module.banner;
+    $('dynamicFieldsZone').innerHTML = module.fields();
+    const set = (id, value) => { const el=$(id); if(el && value !== undefined && value !== null) el.value=value; };
+    set('offerStartDate', existing.start || today());
+    set('offerValue', existing.value);
+    set('offerBuyQty', existing.buyQty);
+    set('offerFreeQty', existing.freeQty);
+    set('offerMinQty', existing.minQty);
+    set('offerMinTotal', existing.minTotal);
+  }
+  function openModal(offer=null) {
+    $('offerForm').reset();
+    $('offerId').value = offer?.id || '';
+    $('offerNameInput').value = offer?.name || '';
+    const type = offer ? normalizedType(offer) : 'percentage';
+    $('offerTypeSelect').value = type;
+    $('statusSelect').value = offer?.active === false || offer?.status === 'inactive' ? 'inactive' : 'active';
+    $('endDateInput').value = offer?.end || today(7);
+    populateProducts(offer?.productIds || []);
+    renderDynamic(type, offer || {});
+    $('offerModal').classList.add('active');
+  }
+  function closeModal() { $('offerModal').classList.remove('active'); }
+  function save(event) {
+    event.preventDefault();
+    const type = $('offerTypeSelect').value;
+    const start = $('offerStartDate')?.value || '';
+    const end = $('endDateInput').value || '';
+    if (start && end && boundary(end,true) < boundary(start)) return toast('تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية','error');
+    const id = $('offerId').value || `OFF_${Date.now()}`;
+    const previous = offers.find(o=>String(o.id)===String(id)) || {};
+    const offer = {
+      ...previous, id, name:$('offerNameInput').value.trim(), type,
+      active:$('statusSelect').value === 'active', status:$('statusSelect').value,
+      start, end, productIds:[...$('offerProducts').selectedOptions].map(option=>option.value),
+      value:Number($('offerValue')?.value || 0), buyQty:Number($('offerBuyQty')?.value || 0),
+      freeQty:Number($('offerFreeQty')?.value || 0), minQty:Number($('offerMinQty')?.value || 0),
+      minTotal:Number($('offerMinTotal')?.value || 0), discountType:'percentage', used:Number(previous.used||0),
+      updatedAt:new Date().toISOString(), createdAt:previous.createdAt || new Date().toISOString()
+    };
+    const index = offers.findIndex(o=>String(o.id)===String(id));
+    if (index >= 0) offers[index]=offer; else offers.push(offer);
+    saveAll(); renderTable(); closeModal(); toast('تم حفظ العرض وتطبيقه على الكاشير','success');
+  }
+  function edit(id) { const offer=offers.find(o=>String(o.id)===String(id)); if(offer) openModal(offer); }
+  function remove(id) {
+    const offer=offers.find(o=>String(o.id)===String(id));
+    if (!offer || !confirm(`حذف العرض: ${offer.name}؟`)) return;
+    offers=offers.filter(o=>String(o.id)!==String(id)); saveAll(); renderTable(); toast('تم حذف العرض','success');
+  }
+  function detailHtml(offer) {
+    const state=stateOf(offer);
+    return `<div class="offer-details-grid">
+      <div class="offer-details-item"><strong>اسم العرض</strong>${escapeHtml(offer.name)}</div>
+      <div class="offer-details-item"><strong>نوع العرض</strong>${escapeHtml(typeLabel(normalizedType(offer)))}</div>
+      <div class="offer-details-item"><strong>الشروط</strong>${escapeHtml(conditionText(offer))}</div>
+      <div class="offer-details-item"><strong>الحالة</strong>${state.label}</div>
+      <div class="offer-details-item"><strong>المنتجات</strong>${escapeHtml(productText(offer))}</div>
+      <div class="offer-details-item"><strong>مرات الاستخدام</strong>${Number(offer.used||0)}</div>
+      <div class="offer-details-item"><strong>تاريخ البداية</strong>${offer.start||'فوري'}</div>
+      <div class="offer-details-item"><strong>تاريخ الانتهاء</strong>${offer.end||'مفتوح'}</div>
+    </div>`;
+  }
+  function view(id) {
+    const offer=offers.find(o=>String(o.id)===String(id)); if(!offer)return;
+    $('offerDetailsBody').innerHTML=detailHtml(offer); $('detailsModal').classList.add('active');
+  }
+  function closeDetails() { $('detailsModal').classList.remove('active'); }
+  function exportMarkup(items) {
+    return `<div style="font-family:Cairo,sans-serif;direction:rtl;background:#fff;padding:24px"><h2 style="border-bottom:3px solid #605ca8;padding-bottom:10px">تقرير عروض المبيعات</h2><table style="width:100%;border-collapse:collapse;text-align:center;font-size:12px"><thead><tr><th style="border:1px solid #ddd;padding:8px">الاسم</th><th style="border:1px solid #ddd;padding:8px">النوع</th><th style="border:1px solid #ddd;padding:8px">الشروط</th><th style="border:1px solid #ddd;padding:8px">الحالة</th><th style="border:1px solid #ddd;padding:8px">البداية</th><th style="border:1px solid #ddd;padding:8px">النهاية</th></tr></thead><tbody>${items.map(o=>`<tr><td style="border:1px solid #ddd;padding:8px">${escapeHtml(o.name)}</td><td style="border:1px solid #ddd;padding:8px">${escapeHtml(typeLabel(normalizedType(o)))}</td><td style="border:1px solid #ddd;padding:8px">${escapeHtml(conditionText(o))}</td><td style="border:1px solid #ddd;padding:8px">${stateOf(o).label}</td><td style="border:1px solid #ddd;padding:8px">${o.start||'فوري'}</td><td style="border:1px solid #ddd;padding:8px">${o.end||'مفتوح'}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function rows(items) { return items.map(o=>({الاسم:o.name,النوع:typeLabel(normalizedType(o)),الشروط:conditionText(o),الحالة:stateOf(o).label,البداية:o.start||'فوري',النهاية:o.end||'مفتوح',الاستخدام:Number(o.used||0)})); }
+  function downloadBlob(blob,name) { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+  async function exportItems(items, mode) {
+    if (!items.length) return toast('لا توجد عروض للتصدير','warning');
+    if (mode==='excel') {
+      const ws=XLSX.utils.json_to_sheet(rows(items)); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'العروض'); XLSX.writeFile(wb,`عروض-المبيعات-${Date.now()}.xlsx`); return;
+    }
+    if (mode==='print') {
+      const win=window.open('','_blank'); win.document.write(`<html dir="rtl"><head><title>عروض المبيعات</title><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet"></head><body>${exportMarkup(items)}<script>onload=()=>print()<\/script></body></html>`); win.document.close(); return;
+    }
+    if (mode==='pdf') {
+      const data = rows(items);
+      const columns = data.length ? Object.keys(data[0]) : ['البيان'];
+      const body = data.map(r => columns.map(c => r[c] ?? ''));
+      try {
+        await CashtopExport.exportDataTablePDF({ title:'عروض المبيعات', columns, rows:body, filename:`عروض-المبيعات-${Date.now()}.pdf`, orientation:'landscape', fontSize:7 });
+      } catch (err) { console.error(err); toast('تعذر إنشاء PDF','error'); }
+      return;
+    }
+    const area=$('offerExportArea'); area.innerHTML=exportMarkup(items);
+    const canvas=await html2canvas(area,{scale:2,backgroundColor:'#ffffff'});
+    if(mode==='image') { canvas.toBlob(blob=>downloadBlob(blob,`عروض-المبيعات-${Date.now()}.png`)); return; }
+  }
+  function exportOne(id,mode) { const offer=offers.find(o=>String(o.id)===String(id)); if(offer) exportItems([offer],mode); }
+
+  function init() {
+    offers=safeRead(STORAGE_KEY); products=safeRead('cashtop_products');
+    populateProducts(); renderDynamic('percentage',{start:today()}); renderTable();
+    $('openOfferModalBtn').addEventListener('click',()=>openModal());
+    $('offerTypeSelect').addEventListener('change',()=>renderDynamic($('offerTypeSelect').value,{start:$('offerStartDate')?.value||today()}));
+    $('offerForm').addEventListener('submit',save);
+    $('offerModal').addEventListener('click',event=>{if(event.target===$('offerModal'))closeModal();});
+    $('detailsModal').addEventListener('click',event=>{if(event.target===$('detailsModal'))closeDetails();});
+    window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY){offers=safeRead(STORAGE_KEY);renderTable();}});
+  }
+  window.offerPage={open:openModal,close:closeModal,edit,remove,view,closeDetails,exportOne,exportAll:mode=>exportItems(offers,mode)};
+  window.addEventListener('DOMContentLoaded',init,{once:true});
+})();
+</script>
+</div></main><nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav></section></div><script src="cashtop-export.js"></script>
+</body></html>

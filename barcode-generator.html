@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>توليد وطباعة الباركود - كاش توب 2</title>
+    
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبات توليد الباركود وحفظ الصور -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        .workspace-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: start; }
+
+        .main-card { background-color: white; border-radius: 6px; border-top: 4px solid #605ca8; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .card-preview { border-top-color: #00a65a; position: sticky; top: 20px; max-width: 100%; overflow: hidden; }
+
+        .card-header-title { font-size: 16px; font-weight: bold; color: #444; margin-bottom: 20px; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; margin-bottom: 18px; }
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        
+        .form-group label { position: absolute; top: -10px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 12px; font-weight: bold; color: #666; z-index: 2; pointer-events: none; }
+        .form-control { width: 100%; padding: 10px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; outline: none; background-color: #fff; transition: 0.3s; }
+        .form-control:focus { border-color: #605ca8; box-shadow: 0 0 0 2px rgba(96,92,168,0.1); }
+
+        /* شريط التمرير */
+        .range-container { display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 10px 15px; border-radius: 4px; border: 1px solid #ccc; width: 100%; }
+        .range-slider { flex: 1; accent-color: #605ca8; cursor: pointer; }
+        .range-val { font-size: 13px; font-weight: bold; color: #605ca8; min-width: 45px; text-align: center; }
+
+        /* البحث الذكي */
+        .search-container { position: relative; grid-column: span 2; }
+        .search-results-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d2d6de; border-top: none; z-index: 100; max-height: 220px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px; display: none; }
+        .search-results-dropdown div { padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f4f4f4; text-align: right; font-weight: bold;}
+        .search-results-dropdown div small { color: #00a65a; display: block; font-weight: normal; margin-top:3px;}
+        .search-results-dropdown div:hover { background-color: #f8fafc; color: #605ca8; }
+
+        .options-group { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px; padding: 12px; background: #f8fafc; border: 1px solid #ccc; border-radius: 4px;}
+        .option-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: bold; cursor: pointer; color: #444;}
+        .option-item input { accent-color: #605ca8; width: 16px; height: 16px; cursor: pointer;}
+
+        /* منطقة المعاينة */
+        .preview-zone { background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 20px; min-height: 300px; border-radius: 6px; display: grid; gap: 20px; max-height: 550px; overflow-y: auto; width: 100%; justify-content: center; justify-items: center; align-items: center; }
+        .cols-1 { grid-template-columns: repeat(1, mincontent); }
+        .cols-2 { grid-template-columns: repeat(2, mincontent); }
+
+        .ticket-wrapper { display: flex; align-items: center; justify-content: center; width: calc(50mm * var(--zoom-level, 1)); height: calc(30mm * var(--zoom-level, 1)); transition: all 0.1s ease; box-sizing: border-box; position: relative;}
+
+        .barcode-ticket { background: white; border: 1px solid #333; box-shadow: 0 4px 8px rgba(0,0,0,0.1); box-sizing: border-box; width: 50mm; height: 30mm; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transform: scale(var(--zoom-level, 1)); transform-origin: center center; flex-shrink: 0; position: absolute; }
+        
+        .ticket-shop-name { font-size: 10px; font-weight: bold; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000;}
+        .ticket-prod-name { font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; margin-bottom: 1px; color: #000;}
+        .ticket-price { font-size: 11px; font-weight: bold; text-align: center; width: 100%; margin-top: 1px; color: #000;}
+        
+        .barcode-ticket svg { max-width: 100%; height: auto; max-height: 38px; margin: 0 auto; display: block; }
+        .qrcode-container { display: flex; justify-content: center; width: 100%; }
+        .qrcode-container canvas { max-width: 100%; height: auto !important; }
+
+        .remove-ticket-btn { position: absolute; top: -10px; left: -10px; background: #dd4b39; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s;}
+        .remove-ticket-btn:hover { background: #c23321; transform: scale(1.1);}
+
+        /* الأزرار */
+        .btn-print-zone { margin-top: 25px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-action { border: none; padding: 12px 20px; border-radius: 4px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: white; font-weight: bold; transition: background 0.2s; flex: 1; min-width: 200px;}
+        .btn-purple { background-color: #605ca8; } .btn-purple:hover { background-color: #4b4885; }
+        .btn-green { background-color: #00a65a; } .btn-green:hover { background-color: #008d4c; }
+        .btn-blue { background-color: #3b82f6; } .btn-blue:hover { background-color: #2563eb; }
+        .btn-orange { background-color: #f39c12; } .btn-orange:hover { background-color: #c87f0a; }
+
+        /* نظام الإشعارات */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.15);}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+
+        /* ========================================== */
+        /*  إعدادات الطباعة الاحترافية                */
+        /* ========================================== */
+        #thermalPrintArea { display: none; }
+        
+        @media print {
+            body * { visibility: hidden !important; }
+            #thermalPrintArea, #thermalPrintArea * { visibility: visible !important; }
+            #thermalPrintArea {
+                display: grid !important;
+                position: absolute; left: 0; top: 0; margin: 0; padding: 0;
+                background: white; width: 100% !important; gap: var(--p-gap, 2mm); 
+                justify-content: center !important;
+                justify-items: center !important;
+                align-items: center !important;
+            }
+            
+            .p-cols-1 { grid-template-columns: repeat(1, auto) !important; }
+            .p-cols-2 { grid-template-columns: repeat(2, auto) !important; }
+
+            .print-wrapper-block {
+                display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important;
+                gap: 2px !important; box-sizing: border-box !important; page-break-inside: avoid !important;
+                background: white !important; border: 1px dashed #ccc !important;
+                width: var(--p-width, 50mm) !important; height: var(--p-height, 30mm) !important;
+                padding: 4px !important; overflow: hidden !important;
+            }
+
+            .print-wrapper-block div { text-align: center !important; width: 100% !important; display: block !important; line-height: 1.2 !important; color: #000 !important;}
+            .print-wrapper-block svg { max-width: 100% !important; height: auto !important; max-height: 38px !important; margin: 0 auto !important; display: block !important; }
+            .print-wrapper-block canvas { margin: 0 auto !important; display: block !important; }
+            
+            /* إزالة الهوامش الافتراضية للمتصفح لدعم الطابعات الحرارية */
+            @page { margin: 0; size: auto; }
+        }
+
+        @media (max-width: 991px) {
+            .workspace-grid { grid-template-columns: 1fr; }
+            .card-preview { position: static; }
+            .form-row { grid-template-columns: 1fr; }
+            .search-container { grid-column: 1; }
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        <div class="workspace-grid">
+            
+            <!-- لوحة التحكم -->
+            <div class="main-card">
+                <div class="card-header-title">
+                    <i class="fa-solid fa-gears" style="color: #605ca8;"></i>
+                    <span>تخصيص وإعداد ملصق الباركود</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group search-container">
+                        <input type="text" id="productSearchInput" class="form-control" placeholder="ابحث باسم المنتج أو الباركود لجلبه من المخزن..." oninput="searchProducts()" autocomplete="off">
+                        <label>البحث الذكي في المنتجات (المخزن)</label>
+                        <div id="searchResultsDropdown" class="search-results-dropdown"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="prodName" class="form-control" placeholder="مثال: زيت زيتون">
+                        <label>اسم المنتج المعروض</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="barcodeValue" class="form-control" placeholder="مثال: 628100640023">
+                        <label>رقم الباركود</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="prodPrice" class="form-control" placeholder="مثال: 15.50">
+                        <label>السعر المعروض (₪)</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="shopName" class="form-control" placeholder="اسم المنشأة">
+                        <label>اسم المحل / الشركة</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <select id="barcodeType" class="form-control">
+                            <option value="CODE128">CODE 128 (الأكثر توافقاً)</option>
+                            <option value="EAN13">EAN-13 (دولي 13 رقم)</option>
+                            <option value="QR">QR Code (رمز استجابة)</option>
+                        </select>
+                        <label>نوع كود الترميز</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" id="printQty" class="form-control" value="1" min="1">
+                        <label>عدد الملصقات المطلوبة للصنف</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <select id="printerType" class="form-control" onchange="adjustLayoutByPrinter()">
+                            <option value="thermal-label">طابعة باركود حرارية (رول ملصقات)</option>
+                            <option value="laser-standard">طابعة ليزر / عادية (ورق A4 مقسم)</option>
+                        </select>
+                        <label><i class="fa-solid fa-print"></i> نوع الطابعة</label>
+                    </div>
+                    <div class="form-group">
+                        <select id="labelsPerRow" class="form-control" onchange="renderLabelsPreviewGrid()">
+                            <option value="1">ملصق واحد في السطر (رأسي)</option>
+                            <option value="2">ملصقين بجانب بعض (للرول المزدوج)</option>
+                        </select>
+                        <label>التوزيع الأفقي</label>
+                    </div>
+                </div>
+
+                <div class="form-row" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <div class="range-container">
+                            <i class="fa-solid fa-magnifying-glass-minus" style="color: #999;"></i>
+                            <input type="range" id="labelScaleSlider" class="range-slider" min="50" max="150" value="100" oninput="changeLabelScale()">
+                            <i class="fa-solid fa-magnifying-glass-plus" style="color: #999;"></i>
+                            <span class="range-val" id="scaleVal">100%</span>
+                        </div>
+                        <label>حجم وتكبير الملصق (للمعاينة والطباعة)</label>
+                    </div>
+                </div>
+
+                <div class="form-row" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <div class="options-group">
+                            <label class="option-item"><input type="checkbox" id="showShopName" checked onchange="renderLabelsPreviewGrid()"> اسم المحل</label>
+                            <label class="option-item"><input type="checkbox" id="showProdName" checked onchange="renderLabelsPreviewGrid()"> اسم المنتج</label>
+                            <label class="option-item"><input type="checkbox" id="showPrice" checked onchange="renderLabelsPreviewGrid()"> السعر</label>
+                        </div>
+                        <label>العناصر المرئية على التذكرة</label>
+                    </div>
+                </div>
+
+                <div class="btn-print-zone">
+                    <button class="btn-action btn-orange" onclick="addCurrentToLabelsGrid()"><i class="fa-solid fa-folder-plus"></i> إضافة للوحة الباركود</button>
+                    <button class="btn-action btn-green" onclick="triggerPrint()"><i class="fa-solid fa-print"></i> طباعة الملصقات</button>
+                    <button class="btn-action btn-blue" onclick="downloadPreviewAsImage()"><i class="fa-solid fa-image"></i> تحميل اللوحة كصورة</button>
+                    <button class="btn-action btn-purple" onclick="clearPreviewZone()"><i class="fa-solid fa-trash-can"></i> تفريغ اللوحة</button>
+                </div>
+            </div>
+
+            <!-- لوحة المعاينة -->
+            <div class="main-card card-preview">
+                <div class="card-header-title">
+                    <i class="fa-solid fa-eye" style="color: #00a65a;"></i>
+                    <span>المعاينة الحية للملصقات</span>
+                </div>
+                <div class="preview-zone cols-1" id="labelsPreviewContainer"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- منطقة مخفية مخصصة للطباعة فقط -->
+    <div id="thermalPrintArea"></div>
+
+    <script>
+        // نظام الإشعارات
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        let productsData = [];
+        let labelsGridQueue = [];
+
+        // تحميل البيانات من كاش توب
+        window.onload = function() {
+            // تحميل المنتجات
+            const localProds = localStorage.getItem('cashtop_products');
+            if (localProds) productsData = JSON.parse(localProds);
+
+            // تحميل اسم المتجر الافتراضي من الإعدادات
+            const sysSettings = JSON.parse(localStorage.getItem('cashtop_settings'));
+            if(sysSettings && sysSettings.companyName) {
+                document.getElementById('shopName').value = sysSettings.companyName;
+            } else {
+                document.getElementById('shopName').value = "كاش توب";
+            }
+        };
+
+        // البحث الذكي
+        function searchProducts() {
+            const query = document.getElementById('productSearchInput').value.trim().toLowerCase();
+            const dropdown = document.getElementById('searchResultsDropdown');
+            dropdown.innerHTML = "";
+
+            if(query === "") { dropdown.style.display = "none"; return; }
+
+            let matches = [];
+            productsData.forEach(p => {
+                if(p.name.toLowerCase().includes(query) || (p.barcode && p.barcode.toLowerCase().includes(query))) {
+                    if(p.hasVariants && p.variants) {
+                        p.variants.forEach(v => {
+                            matches.push({ name: `${p.name} (${v.size} - ${v.color})`, barcode: v.barcode, price: p.pricePiece || p.priceUnit || 0 });
+                        });
+                    } else {
+                        matches.push({ name: p.name, barcode: p.barcode || p.unitBarcode || '', price: p.pricePiece || p.priceUnit || 0 });
+                    }
+                }
+            });
+
+            if(matches.length > 0) {
+                dropdown.style.display = "block";
+                matches.forEach(p => {
+                    const row = document.createElement('div');
+                    row.innerHTML = `${p.name} <small>الباركود: ${p.barcode || 'لا يوجد'} | السعر: ${parseFloat(p.price).toFixed(2)} ₪</small>`;
+                    row.onclick = function() { selectProduct(p); };
+                    dropdown.appendChild(row);
+                });
+            } else { dropdown.style.display = "none"; }
+        }
+
+        function selectProduct(product) {
+            document.getElementById('prodName').value = product.name;
+            document.getElementById('barcodeValue').value = product.barcode || `BC_${Date.now().toString().slice(-6)}`;
+            document.getElementById('prodPrice').value = parseFloat(product.price).toFixed(2);
+            document.getElementById('productSearchInput').value = "";
+            document.getElementById('searchResultsDropdown').style.display = "none";
+            showToast("تم جلب بيانات المنتج بنجاح", "success");
+        }
+
+        // إضافة للمعاينة
+        function addCurrentToLabelsGrid() {
+            const shopName = document.getElementById('shopName').value || "";
+            const prodName = document.getElementById('prodName').value || "صنف جديد";
+            const barcodeVal = document.getElementById('barcodeValue').value || "";
+            const price = document.getElementById('prodPrice').value || "0.00";
+            const barcodeType = document.getElementById('barcodeType').value;
+            const qty = parseInt(document.getElementById('printQty').value) || 1;
+
+            if(barcodeVal === "") {
+                showToast("الرجاء إدخال رقم أو رمز الباركود", "error");
+                return;
+            }
+
+            for (let i = 0; i < qty; i++) {
+                labelsGridQueue.push({
+                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                    shopName: shopName,
+                    prodName: prodName,
+                    barcodeVal: barcodeVal,
+                    price: price,
+                    barcodeType: barcodeType,
+                });
+            }
+
+            renderLabelsPreviewGrid();
+            showToast(`تم إضافة ${qty} ملصق إلى اللوحة`, "success");
+        }
+
+        function renderLabelsPreviewGrid() {
+            const container = document.getElementById('labelsPreviewContainer');
+            container.innerHTML = "";
+
+            const rowCount = document.getElementById('labelsPerRow').value;
+            container.className = `preview-zone cols-${rowCount}`;
+
+            const scaleValue = document.getElementById('labelScaleSlider').value / 100;
+            
+            const vShop = document.getElementById('showShopName').checked;
+            const vName = document.getElementById('showProdName').checked;
+            const vPrice = document.getElementById('showPrice').checked;
+
+            labelsGridQueue.forEach((item) => {
+                const uniqueSvgId = `svg_preview_${item.id}`;
+                const uniqueQrId = `qr_preview_${item.id}`;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = "ticket-wrapper";
+                wrapper.style.setProperty('--zoom-level', scaleValue);
+
+                const ticket = document.createElement('div');
+                ticket.className = `barcode-ticket`;
+
+                ticket.innerHTML = `
+                    <button class="remove-ticket-btn" onclick="removeSingleTicket('${item.id}')" title="حذف هذا الملصق"><i class="fa-solid fa-xmark"></i></button>
+                    ${vShop && item.shopName ? `<div class="ticket-shop-name">${item.shopName}</div>` : ''}
+                    ${vName && item.prodName ? `<div class="ticket-prod-name">${item.prodName}</div>` : ''}
+                    <svg id="${uniqueSvgId}"></svg>
+                    <div id="${uniqueQrId}" class="qrcode-container"></div>
+                    ${vPrice && item.price ? `<div class="ticket-price">${item.price} ₪</div>` : ''}
+                `;
+
+                wrapper.appendChild(ticket);
+                container.appendChild(wrapper);
+
+                const svgElement = document.getElementById(uniqueSvgId);
+                const qrElement = document.getElementById(uniqueQrId);
+
+                if (item.barcodeType === "QR") {
+                    svgElement.style.display = "none";
+                    new QRCode(qrElement, { text: item.barcodeVal, width: 60, height: 60 });
+                } else {
+                    qrElement.style.display = "none";
+                    try {
+                        JsBarcode(`#${uniqueSvgId}`, item.barcodeVal, {
+                            format: item.barcodeType,
+                            lineColor: "#000",
+                            width: 1.4,
+                            height: 35,
+                            displayValue: true,
+                            fontSize: 11,
+                            margin: 2
+                        });
+                    } catch (e) { 
+                        // حماية: إذا فشل EAN-13 نحوله لـ Code128 تلقائياً لعدم تعطل النظام
+                        console.warn("فشل توليد الباركود، التحويل لـ CODE128", e);
+                        JsBarcode(`#${uniqueSvgId}`, item.barcodeVal, {
+                            format: "CODE128", lineColor: "#000", width: 1.4, height: 35, displayValue: true, fontSize: 11, margin: 2
+                        });
+                    }
+                }
+            });
+        }
+
+        function changeLabelScale() {
+            const scaleVal = document.getElementById('labelScaleSlider').value;
+            document.getElementById('scaleVal').innerText = scaleVal + "%";
+            renderLabelsPreviewGrid();
+        }
+
+        function removeSingleTicket(id) {
+            labelsGridQueue = labelsGridQueue.filter(item => item.id !== id);
+            renderLabelsPreviewGrid();
+        }
+
+        function clearPreviewZone() {
+            if(labelsGridQueue.length === 0) return;
+            labelsGridQueue = [];
+            renderLabelsPreviewGrid();
+            showToast("تم تفريغ لوحة الملصقات", "warning");
+        }
+
+        function adjustLayoutByPrinter() {
+            const printer = document.getElementById('printerType').value;
+            const layoutSelect = document.getElementById('labelsPerRow');
+            if(printer === 'laser-standard') {
+                layoutSelect.innerHTML = `
+                    <option value="3">3 ملصقات (A4 عمودي)</option>
+                    <option value="4" selected>4 ملصقات (A4 أفقي)</option>
+                `;
+            } else {
+                layoutSelect.innerHTML = `
+                    <option value="1" selected>ملصق واحد في السطر (رول مفرد)</option>
+                    <option value="2">ملصقين بجانب بعض (رول مزدوج)</option>
+                `;
+            }
+            renderLabelsPreviewGrid();
+        }
+
+        // الطباعة الاحترافية
+        function triggerPrint() {
+            if (labelsGridQueue.length === 0) { showToast('لوحة المعاينة فارغة، يرجى إضافة ملصقات أولاً!', 'error'); return; }
+
+            const printArea = document.getElementById('thermalPrintArea');
+            // يجب أن يكون عنصر الطباعة ابناً مباشراً للـ body؛ إخفاء حاويات التطبيق في وضع الطباعة كان يجعل الصفحة بيضاء.
+            if (printArea.parentElement !== document.body) document.body.appendChild(printArea);
+            printArea.innerHTML = ""; 
+
+            const rowCount = document.getElementById('labelsPerRow').value;
+            printArea.className = `p-cols-${rowCount}`;
+
+            const scaleValue = document.getElementById('labelScaleSlider').value / 100;
+            const printer = document.getElementById('printerType').value;
+
+            const vShop = document.getElementById('showShopName').checked;
+            const vName = document.getElementById('showProdName').checked;
+            const vPrice = document.getElementById('showPrice').checked;
+
+            // أبعاد افتراضية لملصق 50x30 مم
+            let printWidthMM = 50 * scaleValue;
+            let printHeightMM = 30 * scaleValue;
+            let gapMM = "2mm";
+
+            if (printer === "laser-standard") {
+                gapMM = "5mm"; // تباعد أكبر لورق A4
+            }
+
+            printArea.style.setProperty('--p-width', `${printWidthMM}mm`);
+            printArea.style.setProperty('--p-height', `${printHeightMM}mm`);
+            printArea.style.setProperty('--p-gap', gapMM);
+
+            labelsGridQueue.forEach((item) => {
+                const uniquePrintSvgId = `svg_print_${item.id}`;
+                const uniquePrintQrId = `qr_print_${item.id}`;
+
+                const block = document.createElement('div');
+                block.className = "print-wrapper-block";
+
+                block.innerHTML = `
+                    ${vShop && item.shopName ? `<div style="font-size: ${Math.round(11 * scaleValue)}px; font-weight: bold;">${item.shopName}</div>` : ''}
+                    ${vName && item.prodName ? `<div style="font-size: ${Math.round(12 * scaleValue)}px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.prodName}</div>` : ''}
+                    <svg id="${uniquePrintSvgId}"></svg>
+                    <div id="${uniquePrintQrId}" class="qrcode-container"></div>
+                    ${vPrice && item.price ? `<div style="font-size: ${Math.round(12 * scaleValue)}px; font-weight: bold;">${item.price} ₪</div>` : ''}
+                `;
+                
+                printArea.appendChild(block);
+
+                const svgElement = document.getElementById(uniquePrintSvgId);
+                const qrElement = document.getElementById(uniquePrintQrId);
+
+                if (item.barcodeType === "QR") {
+                    svgElement.style.display = "none";
+                    new QRCode(qrElement, { text: item.barcodeVal, width: Math.round(60 * scaleValue), height: Math.round(60 * scaleValue) });
+                } else {
+                    qrElement.style.display = "none";
+                    try {
+                        JsBarcode(`#${uniquePrintSvgId}`, item.barcodeVal, {
+                            format: item.barcodeType,
+                            lineColor: "#000",
+                            width: 1.4 * scaleValue,
+                            height: 30 * scaleValue,
+                            displayValue: true,
+                            fontSize: Math.round(11 * scaleValue),
+                            margin: 1
+                        });
+                    } catch (e) { 
+                        JsBarcode(`#${uniquePrintSvgId}`, item.barcodeVal, {
+                            format: "CODE128", lineColor: "#000", width: 1.4 * scaleValue, height: 30 * scaleValue, displayValue: true, fontSize: Math.round(11 * scaleValue), margin: 1
+                        });
+                    }
+                }
+            });
+
+            requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => { window.print(); }, 120)));
+        }
+
+        // حفظ كصورة
+        function downloadPreviewAsImage() {
+            const container = document.getElementById('labelsPreviewContainer');
+            if (labelsGridQueue.length === 0) { showToast('لوحة المعاينة فارغة!', 'error'); return; }
+
+            // إخفاء أزرار الحذف قبل التقاط الصورة
+            const removeButtons = document.querySelectorAll('.remove-ticket-btn');
+            removeButtons.forEach(btn => btn.style.display = 'none');
+
+            showToast("جاري إعداد وحفظ الصورة...", "success");
+
+            html2canvas(container, {
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `ملصقات_باركود_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // إعادة إظهار الأزرار
+                removeButtons.forEach(btn => btn.style.display = 'flex');
+            });
+        }
+
+        // إغلاق قائمة البحث عند النقر خارجها
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                document.getElementById('searchResultsDropdown').style.display = "none";
+            }
+        });
+
+        // تشغيل مبدئي لتعديل القوائم
+        adjustLayoutByPrinter();
+
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"barcode-generator.html"}</script>
+</body>
+
+</html>

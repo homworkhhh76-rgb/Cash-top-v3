@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة مجموعات العملاء وتسعير الكاشير - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات الاحترافية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+        .main-card { border-radius: 4px; color: white; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; min-height: 75px; }
+        .card-total-groups { background-color: #605ca8; } 
+        .card-total-customers { background-color: #00a65a; } 
+        .card-total-products { background-color: #00c0ef; } 
+        .card-active-prices { background-color: #f39c12; } 
+        .card-content-side { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .card-header-title { font-size: 14px; font-weight: 600; }
+        .card-stat { font-size: 18px; font-weight: 700; }
+        .card-icon-side { opacity: 0.25; font-size: 22px; }
+        .action-bar { background-color: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 15px; width: 100%; }
+        .filter-search-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%; }
+        .search-box { display: flex; align-items: center; flex: 2; min-width: 250px; position: relative; }
+        .search-control { width: 100%; padding: 8px 38px 8px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 3px; outline: none; }
+        .search-control:focus { border-color: #605ca8; }
+        .search-box i { position: absolute; right: 12px; color: #999; font-size: 14px; }
+        .buttons-group { display: flex; gap: 10px; flex-wrap: wrap; margin-right: auto; }
+        .btn-action { border: none; padding: 8px 16px; border-radius: 3px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; color: white; font-weight: 600; white-space: nowrap; transition: background 0.2s; }
+        .btn-add-group { background-color: #605ca8; }
+        .btn-add-group:hover { background-color: #4b4885; }
+        .table-container { background-color: white; border-radius: 4px; border-top: 3px solid #605ca8; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; }
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; gap: 15px; }
+        .table-title { font-size: 16px; font-weight: bold; color: #444; white-space: nowrap; }
+        .export-group { display: flex; gap: 8px; }
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; padding: 6px 14px; border-radius: 3px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .table-responsive-box { width: 100%; overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f9f9f9; white-space: nowrap; text-align: center; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; white-space: nowrap; }
+        .badge-count { background-color: #f1f0f7; color: #605ca8; padding: 3px 10px; border-radius: 3px; font-weight: bold; }
+        .actions-wrapper { display: flex; justify-content: center; gap: 4px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px; border-radius: 3px; transition: all 0.2s; }
+        .btn-edit-act { color: #f39c12; } .btn-edit-act:hover { background: rgba(243,156,18,0.1); }
+        .btn-delete-act { color: #dd4b39; } .btn-delete-act:hover { background: rgba(221,75,57,0.1); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: white; width: 100%; max-width: 750px; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); padding: 20px; transform: translateY(-15px); transition: transform 0.25s ease; max-height: 95vh; overflow-y: auto; }
+        #groupModal .modal-box { border-top: 4px solid #605ca8; }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #aaa; }
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 12px; }
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        .form-row.full-width { grid-template-columns: 1fr; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-control { width: 100%; padding: 8px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 3px; outline: none; background-color: #fff; }
+        .form-control:focus { border-color: #605ca8; }
+        .multiselect-box { padding: 8px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 3px; background: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .multiselect-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d2d6de; border-top: none; z-index: 200; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: none; padding: 6px; }
+        .dropdown-header-actions { display: flex; justify-content: space-between; padding-bottom: 6px; border-bottom: 1px solid #eee; margin-bottom: 6px; }
+        .dropdown-header-actions button { background: none; border: none; color: #605ca8; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .multiselect-item { display: flex; align-items: center; gap: 8px; padding: 6px; font-size: 13px; cursor: pointer; }
+        .multiselect-item input { accent-color: #605ca8; width: 15px; height: 15px; }
+        .modal-table-wrapper { width: 100%; border: 1px solid #ddd; border-radius: 3px; margin-top: 10px; max-height: 240px; overflow-y: auto; }
+        .modal-data-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+        .modal-data-table th { background: #f9f9f9; padding: 10px; font-weight: bold; border-bottom: 2px solid #ddd; position: sticky; top: 0; z-index: 10; }
+        .modal-data-table td { padding: 8px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 15px; }
+        .btn-submit-group { background-color: #605ca8; color: white; border: none; padding: 7px 18px; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-cancel { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; padding: 7px 18px; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .badge-type-unit { background-color: rgba(0, 192, 239, 0.12); color: #00c0ef; padding: 4px 10px; border-radius: 3px; font-weight: 600; border: 1px solid rgba(0, 192, 239, 0.2); }
+        .badge-type-piece { background-color: rgba(243, 156, 18, 0.12); color: #f39c12; padding: 4px 10px; border-radius: 3px; font-weight: 600; border: 1px solid rgba(243, 156, 18, 0.2); }
+        .modal-search-wrapper { position: relative; display: flex; align-items: center; margin-bottom: 8px; width: 100%; }
+        .modal-search-wrapper input { padding-right: 32px !important; }
+        .modal-search-wrapper i { position: absolute; right: 10px; color: #999; font-size: 13px; }
+
+
+        .group-unit-prices { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; min-width:320px; }
+        .group-unit-price { border:1px solid #e2e8f0; background:#f8fafc; border-radius:7px; padding:6px 8px; min-width:125px; }
+        .group-unit-price b { display:block; font-size:10px; color:#475569; margin-bottom:4px; }
+        .group-unit-price small { display:block; font-size:9px; color:#94a3b8; margin-top:3px; }
+        .group-unit-price input { width:100%; text-align:center; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .main-card { min-height: 65px; padding: 10px; }
+            .filter-search-row { flex-direction: column; align-items: stretch; gap: 10px; }
+            .search-box { max-width: 100%; width: 100%; }
+            .buttons-group { display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%; }
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 12px; }
+            .export-group { display: flex; overflow-x: auto; gap: 6px; }
+            .form-row { grid-template-columns: 1fr; gap: 12px; }
+            .data-table { min-width: 1150px; }
+        }
+        @media print {
+            body * { display: none !important; }
+            #printSectionArea, #printSectionArea * { display: block !important; }
+            #printSectionArea { position: absolute; left: 0; top: 0; width: 100%; direction: rtl; padding: 25px; }
+            .data-table { width: 100% !important; border: 1px solid #000 !important; }
+            .data-table th, .data-table td { border: 1px solid #000 !important; padding: 8px !important; text-align: center !important; }
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div class="dashboard-container">
+        <!-- الكروت الإحصائية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-total-groups"><div class="card-content-side"><span class="card-header-title">مجموعات البيع:</span><span class="card-stat" id="statGroupsCount">0</span></div><div class="card-icon-side"><i class="fa-solid fa-people-group"></i></div></div>
+            <div class="main-card card-total-customers"><div class="card-content-side"><span class="card-header-title">العملاء المدرجين:</span><span class="card-stat" id="statCustCount">0</span></div><div class="card-icon-side"><i class="fa-solid fa-user-check"></i></div></div>
+            <div class="main-card card-total-products"><div class="card-content-side"><span class="card-header-title">أصناف المنتجات:</span><span class="card-stat" id="statProductsCount">0</span></div><div class="card-icon-side"><i class="fa-solid fa-box-open"></i></div></div>
+            <div class="main-card card-active-prices"><div class="card-content-side"><span class="card-header-title">الأسعار الخاصة النشطة:</span><span class="card-stat" id="statPricesCount">0</span></div><div class="card-icon-side"><i class="fa-solid fa-tags"></i></div></div>
+        </div>
+
+        <div class="action-bar">
+            <div class="filter-search-row">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="tableSearchInput" class="search-control" placeholder="ابحث باسم المجموعة أو العملاء..." oninput="filterMainTable()">
+                </div>
+                <div class="buttons-group">
+                    <button class="btn-action btn-add-group" onclick="openGroupModal()"><i class="fa-solid fa-folder-plus"></i> إضافة مجموعة زبائن جديدة</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container" id="reportPrintZone">
+            <div class="table-header-wrapper">
+                <div class="table-title">سجل مجموعات العملاء وتخصيص أسعار الكاشير</div>
+                <div class="export-group">
+                    <button class="btn-export" onclick="triggerPrint()"><i class="fa-solid fa-print"></i> طباعة</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive-box">
+                <table class="data-table" id="mainReportTable">
+                    <thead>
+                        <tr>
+                            <th>كود المجموعة</th>
+                            <th>اسم المجموعة</th>
+                            <th>عدد العملاء</th>
+                            <th>العملاء التابعين</th>
+                            <th>الأسعار المخصصة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mainTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة لإضافة/تعديل المجموعة -->
+    <div class="modal-overlay" id="groupModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitleText"><i class="fa-solid fa-people-roof"></i> إعداد بطاقة مجموعة جديدة</div>
+                <button class="modal-close" onclick="closeGroupModal()">&times;</button>
+            </div>
+            <form onsubmit="saveGroupData(event)">
+                <input type="hidden" id="editingGroupId" value="">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>اسم المجموعة</label>
+                        <input type="text" id="groupNameInput" class="form-control" placeholder="مثال: زبائن الجملة..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>تعيين العملاء المضافين للمجموعة</label>
+                        <div class="multiselect-container">
+                            <div class="multiselect-box" onclick="toggleCustomersDropdown()">
+                                <span id="selectedCustText">اختر الزبائن من القائمة...</span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                            <div id="customersDropdown" class="multiselect-dropdown">
+                                <div class="modal-search-wrapper">
+                                    <i class="fa-solid fa-search"></i>
+                                    <input type="text" id="searchCustomersInput" class="form-control" placeholder="ابحث عن عميل..." oninput="filterModalCustomers()">
+                                </div>
+                                <div class="dropdown-header-actions">
+                                    <button type="button" onclick="selectAllCustomers(true)">تحديد الكل</button>
+                                    <button type="button" onclick="selectAllCustomers(false)">إلغاء الكل</button>
+                                </div>
+                                <div id="custItemsContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row full-width" style="margin-top: 15px; margin-bottom: 2px;">
+                    <label style="font-size: 13px; font-weight: bold; color: #605ca8;"><i class="fa-solid fa-magnifying-glass"></i> بحث وفلترة سريعة للمنتجات بداخل الجدول:</label>
+                    <div class="modal-search-wrapper">
+                        <i class="fa-solid fa-box"></i>
+                        <input type="text" id="searchModalProductsInput" class="form-control" placeholder="اكتب اسم المنتج المراد تعديل سعره فوراً..." oninput="filterModalProductsTable()">
+                    </div>
+                </div>
+                
+                <div class="modal-table-wrapper">
+                    <table class="modal-data-table">
+                        <thead>
+                            <tr>
+                                <th>اسم المنتج</th>
+                                <th>أسعار البيع المخصصة حسب تسلسل الوحدات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalProductsTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeGroupModal()">إلغاء</button>
+                    <button type="submit" class="btn-submit-group" id="submitBtnText">حفظ المجموعة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="printSectionArea"></div>
+
+    <script>
+        function readArray(key) {
+            try {
+                const parsed = window.Cashtop?.safeJson?.(localStorage.getItem(key), []) ?? JSON.parse(localStorage.getItem(key) || '[]');
+                return Array.isArray(parsed) ? parsed.filter(item => item && typeof item === 'object') : [];
+            } catch (_) { return []; }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[char]);
+        }
+
+        function normalizeGroup(group) {
+            const safe = group && typeof group === 'object' ? group : {};
+            return {
+                ...safe,
+                id: String(safe.id || `GRP_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`),
+                name: String(safe.name || 'مجموعة بدون اسم'),
+                customerIds: Array.isArray(safe.customerIds) ? [...new Set(safe.customerIds.map(String))] : [],
+                prices: safe.prices && typeof safe.prices === 'object' && !Array.isArray(safe.prices) ? safe.prices : {}
+            };
+        }
+
+        let systemProducts = readArray('cashtop_products');
+        let systemCustomers = readArray('cashtop_customers');
+        let customerGroups = readArray('cashtop_customer_groups').map(normalizeGroup);
+        let groupsPageInitialized = false;
+
+        function normalizeArabic(text) {
+            if (!text) return "";
+            return String(text).trim().toLowerCase()
+                .replace(/[\u064B-\u0652]/g, "")
+                .replace(/[أإآ]/g, "ا")
+                .replace(/ة/g, "ه")
+                .replace(/[ىي]/g, "ي");
+        }
+
+        function getGroupCustomerIds(group) {
+            const linked = systemCustomers
+                .filter(customer => String(customer.group || '') === String(group.id))
+                .map(customer => String(customer.id));
+            return [...new Set([...(group.customerIds || []).map(String), ...linked])];
+        }
+
+        function refreshGroupDatasets(key = null) {
+            if (!key || key === 'cashtop_products') systemProducts = readArray('cashtop_products');
+            if (!key || key === 'cashtop_customers') systemCustomers = readArray('cashtop_customers');
+            if (!key || key === 'cashtop_customer_groups') customerGroups = readArray('cashtop_customer_groups').map(normalizeGroup);
+            buildCustomersDropdownItems();
+            renderMainDashboard();
+        }
+
+        function initializeGroupsPage() {
+            if (groupsPageInitialized) return;
+            groupsPageInitialized = true;
+            refreshGroupDatasets();
+        }
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeGroupsPage, { once: true });
+        else initializeGroupsPage();
+
+        function buildCustomersDropdownItems() {
+            const container = document.getElementById('custItemsContainer');
+            if (!container) return;
+            const checked = new Set([...document.querySelectorAll('.cust-modal-chk:checked')].map(input => String(input.value)));
+            container.innerHTML = "";
+            if (!systemCustomers.length) {
+                container.innerHTML = '<div style="padding:12px;text-align:center;color:#999;font-size:12px;">لا يوجد عملاء مسجلون. أضف عميلاً من صفحة العملاء أولاً.</div>';
+                updateSelectedCustText();
+                return;
+            }
+            systemCustomers.forEach(customer => {
+                const id = String(customer.id || '');
+                const div = document.createElement('div');
+                div.className = 'multiselect-item-row';
+                div.id = `cust_item_row_${CSS.escape(id)}`;
+                div.innerHTML = `
+                    <label class="multiselect-item" style="width:100%; cursor:pointer;">
+                        <input type="checkbox" value="${escapeHtml(id)}" class="cust-modal-chk" ${checked.has(id) ? 'checked' : ''} onchange="updateSelectedCustText()">
+                        <span class="cust-name-span">${escapeHtml(customer.name || 'عميل بدون اسم')}</span>
+                    </label>`;
+                container.appendChild(div);
+            });
+            updateSelectedCustText();
+        }
+
+        function toggleCustomersDropdown() {
+            const dropdown = document.getElementById('customersDropdown');
+            if (!dropdown) return;
+            buildCustomersDropdownItems();
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            if (dropdown.style.display === 'block') {
+                const search = document.getElementById('searchCustomersInput');
+                search.value = '';
+                filterModalCustomers();
+                search.focus();
+            }
+        }
+
+        function filterModalCustomers() {
+            const query = normalizeArabic(document.getElementById('searchCustomersInput')?.value || '');
+            systemCustomers.forEach(customer => {
+                const id = String(customer.id || '');
+                const el = document.getElementById(`cust_item_row_${CSS.escape(id)}`);
+                if (el) el.style.display = normalizeArabic(customer.name).includes(query) ? 'block' : 'none';
+            });
+        }
+
+        function selectAllCustomers(status) {
+            document.querySelectorAll('.cust-modal-chk').forEach(chk => {
+                if (chk.closest('.multiselect-item-row')?.style.display !== 'none') chk.checked = Boolean(status);
+            });
+            updateSelectedCustText();
+        }
+
+        function updateSelectedCustText() {
+            const checkedCount = document.querySelectorAll('.cust-modal-chk:checked').length;
+            const txt = document.getElementById('selectedCustText');
+            if (!txt) return;
+            if (checkedCount === 0) txt.innerText = 'اختر الزبائن من القائمة...';
+            else if (systemCustomers.length && checkedCount === systemCustomers.length) txt.innerText = 'تم تحديد جميع الزبائن (الكل)';
+            else txt.innerText = `تم اختيار عدد (${checkedCount}) عملاء`;
+        }
+
+        function buildModalProductsTable(groupPrices = {}) {
+            const tbody = document.getElementById('modalProductsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (!systemProducts.length) {
+                tbody.innerHTML = '<tr><td colspan="2" style="padding:16px;color:#999;">لا توجد منتجات مسجلة لتخصيص أسعارها.</td></tr>';
+                return;
+            }
+            systemProducts.forEach(product => {
+                const productId = String(product.id || '');
+                const chain = window.CashtopMulti?.normalizeProductChain(product) || [{id:'piece',name:product.pieceName||'قطعة',factorToBase:1,salePrice:Number(product.pricePiece||product.price||0)}];
+                const saved = groupPrices?.[productId] || {};
+                const unitSaved = saved.units && typeof saved.units === 'object' ? saved.units : {};
+                const controls = chain.map((level,index) => {
+                    let value = Number(unitSaved[level.id]);
+                    if (!Number.isFinite(value) && index === 0) value = Number(saved.piece);
+                    if (!Number.isFinite(value) && index === chain.length - 1) value = Number(saved.unit);
+                    if (!Number.isFinite(value)) value = Number(level.salePrice || 0);
+                    return `<div class="group-unit-price">
+                        <b>${escapeHtml(level.name)}</b>
+                        <input type="number" min="0" step="0.001" class="form-control prod-group-unit-price-input" data-prod-id="${escapeHtml(productId)}" data-unit-id="${escapeHtml(level.id)}" data-unit-index="${index}" value="${value}">
+                        <small>الافتراضي: ${Number(level.salePrice || 0).toFixed(3).replace(/\.?0+$/,'')} | ×${Number(level.factorToBase || 1)}</small>
+                    </div>`;
+                }).join('');
+                const row = document.createElement('tr');
+                row.id = `modal_prod_row_${CSS.escape(productId)}`;
+                row.className = 'modal-product-tr';
+                row.innerHTML = `<td><strong class="modal-pname-target">${escapeHtml(product.name || 'منتج بدون اسم')}</strong></td><td><div class="group-unit-prices">${controls}</div></td>`;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterModalProductsTable() {
+            const query = normalizeArabic(document.getElementById('searchModalProductsInput')?.value || '');
+            systemProducts.forEach(product => {
+                const row = document.getElementById(`modal_prod_row_${CSS.escape(String(product.id || ''))}`);
+                if (row) row.style.display = normalizeArabic(product.name).includes(query) ? '' : 'none';
+            });
+        }
+
+        function setCheckedCustomers(ids) {
+            const selected = new Set((ids || []).map(String));
+            buildCustomersDropdownItems();
+            document.querySelectorAll('.cust-modal-chk').forEach(chk => { chk.checked = selected.has(String(chk.value)); });
+            updateSelectedCustText();
+        }
+
+        function openGroupModal() {
+            refreshGroupDatasets();
+            document.getElementById('editingGroupId').value = '';
+            document.getElementById('groupNameInput').value = '';
+            document.getElementById('modalTitleText').innerHTML = '<i class="fa-solid fa-people-roof"></i> إعداد بطاقة مجموعة جديدة';
+            document.getElementById('submitBtnText').innerText = 'حفظ المجموعة';
+            document.getElementById('searchModalProductsInput').value = '';
+            setCheckedCustomers([]);
+            buildModalProductsTable({});
+            document.getElementById('groupModal').classList.add('active');
+        }
+
+        function closeGroupModal() {
+            document.getElementById('groupModal')?.classList.remove('active');
+            const dropdown = document.getElementById('customersDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        function saveGroupData(event) {
+            event.preventDefault();
+            const editingId = String(document.getElementById('editingGroupId').value || '');
+            const name = String(document.getElementById('groupNameInput').value || '').trim();
+            if (!name) {
+                document.getElementById('groupNameInput').focus();
+                window.Cashtop?.showToast?.('أدخل اسم المجموعة أولاً', 'error');
+                return;
+            }
+            const groupId = editingId || `GRP_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+            const selectedIds = [...document.querySelectorAll('.cust-modal-chk:checked')].map(chk => String(chk.value));
+            const priceMap = {};
+            systemProducts.forEach(product => {
+                const productId = String(product.id || '');
+                const chain = window.CashtopMulti?.normalizeProductChain(product) || [];
+                const units = {};
+                chain.forEach((level, index) => {
+                    const input = document.querySelector(`.prod-group-unit-price-input[data-prod-id="${CSS.escape(productId)}"][data-unit-id="${CSS.escape(String(level.id))}"]`);
+                    const value = Number(input?.value);
+                    units[level.id] = Number.isFinite(value) && value >= 0 ? value : Number(level.salePrice || 0);
+                });
+                priceMap[productId] = {
+                    units,
+                    piece: Number(units[chain[0]?.id] ?? product.pricePiece ?? product.price ?? 0),
+                    unit: Number(units[chain[chain.length - 1]?.id] ?? product.priceUnit ?? 0)
+                };
+            });
+
+            const nextGroups = customerGroups.map(normalizeGroup);
+            const existingIndex = nextGroups.findIndex(group => String(group.id) === groupId);
+            const savedGroup = { id: groupId, name, customerIds: selectedIds, prices: priceMap, updatedAt: new Date().toISOString() };
+            if (existingIndex >= 0) nextGroups[existingIndex] = { ...nextGroups[existingIndex], ...savedGroup };
+            else nextGroups.push(savedGroup);
+
+            // العميل لا ينتمي إلا إلى مجموعة تسعير واحدة.
+            nextGroups.forEach(group => {
+                if (String(group.id) !== groupId) group.customerIds = (group.customerIds || []).map(String).filter(id => !selectedIds.includes(id));
+            });
+            const nextCustomers = systemCustomers.map(customer => {
+                const id = String(customer.id || '');
+                if (selectedIds.includes(id)) return { ...customer, group: groupId, updatedAt: new Date().toISOString() };
+                if (String(customer.group || '') === groupId) return { ...customer, group: '', updatedAt: new Date().toISOString() };
+                return customer;
+            });
+
+            localStorage.setItem('cashtop_customer_groups', JSON.stringify(nextGroups));
+            localStorage.setItem('cashtop_customers', JSON.stringify(nextCustomers));
+            customerGroups = nextGroups;
+            systemCustomers = nextCustomers;
+            closeGroupModal();
+            renderMainDashboard();
+            window.Cashtop?.showToast?.(editingId ? 'تم تحديث المجموعة وأسعارها' : 'تم حفظ المجموعة وأسعارها', 'success');
+        }
+
+        function renderMainDashboard(records = customerGroups) {
+            const tbody = document.getElementById('mainTableBody');
+            if (!tbody) return;
+            const displayGroups = Array.isArray(records) ? records : [];
+            const totalPricesCount = customerGroups.reduce((sum, group) => sum + Object.keys(group?.prices && typeof group.prices === 'object' ? group.prices : {}).length, 0);
+            const createRow = group => {
+                const ids = getGroupCustomerIds(group);
+                const names = ids.map(id => systemCustomers.find(customer => String(customer.id) === id)?.name || '').filter(Boolean);
+                const prices = group.prices && typeof group.prices === 'object' ? group.prices : {};
+                const row = document.createElement('tr');
+                row.id = `row_main_${CSS.escape(String(group.id))}`;
+                row.innerHTML = `
+                    <td><strong>#${escapeHtml(String(group.id).replace('GRP_', ''))}</strong></td>
+                    <td><b>${escapeHtml(group.name)}</b></td>
+                    <td><span class="badge-count">${ids.length}</span></td>
+                    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(names.join(' ، '))}">${names.length ? escapeHtml(names.join(' ، ')) : '<span style="color:#aaa;">لا يوجد عملاء</span>'}</td>
+                    <td><span style="color:#605ca8;font-weight:bold;">${Object.keys(prices).length} أصناف مسعرة</span></td>
+                    <td><div class="actions-wrapper">
+                        <button class="action-btn btn-edit-act" onclick="openEditGroupModal('${escapeHtml(String(group.id))}')" title="تعديل"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn btn-delete-act" onclick="deleteGroup('${escapeHtml(String(group.id))}')" title="حذف المجموعة"><i class="fa-solid fa-trash-can"></i></button>
+                    </div></td>`;
+                return row;
+            };
+            if(window.Cashtop?.renderVirtualRows)window.Cashtop.renderVirtualRows(tbody,displayGroups,createRow,{chunkSize:90,eagerLimit:180,colspan:6,emptyHtml:'<tr><td colspan="6" style="padding:20px;color:#999;">لا توجد مجموعات مسجلة حتى الآن.</td></tr>'});
+            else{tbody.innerHTML='';if(!displayGroups.length)tbody.innerHTML='<tr><td colspan="6" style="padding:20px;color:#999;">لا توجد مجموعات مسجلة حتى الآن.</td></tr>';else displayGroups.forEach(group=>tbody.appendChild(createRow(group)))}
+            document.getElementById('statGroupsCount').innerText = customerGroups.length;
+            document.getElementById('statCustCount').innerText = systemCustomers.length;
+            document.getElementById('statProductsCount').innerText = systemProducts.length;
+            document.getElementById('statPricesCount').innerText = totalPricesCount;
+        }
+
+        function openEditGroupModal(id) {
+            refreshGroupDatasets();
+            const group = customerGroups.find(item => String(item.id) === String(id));
+            if (!group) return;
+            document.getElementById('editingGroupId').value = group.id;
+            document.getElementById('groupNameInput').value = group.name;
+            document.getElementById('modalTitleText').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> تعديل بيانات وأسعار مجموعة [${escapeHtml(group.name)}]`;
+            document.getElementById('submitBtnText').innerText = 'تحديث البيانات';
+            document.getElementById('searchModalProductsInput').value = '';
+            setCheckedCustomers(getGroupCustomerIds(group));
+            buildModalProductsTable(group.prices || {});
+            document.getElementById('groupModal').classList.add('active');
+        }
+
+        function deleteGroup(id) {
+            if (!confirm('هل أنت متأكد من حذف هذه المجموعة وأسعارها المخصصة؟')) return;
+            customerGroups = customerGroups.filter(group => String(group.id) !== String(id));
+            systemCustomers = systemCustomers.map(customer => String(customer.group || '') === String(id)
+                ? { ...customer, group: '', updatedAt: new Date().toISOString() }
+                : customer);
+            localStorage.setItem('cashtop_customer_groups', JSON.stringify(customerGroups));
+            localStorage.setItem('cashtop_customers', JSON.stringify(systemCustomers));
+            renderMainDashboard();
+        }
+
+        function filterMainTable() {
+            const query = normalizeArabic(document.getElementById('tableSearchInput')?.value || '');
+            if (!query) { renderMainDashboard(customerGroups); return; }
+            const filtered = customerGroups.filter(group => {
+                const customerNames = getGroupCustomerIds(group).map(id => systemCustomers.find(customer => String(customer.id) === id)?.name || '').join(' ');
+                return normalizeArabic(group.name).includes(query) || normalizeArabic(customerNames).includes(query);
+            });
+            renderMainDashboard(filtered);
+        }
+
+        window.addEventListener('click', event => {
+            if (!event.target.closest('.multiselect-container') && !event.target.closest('.modal-box')) {
+                const dropdown = document.getElementById('customersDropdown');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+        });
+        window.addEventListener('cashtop:remote-applied', event => {
+            const key = event.detail?.key;
+            if (['cashtop_products', 'cashtop_customers', 'cashtop_customer_groups'].includes(key)) refreshGroupDatasets(key);
+        });
+        window.addEventListener('storage', event => {
+            if (['cashtop_products', 'cashtop_customers', 'cashtop_customer_groups'].includes(event.key)) refreshGroupDatasets(event.key);
+        });
+        window.addEventListener('pageshow', () => refreshGroupDatasets());
+
+        function triggerPrint() {
+            const content = document.getElementById('reportPrintZone').innerHTML;
+            document.getElementById('printSectionArea').innerHTML = content;
+            setTimeout(() => window.print(), 250);
+        }
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"customer-groups.html"}</script>
+</body>
+
+</html>

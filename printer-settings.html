@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إعدادات الطابعة والباركود - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f9;
+            padding: 20px;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .settings-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 100%;
+        }
+
+        /* حاويات الإعدادات الرئيسية */
+        .settings-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-top: 4px solid #605ca8;
+        }
+
+        .printer-card { border-top-color: #605ca8; }
+        .barcode-card { border-top-color: #00a65a; }
+
+        .card-header-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px 15px;
+        }
+
+        /* نظام الأطر المتقاطعة للعناوين */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            width: 100%;
+        }
+        .form-group label {
+            position: absolute; top: -10px; right: 12px; background-color: #fff;
+            padding: 0 6px; font-size: 12px; font-weight: bold; color: #666; z-index: 2; pointer-events: none;
+        }
+        .form-control {
+            width: 100%; padding: 10px 12px; font-size: 13px; border: 1px solid #ccc;
+            border-radius: 6px; outline: none; background-color: #fff; position: relative; z-index: 1; transition: 0.3s;
+        }
+        .form-control:focus { border-color: #605ca8; box-shadow: 0 0 0 2px rgba(96,92,168,0.1);}
+        .barcode-card .form-control:focus { border-color: #00a65a; box-shadow: 0 0 0 2px rgba(0,166,90,0.1);}
+
+        /* مفتاح التفعيل والإيقاف (Toggle Switch) */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            height: 42px;
+            background: #fafbfc;
+        }
+        .toggle-label-text {
+            font-size: 13px;
+            font-weight: bold;
+            color: #666;
+        }
+        .switch {
+            position: relative; display: inline-block; width: 46px; height: 22px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .3s; border-radius: 22px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider { background-color: #00a65a; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .printer-toggle input:checked + .slider { background-color: #605ca8; }
+
+        /* ذيل الكروت لتجميع الأزرار بالأسفل */
+        .card-footer-actions {
+            margin-top: 25px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            border-top: 1px solid #f4f4f4;
+            padding-top: 15px;
+        }
+
+        .btn-action-primary {
+            background-color: #605ca8; color: white; border: none; padding: 10px 28px;
+            border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;
+        }
+        .btn-action-primary:hover { background-color: #4b478a; }
+
+        .btn-action-barcode {
+            background-color: #00a65a; color: white; border: none; padding: 10px 28px;
+            border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;
+        }
+        .btn-action-barcode:hover { background-color: #008d4c; }
+
+        /* نظام الإشعارات (Toasts) */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.15);}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .form-grid { grid-template-columns: 1fr !important; gap: 18px 0; }
+            .card-footer-actions { flex-direction: column; gap: 10px; }
+            .btn-action-primary, .btn-action-barcode { width: 100%; border-radius: 6px; text-align: center; padding: 12px;}
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="cashtop-printer.js?v=48"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="settings-container">
+        
+        <!-- كارت 1: إعدادات الطابعة وفواتير الحرارية -->
+        <div class="settings-card printer-card">
+            <div class="card-header-title"><i class="fa-solid fa-print" style="color:#605ca8;"></i> إعدادات الطابعة والفواتير</div>
+            
+            <form id="printerSettingsForm" onsubmit="savePrinterSettings(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <select class="form-control" id="printType" required>
+                            <option value="thermal-80">طابعة حرارية 80 ملم</option>
+                            <option value="thermal-58">طابعة حرارية 58 ملم</option>
+                            <option value="paper-a4">طابعة / ورق A4</option>
+                        </select>
+                        <label for="printType">نوع ومقاس الطابعة</label>
+                    </div>
+
+                    <div class="toggle-wrapper printer-toggle" style="grid-column:1/-1; height:auto; min-height:42px;">
+                        <span class="toggle-label-text"><i class="fa-solid fa-circle-check" style="color:#00a65a"></i> الطابعات المثبتة في النظام تعمل عبر نافذة الطباعة، ويمكن ربط طابعة BLE مباشرة من الخيار أدناه.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="number" class="form-control" id="printCopies" value="1" min="1" required>
+                        <label for="printCopies">عدد نسخ الطباعة التلقائية</label>
+                    </div>
+
+                    <!-- مفتاح تفعيل إظهار الشعار -->
+                    <div class="toggle-wrapper printer-toggle">
+                        <span class="toggle-label-text">إظهار شعار الشركة بالفاتورة</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleShowLogo" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-wrapper printer-toggle">
+                        <span class="toggle-label-text">إظهار باركود رقم الفاتورة</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleShowInvoiceBarcode" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-wrapper printer-toggle">
+                        <span class="toggle-label-text">تفعيل طابعة Bluetooth المباشرة</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleBluetoothPrinter" onchange="toggleBluetoothPrinterConnection(this)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="bluetoothPrinterStatus" style="grid-column:1/-1;padding:10px 12px;border:1px dashed #cbd5e1;border-radius:6px;font-size:12px;color:#64748b;background:#f8fafc">Bluetooth غير مفعّل.</div>
+
+                    <!-- مفتاح تفعيل طباعة الفاتورة تلقائياً بعد الحفظ -->
+                    <div class="toggle-wrapper printer-toggle">
+                        <span class="toggle-label-text">طباعة تلقائية فور حفظ الفاتورة</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleAutoPrint" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- مفتاح تفعيل إظهار نص ترحيبي بأسفل الفاتورة -->
+                    <div class="toggle-wrapper printer-toggle">
+                        <span class="toggle-label-text">إظهار ذيل الترحيب والشروط</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleShowFooterText" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card-footer-actions">
+                    <button type="button" class="btn-action-primary" style="background:#7c3aed" onclick="window.location.href='invoice-designer.html'"><i class="fa-solid fa-pen-ruler"></i> تخصيص التصميم</button>
+                    <button type="button" class="btn-action-primary" style="background:#0f766e" onclick="testNewReceiptPrint()"><i class="fa-solid fa-print"></i> طباعة تجريبية بالتصميم الجديد</button>
+                    <button type="button" class="btn-action-primary" style="background:#334155" onclick="testUsbReceiptPrint()"><i class="fa-solid fa-plug"></i> اختبار طابعة USB</button>
+                    <button type="submit" class="btn-action-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات الطابعة</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- كارت 2: إعدادات توليد وقراءة الباركود وصناعة الملصقات -->
+        <div class="settings-card barcode-card">
+            <div class="card-header-title"><i class="fa-solid fa-barcode" style="color:#00a65a;"></i> إعدادات الباركود والملصقات</div>
+            
+            <form id="barcodeSettingsForm" onsubmit="saveBarcodeSettings(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <select class="form-control" id="barcodeType" required>
+                            <option value="code128">Code 128 (الأكثر استخداماً للمخازن)</option>
+                            <option value="ean13">EAN-13 (الباركود التجاري الدولي)</option>
+                            <option value="qr">رمز استجابة سريع (QR Code)</option>
+                        </select>
+                        <label for="barcodeType">نظام الباركود الافتراضي</label>
+                    </div>
+
+                    <div class="form-group">
+                        <select class="form-control" id="labelSize" required>
+                            <option value="38x25">ملصق باركود صغير (38mm x 25mm)</option>
+                            <option value="50x30">ملصق باركود وسط (50mm x 30mm)</option>
+                            <option value="custom">مقاس مخصص لرفوف المحل</option>
+                        </select>
+                        <label for="labelSize">مقاس ورق ملصق الباركود (Label)</label>
+                    </div>
+
+                    <!-- مفتاح تفعيل إظهار اسم المنتج -->
+                    <div class="toggle-wrapper">
+                        <span class="toggle-label-text">إظهار اسم المنتج على الملصق</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleShowProdName" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- مفتاح تفعيل إظهار سعر المنتج -->
+                    <div class="toggle-wrapper">
+                        <span class="toggle-label-text">إظهار السعر على ملصق الباركود</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleShowProdPrice" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- مفتاح تفعيل توليد باركود تلقائي -->
+                    <div class="toggle-wrapper">
+                        <span class="toggle-label-text">توليد باركود تلقائي للأصناف الجديدة</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggleAutoGenerateBarcode" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card-footer-actions">
+                    <button type="submit" class="btn-action-barcode"><i class="fa-solid fa-check"></i> حفظ إعدادات الباركود</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        // نظام الإشعارات المنبثقة
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        // تحميل الإعدادات عند فتح الصفحة
+        window.onload = function() {
+            loadSettings();
+        };
+
+        function loadSettings() {
+            try {
+                // تحميل إعدادات الطابعة
+                const printerSettings = JSON.parse(localStorage.getItem('cashtop_printer_settings'));
+                if (printerSettings) {
+                    document.getElementById('printType').value = printerSettings.printType || 'thermal-80';
+                    document.getElementById('printCopies').value = printerSettings.printCopies || 1;
+                    document.getElementById('toggleShowLogo').checked = printerSettings.showLogo !== false;
+                    document.getElementById('toggleShowInvoiceBarcode').checked = printerSettings.showBarcode !== false;
+                    document.getElementById('toggleAutoPrint').checked = printerSettings.autoPrint !== false;
+                    document.getElementById('toggleShowFooterText').checked = printerSettings.showFooterText !== false;
+                    document.getElementById('toggleBluetoothPrinter').checked = printerSettings.bluetoothEnabled === true;
+                }
+                updateBluetoothPrinterStatus();
+
+                // تحميل إعدادات الباركود
+                const barcodeSettings = JSON.parse(localStorage.getItem('cashtop_barcode_settings'));
+                if (barcodeSettings) {
+                    document.getElementById('barcodeType').value = barcodeSettings.barcodeType || 'code128';
+                    document.getElementById('labelSize').value = barcodeSettings.labelSize || '38x25';
+                    document.getElementById('toggleShowProdName').checked = barcodeSettings.showProdName !== false;
+                    document.getElementById('toggleShowProdPrice').checked = barcodeSettings.showProdPrice !== false;
+                    document.getElementById('toggleAutoGenerateBarcode').checked = barcodeSettings.autoGenerateBarcode !== false;
+                }
+            } catch (error) {
+                console.error("خطأ في قراءة الإعدادات:", error);
+            }
+        }
+
+        function updateBluetoothPrinterStatus(message = '') {
+            const el = document.getElementById('bluetoothPrinterStatus');
+            if (!el) return;
+            const settings = window.CashtopPrinter?.getSettings?.() || {};
+            const state = window.CashtopPrinter?.getBluetoothState?.() || {};
+            if (message) { el.textContent = message; return; }
+            if (settings.bluetoothEnabled === true) {
+                el.textContent = state.connected
+                    ? `متصل: ${state.name || 'طابعة Bluetooth'}`
+                    : `Bluetooth مفعّل${settings.bluetoothDeviceName ? ` — الطابعة المحفوظة: ${settings.bluetoothDeviceName}` : ' — أعد الربط إذا لم تظهر الطابعة'}`;
+            } else {
+                el.textContent = 'Bluetooth غير مفعّل.';
+            }
+        }
+
+        async function toggleBluetoothPrinterConnection(input) {
+            if (!input) return;
+            if (!input.checked) {
+                try { await window.CashtopPrinter?.disconnectBluetooth?.(); } catch (_) {}
+                window.CashtopPrinter?.saveSettings?.({ bluetoothEnabled: false });
+                updateBluetoothPrinterStatus('تم إيقاف طابعة Bluetooth. ستستخدم الطباعة طابعة النظام المختارة.');
+                return;
+            }
+            if (!window.CashtopPrinter?.connectBluetooth) {
+                input.checked = false;
+                return showToast('وحدة ربط طابعة Bluetooth غير متاحة.', 'error');
+            }
+            updateBluetoothPrinterStatus('جاري البحث عن طابعات Bluetooth... اختر الطابعة من النافذة.');
+            try {
+                const device = await window.CashtopPrinter.connectBluetooth({ prompt: true });
+                window.CashtopPrinter.saveSettings({
+                    bluetoothEnabled: true,
+                    bluetoothDeviceId: device.id || '',
+                    bluetoothDeviceName: device.name || 'Bluetooth Printer'
+                });
+                updateBluetoothPrinterStatus(`تم الاتصال بالطابعة: ${device.name || 'Bluetooth Printer'}`);
+                showToast('تم ربط طابعة Bluetooth وستُستخدم عند طباعة الفواتير الحرارية.', 'success');
+            } catch (error) {
+                console.error(error);
+                input.checked = false;
+                window.CashtopPrinter.saveSettings({ bluetoothEnabled: false });
+                updateBluetoothPrinterStatus('لم يتم ربط طابعة Bluetooth.');
+                showToast(error?.message || 'تعذر ربط طابعة Bluetooth.', 'error');
+            }
+        }
+
+        // حفظ إعدادات الطابعة وتعميمها على النظام
+        function savePrinterSettings(event) {
+            event.preventDefault();
+            
+            const printerSettings = {
+                printType: document.getElementById('printType').value,
+                printCopies: parseInt(document.getElementById('printCopies').value) || 1,
+                showLogo: document.getElementById('toggleShowLogo').checked,
+                showBarcode: document.getElementById('toggleShowInvoiceBarcode').checked,
+                autoPrint: document.getElementById('toggleAutoPrint').checked,
+                showFooterText: document.getElementById('toggleShowFooterText').checked,
+                bluetoothEnabled: document.getElementById('toggleBluetoothPrinter').checked
+            };
+
+            const oldSettings = JSON.parse(localStorage.getItem('cashtop_printer_settings')) || {};
+            delete oldSettings.printerName;
+            localStorage.setItem('cashtop_printer_settings', JSON.stringify({ ...oldSettings, ...printerSettings, systemPrinter: 'default' }));
+            window.CashtopFirebase?.syncAll?.().catch?.(error => console.warn('Printer settings sync:', error));
+            showToast('🖨️ تم حفظ إعدادات الطباعة والمقاس والباركود والاتصال ومزامنتها بنجاح!', 'success');
+        }
+
+
+        function getPrinterTestInvoice() {
+            return {
+                id: 'INV_TEST_' + Date.now(),
+                date: new Date().toISOString(),
+                user: (window.Cashtop?.getCurrentUser?.()?.name || 'المدير'),
+                customer: 'عميل نقدي',
+                phone: '-',
+                paymentMethod: 'نقداً',
+                subtotal: 20,
+                total: 20,
+                paid: 20,
+                debt: 0,
+                branchName: 'الفرع الرئيسي',
+                items: [
+                    { name: 'منتج تجريبي', pieceName: 'حبة', qty: 2, price: 5 },
+                    { name: 'منتج تجريبي 2', pieceName: 'حبة', qty: 1, price: 10 }
+                ]
+            };
+        }
+
+        async function testNewReceiptPrint() {
+            try {
+                if (!window.CashtopPrinter?.printInvoice) throw new Error('وحدة الطباعة غير متاحة حالياً.');
+                savePrinterSettings({ preventDefault() {} });
+                const result = await window.CashtopPrinter.printInvoice(getPrinterTestInvoice(), { bluetoothFallback: true });
+                showToast(result?.mode?.includes('bluetooth') ? 'تم إرسال الفاتورة التجريبية إلى طابعة Bluetooth.' : 'تم فتح مسار الطباعة المحدد بنجاح.', 'success');
+            } catch (error) {
+                console.error(error);
+                showToast(error?.message || 'تعذر فتح الطباعة التجريبية.', 'error');
+            }
+        }
+
+        async function testUsbReceiptPrint() {
+            try {
+                if (!window.CashtopPrinter?.printUsb) throw new Error('وحدة طباعة USB غير متاحة.');
+                savePrinterSettings({ preventDefault() {} });
+                await window.CashtopPrinter.printUsb(getPrinterTestInvoice());
+                showToast('تم إرسال الفاتورة التجريبية إلى طابعة USB.', 'success');
+            } catch (error) {
+                console.error(error);
+                showToast(error?.message || 'تعذر الطباعة عبر USB.', 'error');
+            }
+        }
+
+        // حفظ إعدادات الباركود وتعميمها على النظام
+        function saveBarcodeSettings(event) {
+            event.preventDefault();
+            
+            const barcodeSettings = {
+                barcodeType: document.getElementById('barcodeType').value,
+                labelSize: document.getElementById('labelSize').value,
+                showProdName: document.getElementById('toggleShowProdName').checked,
+                showProdPrice: document.getElementById('toggleShowProdPrice').checked,
+                autoGenerateBarcode: document.getElementById('toggleAutoGenerateBarcode').checked
+            };
+
+            localStorage.setItem('cashtop_barcode_settings', JSON.stringify(barcodeSettings));
+            window.CashtopFirebase?.syncAll?.().catch?.(error => console.warn('Barcode settings sync:', error));
+            showToast('🏷️ تم حفظ إعدادات الباركود والملصقات ومزامنتها بنجاح!', 'success');
+        }
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"printer-settings.html"}</script>
+</body>
+
+</html>

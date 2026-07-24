@@ -1,0 +1,2665 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>شاشة الكاشير الذكية - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات الاحترافية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 15px; padding-bottom: 95px; color: #333; overflow-x: hidden; }
+
+        /* شريط التبويبات للجوال */
+        .mobile-pos-nav { display: none; position: relative; z-index: 60; isolation: isolate; pointer-events: auto; background: white; border-radius: 6px; padding: 5px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; }
+        .nav-tab-button { touch-action: manipulation; pointer-events: auto; background: none; border: none; padding: 10px 5px; font-size: 13px; font-weight: bold; color: #666; cursor: pointer; border-radius: 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.2s; position: relative; }
+        .nav-tab-button i { font-size: 16px; }
+        .nav-tab-button.active { background-color: rgba(60, 141, 188, 0.1); color: #3c8dbc; }
+        .nav-tab-button .badge-count { position: absolute; top: 2px; right: 15px; background-color: #dd4b39; color: white; font-size: 10px; padding: 1px 5px; border-radius: 10px; font-weight: bold; }
+
+        /* حاوية الكاشير الرئيسية المقسمة للابتوب */
+        .pos-container { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: 4fr 3fr; gap: 15px; }
+        .pos-section { background-color: white; border-radius: 6px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 15px; transition: transform 0.2s ease-in-out; }
+        .right-column-wrapper { display: flex; flex-direction: column; gap: 15px; }
+        .section-title { font-size: 15px; font-weight: bold; color: #444; border-bottom: 1px solid #f4f4f4; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+        
+        .btn-suspended-list { background-color: #fff9ec; color: #f39c12; border: 1px solid #f39c12; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-suspended-list:hover { background-color: #fef0d5; }
+
+        /* قسم السلة */
+        .basket-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; }
+        .basket-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .basket-actions-top { display: flex; gap: 6px; }
+        .btn-icon-top { background-color: #f4f6f9; border: 1px solid #d2d6de; padding: 6px 10px; border-radius: 4px; cursor: pointer; color: #555; transition: 0.2s; }
+        .btn-icon-top:hover { background-color: #e2e8f0; color: #3c8dbc; border-color: #3c8dbc; }
+        .btn-clear-basket { background-color: #fdeaea; color: #dd4b39; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .btn-clear-basket:hover { background-color: #fad2d2; }
+
+        .barcode-wrapper { position: relative; }
+        .barcode-wrapper label { position: absolute; top: -10px; right: 12px; background: white; padding: 0 5px; font-size: 11px; color: #777; font-weight: bold; }
+        .barcode-input { width: 100%; padding: 10px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 4px; outline: none; }
+
+        .basket-items-list { display: flex; flex-direction: column; gap: 10px; max-height: 450px; overflow-y: auto; padding-left: 2px; }
+        .basket-item { border: 1px solid #eef1f5; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; background-color: #fafbfc; }
+        .item-row-top { display: flex; justify-content: space-between; align-items: center; }
+        .item-name-badge { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .item-title { font-weight: bold; font-size: 13px; }
+        
+        .unit-select { background-color: #00c0ef; color: white; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: none; outline: none; font-weight: bold; cursor: pointer; }
+
+        .item-row-controls { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .quantity-control { display: flex; align-items: center; border: 1px solid #d2d6de; border-radius: 4px; background: white; overflow: hidden; }
+        .btn-qty { background: #f4f6f9; border: none; width: 28px; height: 28px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+        .qty-num { width: 58px; text-align: center; font-size: 13px; font-weight: bold; border: none; outline: none; }
+
+        .editable-price-control { display: flex; align-items: center; background: white; border: 1px solid #d2d6de; border-radius: 4px; padding: 0 6px; max-width: 90px; }
+        .editable-price-control input { width: 100%; border: none; outline: none; font-size: 13px; font-weight: bold; text-align: center; color: #333; padding: 3px 0; }
+        .currency-black { font-size: 12px; font-weight: bold; margin-right: 2px; }
+
+        .item-top-actions { display: flex; align-items: center; gap: 5px; }
+        .btn-item-info { width: 30px; height: 30px; border: none; border-radius: 0; background: transparent; color: #111827; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; transition: transform .16s ease, color .16s ease; }
+        .btn-item-info:hover { background: transparent; color: #000; transform: translateY(-1px) scale(1.05); }
+        .btn-delete-item { background: none; border: none; color: #dd4b39; cursor: pointer; font-size: 14px; padding: 4px; }
+        .price-total-wrap { display: flex; align-items: center; gap: 10px; direction: rtl; min-width: 0; }
+        .item-line-total { color: #00a65a; font-size: 12px; font-weight: 800; font-family: 'Cairo', sans-serif; white-space: nowrap; }
+        .item-line-total strong { font-size: 13px; color: #008d4c; }
+        .basket-fast-actions-mobile { display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
+
+        .product-type-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:999px; background:#eef2ff; color:#4f46e5; font-size:9px; font-weight:800; }
+        #itemInfoModal .modal-box { border-top: 4px solid #605ca8; max-width: 430px; transform: translateY(8px) scale(.985); opacity: 0; transition: transform .2s ease, opacity .2s ease; }
+        #itemInfoModal.active .modal-box { transform: none; opacity: 1; }
+        .item-insight-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .item-insight-card { border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#f8fafc; min-height:86px; display:flex; flex-direction:column; gap:5px; }
+        .item-insight-card .label { font-size:10px; color:#64748b; font-weight:700; display:flex; align-items:center; gap:6px; }
+        .item-insight-card .value { font-size:17px; color:#1e293b; font-weight:800; }
+        .item-insight-card.cost { background:#eff6ff; border-color:#bfdbfe; }
+        .item-insight-card.cost .label, .item-insight-card.cost .value { color:#1d4ed8; }
+        .item-insight-card.sale { background:#f0fdf4; border-color:#bbf7d0; }
+        .item-insight-card.sale .label, .item-insight-card.sale .value { color:#15803d; }
+        .item-insight-card.profit { background:#ecfdf3; border-color:#a7f3d0; }
+        .item-insight-card.profit .label, .item-insight-card.profit .value { color:#067647; }
+        .item-insight-card.loss { background:#fff1f2; border-color:#fecdd3; }
+        .item-insight-card.loss .label, .item-insight-card.loss .value { color:#be123c; }
+        .item-insight-note { margin-top:10px; padding:10px 12px; border-radius:7px; background:#fff7ed; color:#9a3412; font-size:10px; line-height:1.8; border:1px solid #fed7aa; }
+        @media (max-width: 520px) {
+            .item-row-controls { gap:6px; }
+            .price-total-wrap { gap:6px; }
+            .item-line-total { font-size:10px; }
+            .item-line-total strong { font-size:11px; }
+            .editable-price-control { max-width:82px; }
+            .item-insight-grid { grid-template-columns:1fr 1fr; gap:7px; }
+            .item-insight-card { padding:10px 8px; min-height:80px; }
+            .item-insight-card .value { font-size:14px; }
+        }
+
+        /* شريط الحسابات السفلي الاحترافي للابتوب */
+        .desktop-fixed-footer { position: fixed; bottom: 0; left: 0; right: 0; background-color: #f8fafc; color: #334155; padding: 12px 25px; box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08); border-top: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; z-index: 999; }
+        .footer-summary-grid { display: flex; align-items: center; gap: 30px; }
+        .footer-summary-item { display: flex; flex-direction: column; gap: 2px; }
+        .footer-summary-item span { font-size: 12px; color: #64748b; font-weight: 600; }
+        .footer-summary-item strong { font-size: 16px; color: #1e293b; }
+        .footer-summary-item.highlight-total strong { color: #0284c7; font-size: 22px; font-weight: 700; }
+        .footer-summary-item.highlight-debt strong { color: #dc2626; }
+        .footer-summary-item.highlight-profit strong { color: #16a34a; }
+
+        .footer-actions-box { display: flex; align-items: center; gap: 12px; }
+        .btn-basket-action { border: none; padding: 10px 18px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: 0.2s; }
+        .btn-discount { background-color: #e6f7ed; color: #00a65a; border: 1px solid rgba(0, 166, 90, 0.2); }
+        .btn-discount:hover { background-color: #d3f3df; }
+        .btn-hold { background-color: #fff9ec; color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.2); }
+        .btn-hold:hover { background-color: #fef0d5; }
+
+        .btn-action-invoice { color: white; border: none; padding: 10px 18px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-save-only { background-color: #3c8dbc; }
+        .btn-save-only:hover { background-color: #307196; }
+        .btn-save-print { background-color: #16a34a; }
+        .btn-save-print:hover { background-color: #15803d; }
+
+        /* حاوية صندوق الحسابات المخصصة للجوال */
+        .mobile-summary-container { display: none; }
+        .summary-box { background-color: #f0f4f8; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
+        .summary-row { display: flex; justify-content: space-between; font-size: 13px; color: #555; }
+        .summary-row strong, .summary-row span { color: #333; }
+        .summary-row.total-final { border-top: 1px dashed #cbd5e1; padding-top: 6px; font-size: 15px; font-weight: bold; }
+        .summary-row.total-final span, .summary-row.total-final strong { color: #000; }
+
+        /* قسم البيانات والمنتجات */
+        .invoice-data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        .form-group label { position: absolute; top: -10px; right: 10px; background: white; padding: 0 4px; font-size: 11px; color: #666; font-weight: bold; z-index: 2; }
+        .form-control { width: 100%; padding: 8px 12px; font-size: 12px; border: 1px solid #d2d6de; border-radius: 4px; outline: none; z-index: 1; transition: border-color 0.2s; }
+        .form-control:focus { border-color: #00a65a; }
+
+        .suggestions-box { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; z-index: 100; max-height: 220px; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+        .suggestion-item { padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s ease; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: #f8fafc; color: #0284c7; }
+        .suggestion-item .cust-info { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+        .suggestion-item .cust-info i { color: #94a3b8; }
+        .suggestion-meta { color: #64748b; font-size: 11px; background: #f1f5f9; padding: 2px 8px; border-radius: 12px; }
+
+        .products-search-bar { position: relative; width: 100%; }
+        .products-search-bar input { width: 100%; padding: 8px 35px 8px 12px; font-size: 12px; border: 1px solid #d2d6de; border-radius: 4px; outline: none; }
+        .products-search-bar i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #999; }
+
+        /* الكروت والشبكة بالنص الملون النظيف */
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; max-height: 450px; overflow-y: auto; padding: 5px;}
+        
+        .product-item-card {
+            border: 1px solid #eef1f5; background-color: #fff; border-radius: 8px; padding: 12px 8px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
+            gap: 8px; cursor: pointer; transition: all 0.2s; text-align: center; position: relative;
+        }
+        .product-item-card:hover { border-color: #3c8dbc; box-shadow: 0 4px 8px rgba(60,141,188,0.1); transform: translateY(-2px); }
+        .product-icon-box { width: 45px; height: 45px; background-color: #f0f8ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #3c8dbc; font-size: 20px; }
+        .product-item-title { font-size: 13px; font-weight: bold; color: #333; }
+        .product-item-price { font-size: 12px; color: #333; font-weight: bold; }
+        
+        /* النص الأخضر الأنيق للمخزون بدلاً من الخلفية المزعجة */
+        .stock-text { color: #00a65a; font-size: 11px; font-weight: bold; }
+        
+        /* تنسيق حالة (نفد) الأنيقة */
+        .out-of-stock { background-color: #f8fafc !important; border-color: #e2e8f0 !important; cursor: not-allowed; opacity: 0.8; }
+        .out-of-stock:hover { transform: none; box-shadow: none; border-color: #e2e8f0 !important; }
+        .out-of-stock .product-icon-box { background-color: #e2e8f0; color: #94a3b8; }
+        .out-of-stock .stock-text { color: #dd4b39; } /* النص الأحمر عند النفاد */
+
+        /* التنبيهات Toast */
+        #toast-container { position: fixed; bottom: 85px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 0; transform: translateY(20px); transition: all 0.3s ease; pointer-events: auto; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+        .toast.warning { background-color: #f39c12; border-right: 4px solid #d0830b; }
+
+        /* النوافذ المنبثقة */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: white; width: 100%; max-width: 450px; border-radius: 6px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        
+        #calcModal .modal-box { border-top: 4px solid #3c8dbc; max-width: 320px; }
+        #discountModal .modal-box { border-top: 4px solid #00a65a; max-width: 380px; }
+        #quickProductModal .modal-box { border-top: 4px solid #00a65a; max-width: 500px; }
+        #cameraModal .modal-box { border-top: 4px solid #00c0ef; max-width: 400px; }
+        #variantModal .modal-box { border-top: 4px solid #3c8dbc; max-width: 400px; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-title { font-size: 15px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #aaa; transition: color 0.2s; }
+        .modal-close:hover { color: #dd4b39; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 15px; }
+        
+        .btn-submit { background-color: #605ca8; color: white; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s; }
+        .btn-submit.btn-green { background-color: #00a65a; }
+        .btn-submit.btn-green:hover { background-color: #008d4c; }
+        .btn-cancel { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s; }
+        .btn-cancel:hover { background-color: #e2e8f0; }
+
+        .suspended-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .suspended-item { border: 1px solid #ddd; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; background: #fafbfc; transition: background 0.2s; }
+        .suspended-item:hover { background: #f1f5f9; }
+        .suspended-item button { background: #3c8dbc; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.2s; }
+        .suspended-item button:hover { background: #307196; }
+
+        .variant-btn-option { padding: 10px; border: 1px solid #ddd; border-radius: 4px; text-align: right; display: flex; justify-content: space-between; font-weight: bold; font-size: 13px; margin-bottom: 8px; transition: 0.2s; }
+        .variant-btn-option:hover:not(:disabled) { background: #f0f8ff; border-color: #3c8dbc; cursor: pointer; }
+        .variant-btn-option:disabled { background: #eee; color: #aaa; cursor: not-allowed; }
+
+        .discount-type-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .discount-type-btn { background-color: #f4f6f9; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; text-align: center; transition: all 0.2s; }
+        .discount-type-btn.active { background-color: #00a65a; color: white; border-color: #008d4c; }
+
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .camera-view-box { width: 100%; height: 240px; background-color: #222; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; font-size: 13px; gap: 12px; position: relative; overflow: hidden; border: 2px dashed #00c0ef; }
+        .camera-scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background-color: #dd4b39; box-shadow: 0 0 8px #dd4b39; animation: scanEffect 2s infinite linear; }
+        @keyframes scanEffect { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+        
+        .calc-screen { width: 100%; height: 50px; background: #222; color: #fff; border: none; font-size: 20px; text-align: left; padding: 10px; border-radius: 4px; margin-bottom: 15px; direction: ltr; }
+        .calc-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .calc-btn { background: #f4f6f9; border: 1px solid #d2d6de; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .calc-btn.op { background: #f39c12; color: white; border: none; }
+        .calc-btn.eq { background: #3c8dbc; color: white; border: none; grid-column: span 2; }
+        .calc-btn.clear { background: #dd4b39; color: white; border: none; }
+
+        @media print {
+            body * { visibility: hidden; }
+            .modal-overlay { display: none !important; }
+        }
+
+        /* الجوال وتخصيص الشبكة لتكون 3 أعمدة */
+        .mobile-summary-container { display: none; }
+        @media (max-width: 992px) {
+            body { padding-bottom: 15px; user-select: none; }
+            .mobile-pos-nav { display: grid; }
+            .pos-container { grid-template-columns: 1fr; gap: 0; }
+            .pos-section, .right-column-wrapper .pos-section { display: none; width: 100%; }
+            .right-column-wrapper { display: contents; }
+            .pos-section.mobile-active-section { display: flex !important; }
+            .desktop-fixed-footer { display: none !important; }
+            .mobile-summary-container { display: block; width: 100%; }
+            .summary-box { background-color: #f0f4f8; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
+            .summary-row { display: flex; justify-content: space-between; font-size: 13px; font-weight:bold; }
+            .basket-fast-actions-mobile { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+            .mobile-invoice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+            #toast-container { bottom: 20px; }
+            
+            /* إجبار المنتجات على الظهور بـ 3 أعمدة في الموبايل */
+            .products-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px; }
+        }
+        @media (max-width: 480px) { 
+            .form-row { grid-template-columns: 1fr; } 
+        }
+    
+        .ct-currency-compact { display:none; }
+        .ct-currency-compact.active { display:block; }
+        .ct-currency-compact select { min-height:38px; font-weight:700; border-color:#d9e2ec; background:#fff; }
+        .ct-currency-hint { display:block; margin-top:4px; font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="barcode-tools.js?v=20"></script>
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="cashtop-printer.js?v=48"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <!-- تبويبات الجوال -->
+    <div class="mobile-pos-nav">
+        <button type="button" class="nav-tab-button active" id="tab-products" data-pos-tab="products"><i class="fa-solid fa-cubes"></i><span>الأصناف</span></button>
+        <button type="button" class="nav-tab-button" id="tab-basket" data-pos-tab="basket"><i class="fa-solid fa-cart-shopping"></i><span>السلة</span><span class="badge-count" id="mobile-badge">0</span></button>
+        <button type="button" class="nav-tab-button" id="tab-invoice-data" data-pos-tab="invoice-data"><i class="fa-solid fa-address-card"></i><span>مراجعة و دفع</span></button>
+    </div>
+
+    <div class="pos-container" id="swipeContainer">
+        
+        <div class="right-column-wrapper">
+            <!-- بطاقة البيانات -->
+            <div class="pos-section data-section" id="invoice-data-sec">
+                <div class="section-title">
+                    <span><i class="fa-solid fa-address-card"></i> بطاقة البيانات وتأكيد الدفع</span>
+                    <button class="btn-suspended-list" onclick="openSuspendedModal()"><i class="fa-solid fa-clock-rotate-left"></i> الفواتير المعلقة</button>
+                </div>
+                
+                <div class="invoice-data-grid">
+                    <div class="form-group">
+                        <label>العميل</label>
+                        <input type="text" id="customerNameInput" class="form-control" placeholder="ابحث بالاسم لتطبيق السعر الخاص..." autocomplete="off" oninput="showCustomerSuggestions()">
+                        <div id="customerSuggestions" class="suggestions-box"></div>
+                    </div>
+                    <div class="form-group"><label>رقم الجوال</label><input type="text" id="customerPhoneInput" class="form-control" placeholder="اختياري..."></div>
+                    <div class="form-group ct-currency-compact" id="invoiceCurrencyWrap">
+                        <label>عملة التحصيل</label>
+                        <select class="form-control" id="invoiceCurrencySelect" onchange="handleInvoiceCurrencyChange()"></select>
+                        <small class="ct-currency-hint" id="invoiceCurrencyHint"></small>
+                    </div>
+                    <div class="form-group"><label>المبلغ المدفوع</label><input type="number" step="0.001" id="invoicePaidAmount" class="form-control" oninput="handlePaidInput()" value="0.00"></div>
+                    <div class="form-group">
+                        <label>الحساب الخصمي</label>
+                        <select class="form-control" id="accountSelectBox" onchange="handleCashierAccountChange()">
+                            <option selected>صندوق الكاش الرئيسي</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:10px;"><label>ملاحظات الفاتورة</label><input type="text" id="invoiceNotesInput" class="form-control" placeholder="ملاحظات إضافية..."></div>
+                
+                <!-- إجماليات الموبايل -->
+                <div class="mobile-summary-container">
+                    <div class="summary-box">
+                        <div class="summary-row"><span>الإجمالي قبل الخصم:</span><strong class="summarySubtotalText">0.00 ₪</strong></div>
+                        <div class="summary-row"><span>الخصم:</span><strong class="summaryDiscountText">0.00 ₪</strong></div>
+                        <div class="summary-row"><span>الضريبة:</span><strong class="summaryTaxText">0.00 ₪</strong></div>
+                        <div class="summary-row" style="border-top: 1px dashed #ccc; padding-top: 5px;"><span>الصافي:</span><strong class="summaryTotalText">0.00 ₪</strong></div>
+                        <div class="summary-row" style="color: #dd4b39;"><span>الدين:</span><strong class="summaryDebtText">0.00 ₪</strong></div>
+                    </div>
+                    
+                    <div class="basket-fast-actions-mobile">
+                        <button class="btn-basket-action btn-discount" onclick="document.getElementById('discountModal').classList.add('active')"><i class="fa-solid fa-tags"></i> خصم</button>
+                        <button class="btn-basket-action btn-hold" data-ct-permission="sales.hold" onclick="holdInvoice()"><i class="fa-solid fa-pause"></i> تعليق</button>
+                    </div>
+                    
+                    <!-- أزرار الحفظ في الجوال -->
+                    <div class="mobile-invoice-actions">
+                        <button class="btn-action-invoice btn-save-only" onclick="saveFinalInvoice(false)"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+                        <button class="btn-action-invoice btn-save-print" onclick="saveFinalInvoice(true)"><i class="fa-solid fa-print"></i> حفظ وطباعة</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المنتجات -->
+            <div class="pos-section products-section mobile-active-section" id="products-sec">
+                <div class="section-title"><i class="fa-solid fa-cubes"></i> المنتجات والأصناف</div>
+                <div class="products-search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="searchProductInput" oninput="filterProducts()" placeholder="بحث بالاسم، الباركود...">
+                </div>
+                <div class="products-grid" id="productsGridContainer"></div>
+            </div>
+        </div>
+
+        <!-- السلة -->
+        <div class="pos-section basket-section" id="basket-sec">
+            <div class="basket-header">
+                <div class="basket-title"><i class="fa-solid fa-cart-shopping"></i> السلة الحالية</div>
+                <div class="basket-actions-top">
+                    <button class="btn-icon-top" onclick="openModal('calcModal')" title="الآلة الحاسبة"><i class="fa-solid fa-calculator"></i></button>
+                    <button class="btn-icon-top" onclick="openCashierCamera()" title="قراءة الباركود بالكاميرا"><i class="fa-solid fa-camera"></i></button>
+                    <button class="btn-icon-top" onclick="openModal('quickProductModal')" title="إضافة صنف سريع (بدون مخزون)"><i class="fa-solid fa-file-invoice"></i></button>
+                    <button class="btn-clear-basket" onclick="clearBasket()">تفريغ</button>
+                </div>
+            </div>
+
+            <div class="barcode-wrapper">
+                <label>قارئ الباركود المباشر</label>
+                <input type="text" class="barcode-input" id="barcodeDirectInput" onkeydown="handleBarcodeScan(event)" onpaste="handleBarcodePaste(event)" placeholder="مرر جهاز الباركود هنا...">
+            </div>
+
+            <div class="basket-items-list" id="basketItemsContainer"></div>
+        </div>
+    </div>
+
+    <!-- شريط الإجماليات والأزرار للابتوب -->
+    <div class="desktop-fixed-footer" id="desktopFooter">
+        <div class="footer-summary-grid">
+            <div class="footer-summary-item"><span>الإجمالي قبل الخصم</span><strong class="summarySubtotalText">0.00 ₪</strong></div>
+            <div class="footer-summary-item"><span>الخصم</span><strong class="summaryDiscountText">0.00 ₪</strong></div>
+            <div class="footer-summary-item highlight-total"><span>الإجمالي النهائي</span><strong class="summaryTotalText">0.00 ₪</strong></div>
+            <div class="footer-summary-item highlight-debt"><span>المتبقي كدين</span><strong class="summaryDebtText">0.00 ₪</strong></div>
+        </div>
+        <div class="footer-actions-box">
+            <button class="btn-basket-action btn-discount" onclick="document.getElementById('discountModal').classList.add('active')"><i class="fa-solid fa-tags"></i> خصم</button>
+            <button class="btn-basket-action btn-hold" data-ct-permission="sales.hold" onclick="holdInvoice()"><i class="fa-solid fa-pause"></i> تعليق</button>
+            <button class="btn-action-invoice btn-save-only" onclick="saveFinalInvoice(false)"><i class="fa-solid fa-floppy-disk"></i> حفظ الفاتورة</button>
+            <button class="btn-action-invoice btn-save-print" onclick="saveFinalInvoice(true)"><i class="fa-solid fa-print"></i> حفظ وطباعة</button>
+        </div>
+    </div>
+
+    <!-- نافذة اختيار المقاسات / الألوان -->
+    <div class="modal-overlay" id="variantModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-shirt"></i> اختر المقاس / اللون</div>
+                <button class="modal-close" onclick="closeModal('variantModal')">&times;</button>
+            </div>
+            <div id="variantOptionsContainer" style="display:flex; flex-direction:column; gap:10px; max-height: 300px; overflow-y:auto; margin-bottom: 10px;">
+                <!-- أزرار المقاسات تُضاف ديناميكياً -->
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الخصم (النسبة والمبلغ الثابت) -->
+    <div class="modal-overlay" id="discountModal">
+        <div class="modal-box" style="border-top: 4px solid #00a65a; max-width: 380px;">
+            <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-tags"></i> تطبيق خصم</div><button class="modal-close" onclick="closeModal('discountModal')">&times;</button></div>
+            <div class="discount-type-selector">
+                <div class="discount-type-btn active" id="typeFixedBtn" onclick="setDiscountType('fixed')">مبلغ ثابت (₪)</div>
+                <div class="discount-type-btn" id="typePercentBtn" onclick="setDiscountType('percent')">نسبة مئوية (%)</div>
+            </div>
+            <div class="form-group"><label id="discountInputLabel">قيمة الخصم الثابت (₪)</label><input type="number" step="0.001" id="discountInputAmount" class="form-control" value="0.00"></div>
+            <div class="modal-footer"><button type="button" class="btn-cancel" onclick="closeModal('discountModal')">إلغاء</button><button type="button" class="btn-submit btn-green" onclick="applyDiscountValue()">تطبيق</button></div>
+        </div>
+    </div>
+
+    <!-- نافذة الفواتير المعلقة -->
+    <div class="modal-overlay" id="suspendedModal">
+        <div class="modal-box" style="border-top: 4px solid #f39c12; max-width: 450px;">
+            <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-clock-rotate-left"></i> الفواتير المعلقة</div><button class="modal-close" onclick="closeModal('suspendedModal')">&times;</button></div>
+            <div class="suspended-list" id="suspendedListContainer">
+                <!-- سيتم ملؤها ديناميكياً -->
+            </div>
+            <div class="modal-footer"><button type="button" class="btn-cancel" onclick="closeModal('suspendedModal')">إغلاق</button></div>
+        </div>
+    </div>
+
+    <!-- نافذة الآلة الحاسبة -->
+    <div class="modal-overlay" id="calcModal">
+        <div class="modal-box">
+            <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-calculator"></i> آلة حاسبة سريعة</div><button class="modal-close" onclick="closeModal('calcModal')">&times;</button></div>
+            <input type="text" class="calc-screen" id="calcScreen" readonly value="0">
+            <div class="calc-buttons">
+                <button class="calc-btn clear" onclick="pressCalc('C')">C</button><button class="calc-btn op" onclick="pressCalc('/')">/</button><button class="calc-btn op" onclick="pressCalc('*')">*</button><button class="calc-btn op" onclick="pressCalc('-')">-</button>
+                <button class="calc-btn" onclick="pressCalc('7')">7</button><button class="calc-btn" onclick="pressCalc('8')">8</button><button class="calc-btn" onclick="pressCalc('9')">9</button><button class="calc-btn op" onclick="pressCalc('+')">+</button>
+                <button class="calc-btn" onclick="pressCalc('4')">4</button><button class="calc-btn" onclick="pressCalc('5')">5</button><button class="calc-btn" onclick="pressCalc('6')">6</button><button class="calc-btn" onclick="pressCalc('.')">.</button>
+                <button class="calc-btn" onclick="pressCalc('1')">1</button><button class="calc-btn" onclick="pressCalc('2')">2</button><button class="calc-btn" onclick="pressCalc('3')">3</button><button class="calc-btn" onclick="pressCalc('0')">0</button>
+                <button class="calc-btn eq" onclick="pressCalc('=')">=</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الكاميرا للباركود -->
+    <div class="modal-overlay" id="cameraModal">
+        <div class="modal-box">
+            <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-camera"></i> ماسح الباركود بالكاميرا</div><button type="button" class="modal-close" onclick="closeCashierCamera()">&times;</button></div>
+            <div id="cashierCameraReader" class="camera-view-box" style="padding:0;min-height:220px;background:#000;overflow:hidden;"></div>
+            <div id="cashierCameraStatus" style="font-size:12px;color:#64748b;text-align:center;margin-top:8px;">سيطلب المتصفح صلاحية الكاميرا عند التشغيل.</div>
+            <div class="modal-footer"><button type="button" class="btn-cancel" onclick="closeCashierCamera()">إغلاق الكاميرا</button></div>
+        </div>
+    </div>
+
+    <!-- نافذة إضافة صنف سريع (بدون مخزون) -->
+    <div class="modal-overlay" id="quickProductModal">
+        <div class="modal-box">
+            <div class="modal-header"><div class="modal-title"><i class="fa-solid fa-cart-plus"></i> إضافة صنف سريع (بدون مخزون)</div><button class="modal-close" onclick="closeModal('quickProductModal')">&times;</button></div>
+            <form id="quickProductForm" onsubmit="handleQuickProductSubmit(event)">
+                <div class="form-row full"><div class="form-group"><label>اسم المنتج السريع</label><input type="text" id="qpName" class="form-control" placeholder="مثال: خدمة توصيل، صنف غير مسجل..." required></div></div>
+                <div class="form-row">
+                    <div class="form-group"><label>سعر التكلفة (إن وجد)</label><input type="number" step="0.001" id="qpCost" class="form-control" placeholder="0.00"></div>
+                    <div class="form-group"><label>سعر البيع</label><input type="number" step="0.001" id="qpPrice" class="form-control" placeholder="0.00" required></div>
+                </div>
+                <div class="form-row"><div class="form-group"><label>الكمية</label><input type="number" step="any" min="0.000001" id="qpStock" class="form-control" placeholder="1" required value="1"></div></div>
+                <div class="modal-footer"><button type="button" class="btn-cancel" onclick="closeModal('quickProductModal')">إلغاء</button><button type="submit" class="btn-submit btn-green">إضافة للسلة</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة معلومات الصنف داخل السلة -->
+    <div class="modal-overlay" id="itemInfoModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-circle-info" style="color:#605ca8;"></i> معلومات الصنف والربح المتوقع</div>
+                <button class="modal-close" type="button" onclick="closeModal('itemInfoModal')">&times;</button>
+            </div>
+            <div style="font-size:13px;font-weight:800;color:#334155;margin-bottom:10px;" id="itemInfoName">الصنف</div>
+            <div class="item-insight-grid">
+                <div class="item-insight-card cost">
+                    <div class="label"><i class="fa-solid fa-coins"></i><span id="itemInfoCostLabel">تكلفة الوحدة المحددة</span></div>
+                    <div class="value" id="itemInfoCost">0.00</div>
+                </div>
+                <div class="item-insight-card sale">
+                    <div class="label"><i class="fa-solid fa-tag"></i> سعر البيع الحالي</div>
+                    <div class="value" id="itemInfoSale">0.00</div>
+                </div>
+                <div class="item-insight-card" id="itemInfoProfitCard">
+                    <div class="label"><i class="fa-solid fa-chart-line"></i><span id="itemInfoProfitLabel">الربح المقدر للوحدة</span></div>
+                    <div class="value" id="itemInfoProfit">0.00</div>
+                </div>
+                <div class="item-insight-card" id="itemInfoLineProfitCard">
+                    <div class="label"><i class="fa-solid fa-calculator"></i><span id="itemInfoLineProfitLabel">ربح الكمية الحالية</span></div>
+                    <div class="value" id="itemInfoLineProfit">0.00</div>
+                </div>
+            </div>
+            <div class="item-insight-note"><i class="fa-solid fa-wand-magic-sparkles"></i> القيم تقديرية وتتغير مباشرة حسب سعر البيع والكمية والوحدة المختارة في السلة.</div>
+            <div class="modal-footer"><button type="button" class="btn-submit" onclick="closeModal('itemInfoModal')">تم</button></div>
+        </div>
+    </div>
+
+    <!-- حاوية التنبيهات -->
+    <div id="toast-container"></div>
+
+    <script>
+        // دالة التنبيهات Toast
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function readArray(key) {
+            try {
+                const parsed = window.Cashtop?.safeJson?.(localStorage.getItem(key), []) ?? JSON.parse(localStorage.getItem(key) || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_) { return []; }
+        }
+
+        function readObject(key, fallback = {}) {
+            try {
+                const parsed = window.Cashtop?.safeJson?.(localStorage.getItem(key), fallback) ?? JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+                return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { ...fallback };
+            } catch (_) { return { ...fallback }; }
+        }
+
+
+        function cloneData(value, fallback = null) {
+            try { return value == null ? value : JSON.parse(JSON.stringify(value)); }
+            catch (_) { return fallback; }
+        }
+
+        function runCashierStep(label, callback) {
+            try { return callback(); }
+            catch (error) {
+                console.error(`[CASH TOP 2] cashier ${label}:`, error);
+                return null;
+            }
+        }
+
+        // أي قيمة قديمة أو تالفة لن توقف الكاشير أو تمنع أزرار السلة والبيانات.
+        let productsData = readArray('cashtop_products');
+        let materialsData = readArray('cashtop_materials');
+        let manufacturingRecipesData = readArray('cashtop_manufacturing_recipes');
+        let customersData = readArray('cashtop_customers');
+        let branchesData = readArray('cashtop_branches');
+        const cashierSession = window.Cashtop?.getSession?.() || readObject('cashtop_session', {});
+        const sessionBranchId = cashierSession.dataBranchId || cashierSession.branchId || 'MAIN';
+        let stockBranchId = sessionBranchId;
+        let fundsDB = readObject('cashtop_funds_db', { accounts: [], accountLogs: [] });
+        if (!Array.isArray(fundsDB.accounts)) fundsDB.accounts = [];
+        if (!Array.isArray(fundsDB.accountLogs)) fundsDB.accountLogs = [];
+        
+        let basketItems = [];
+        let discountMode = 'fixed';
+        let discountValueInput = 0.00;
+        let globalDiscountCalculated = 0.00;
+        let currentlyEditingInvoiceId = null;
+        let editingOriginalInvoice = null;
+        let editingInventoryRestored = false;
+        let selectedCustomer = null;
+        let isPaidManuallyEdited = false;
+        let cashierMultiPayments = [];
+        const CASHIER_MULTI_PAYMENT_VALUE = window.CashtopMulti?.MULTI_PAYMENT_VALUE || '__MULTI_PAYMENT__';
+        let invoiceSaveInProgress = false;
+        let customerGroupsData = readArray('cashtop_customer_groups');
+        let offersData = readArray('cashtop_sales_offers');
+        let offerDiscountCalculated = 0;
+        let salesTaxCalculated = 0;
+        let manualDiscountCalculated = 0; 
+
+        function getQuantitySettings() {
+            const settings = readObject('cashtop_settings', {});
+            return {
+                qtyByPrice: settings.qtyByPrice === true,
+                allowFractions: settings.allowFractionQty !== false,
+                step: settings.allowFractionQty === false ? 1 : Math.max(0.000001, Number(settings.quantityStep || 0.001))
+            };
+        }
+
+        function normalizeQuantity(value) {
+            const cfg = getQuantitySettings();
+            let quantity = Number(value);
+            if (!Number.isFinite(quantity)) quantity = cfg.step;
+            if (!cfg.allowFractions) return Math.max(1, Math.round(quantity));
+            const rounded = Math.round(quantity / cfg.step) * cfg.step;
+            return Math.max(cfg.step, Number(rounded.toFixed(6)));
+        }
+
+        function normalizePriceDerivedQuantity(value) {
+            let quantity = Number(value);
+            if (!Number.isFinite(quantity) || quantity <= 0) quantity = 0.000001;
+            return Math.max(0.000001, Number(quantity.toFixed(6)));
+        }
+
+        function quantityDisplay(value) {
+            return Number(Number(value || 0).toFixed(6)).toString();
+        }
+
+        function moneyDisplay(value) {
+            const number = Number(value || 0);
+            if (!Number.isFinite(number)) return '0.00';
+            return number.toFixed(3).replace(/(\.\d{2})0$/, '$1');
+        }
+        
+        let cashierInitialized = false;
+        function initializeCashier() {
+            if (cashierInitialized) return;
+            cashierInitialized = true;
+            window.Cashtop?.closeTransientUi?.();
+
+            // ربط التبويبات أولاً حتى تبقى السلة وبطاقة البيانات قابلة للفتح
+            // حتى لو كانت إحدى مجموعات البيانات القديمة تالفة.
+            runCashierStep('tabs', () => { bindPosTabs(); switchPosTab('products'); });
+            runCashierStep('currency', populateInvoiceCurrencySelect);
+            runCashierStep('accounts', populateAccountsSelect);
+            runCashierStep('products', renderProductsGrid);
+            runCashierStep('date', setCurrentDate);
+            runCashierStep('totals', calculateTotals);
+            runCashierStep('swipe', setupSwipeGestures);
+            runCashierStep('barcode readers', initializeBarcodeReaders);
+
+            const editInvoiceId = new URLSearchParams(location.search).get('edit');
+            if (editInvoiceId) setTimeout(() => runCashierStep('invoice edit', () => loadInvoiceForEdit(editInvoiceId)), 120);
+
+            const customerInput = document.getElementById('customerNameInput');
+            if (customerInput && customerInput.dataset.blurBound !== 'true') {
+                customerInput.dataset.blurBound = 'true';
+                customerInput.addEventListener('blur', resolveTypedCustomer);
+            }
+            if (document.documentElement.dataset.cashierDocumentBound !== 'true') {
+                document.documentElement.dataset.cashierDocumentBound = 'true';
+                document.addEventListener('click', function(e) {
+                    if (e.target.id !== 'customerNameInput') {
+                        const suggestions = document.getElementById('customerSuggestions');
+                        if (suggestions) suggestions.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCashier, { once: true });
+        } else {
+            initializeCashier();
+        }
+
+        function refreshCashierDataFromStorage(changedKey = '') {
+            if (invoiceSaveInProgress) return;
+            const key = String(changedKey || '');
+            if (!key || key === 'cashtop_products') {
+                // أثناء تعديل فاتورة صادرة يكون المخزون معاداً مؤقتاً في الذاكرة فقط؛
+                // لا نستبدله بتحديث خارجي قبل الحفظ أو الإلغاء.
+                if (!(editingOriginalInvoice && editingInventoryRestored)) productsData = readArray('cashtop_products');
+            }
+            if (!key || key === 'cashtop_materials') materialsData = readArray('cashtop_materials');
+            if (!key || key === 'cashtop_manufacturing_recipes') manufacturingRecipesData = readArray('cashtop_manufacturing_recipes');
+            if (!key || key === 'cashtop_customers') customersData = readArray('cashtop_customers');
+            if (!key || key === 'cashtop_customer_groups') customerGroupsData = readArray('cashtop_customer_groups');
+            if (!key || key === 'cashtop_branches') branchesData = readArray('cashtop_branches');
+            if (!key || key === 'cashtop_settings') {
+                populateInvoiceCurrencySelect();
+            }
+            if (!key || key === 'cashtop_funds_db') {
+                fundsDB = readObject('cashtop_funds_db', { accounts: [], accountLogs: [] });
+                if (!Array.isArray(fundsDB.accounts)) fundsDB.accounts = [];
+                if (!Array.isArray(fundsDB.accountLogs)) fundsDB.accountLogs = [];
+                populateAccountsSelect();
+            }
+            runCashierStep('refresh basket', renderBasket);
+            runCashierStep('refresh products', renderProductsGrid);
+        }
+
+        window.addEventListener('storage', event => {
+            const key = String(event.key || '').replace(/^.*::(cashtop_[^:]+)$/, '$1');
+            if (['cashtop_products','cashtop_materials','cashtop_manufacturing_recipes','cashtop_customers','cashtop_customer_groups','cashtop_branches','cashtop_funds_db','cashtop_settings'].includes(key)) refreshCashierDataFromStorage(key);
+        });
+        window.addEventListener('cashtop:remote-applied', event => {
+            if (['cashtop_products','cashtop_materials','cashtop_manufacturing_recipes','cashtop_customers','cashtop_customer_groups','cashtop_branches','cashtop_funds_db','cashtop_settings'].includes(event.detail?.key)) refreshCashierDataFromStorage(event.detail.key);
+        });
+
+        function refreshCashierFundsNow() {
+            if (invoiceSaveInProgress) return;
+            fundsDB = readObject('cashtop_funds_db', { accounts: [], accountLogs: [] });
+            if (!Array.isArray(fundsDB.accounts)) fundsDB.accounts = [];
+            if (!Array.isArray(fundsDB.accountLogs)) fundsDB.accountLogs = [];
+            runCashierStep('live funds', populateAccountsSelect);
+        }
+
+        window.addEventListener('cashtop:funds-changed', refreshCashierFundsNow);
+        window.addEventListener('cashtop:data-changed', event => {
+            if (event.detail?.key === 'cashtop_funds_db') refreshCashierFundsNow();
+        });
+        document.addEventListener('pointerdown', event => {
+            if (event.target?.id === 'accountSelectBox') refreshCashierFundsNow();
+        }, true);
+        document.addEventListener('focusin', event => {
+            if (event.target?.id === 'accountSelectBox') refreshCashierFundsNow();
+        });
+
+        function getCashierCurrencyConfig() {
+            return window.CashtopMulti?.getCurrencyConfig?.() || { enabled: false, baseCurrencyId: 'ILS', base: { id: 'ILS', name: 'شيكل', symbol: '₪', ratePer100Base: 100 }, currencies: [{ id: 'ILS', name: 'شيكل', symbol: '₪', ratePer100Base: 100 }] };
+        }
+
+        function getInvoiceCurrencyId() {
+            const cfg = getCashierCurrencyConfig();
+            return document.getElementById('invoiceCurrencySelect')?.value || cfg.baseCurrencyId;
+        }
+
+        function cashierBaseSymbol() {
+            const cfg = getCashierCurrencyConfig();
+            return cfg.base?.symbol || cfg.base?.code || '₪';
+        }
+
+        function populateInvoiceCurrencySelect(preferredId = '') {
+            const cfg = getCashierCurrencyConfig();
+            const wrap = document.getElementById('invoiceCurrencyWrap');
+            const select = document.getElementById('invoiceCurrencySelect');
+            const hint = document.getElementById('invoiceCurrencyHint');
+            if (!select) return;
+            const previous = preferredId || select.value || cfg.baseCurrencyId;
+            select.innerHTML = cfg.currencies.map(cur => `<option value="${cur.id}">${cur.name} (${cur.symbol || cur.code})</option>`).join('');
+            select.value = cfg.currencies.some(cur => String(cur.id) === String(previous)) ? previous : cfg.baseCurrencyId;
+            if (wrap) wrap.classList.toggle('active', cfg.enabled === true);
+            const current = window.CashtopMulti?.getCurrency?.(select.value) || cfg.base;
+            if (hint) hint.textContent = String(current.id) === String(cfg.baseCurrencyId) ? 'العملة الأساسية' : `100 ${cfg.base.symbol || cfg.base.code} = ${Number(current.ratePer100Base || 0)} ${current.symbol || current.code}`;
+            normalizeFundsAccountCurrencies();
+            populateAccountsSelect();
+        }
+
+        function normalizeFundsAccountCurrencies() {
+            const cfg = getCashierCurrencyConfig();
+            (fundsDB.accounts || []).forEach(acc => { if (!acc.currencyId) acc.currencyId = cfg.baseCurrencyId; });
+        }
+
+        function handleInvoiceCurrencyChange() {
+            const cfg = getCashierCurrencyConfig();
+            const currencyId = getInvoiceCurrencyId();
+            const current = window.CashtopMulti?.getCurrency?.(currencyId) || cfg.base;
+            const hint = document.getElementById('invoiceCurrencyHint');
+            if (hint) hint.textContent = String(current.id) === String(cfg.baseCurrencyId) ? 'العملة الأساسية' : `100 ${cfg.base.symbol || cfg.base.code} = ${Number(current.ratePer100Base || 0)} ${current.symbol || current.code}`;
+            isPaidManuallyEdited = false;
+            cashierMultiPayments = [];
+            populateAccountsSelect();
+            calculateTotals(true);
+        }
+
+        function populateAccountsSelect() {
+            const select = document.getElementById('accountSelectBox');
+            if (!select) return;
+            normalizeFundsAccountCurrencies();
+            const cfg = getCashierCurrencyConfig();
+            const previous = select.value;
+            const visible = (fundsDB.accounts || []);
+            const multiOption = visible.length > 1 ? `<option value="${CASHIER_MULTI_PAYMENT_VALUE}">دفع متعدد</option>` : '';
+            select.innerHTML = multiOption + visible.map(acc => {
+                const cur = window.CashtopMulti?.getCurrency?.(acc.currencyId || cfg.baseCurrencyId) || cfg.base;
+                return `<option value="${acc.id}">${acc.name} — ${(parseFloat(acc.balance)||0).toFixed(2)} ${cur.symbol || cur.code}</option>`;
+            }).join('');
+            if (previous === CASHIER_MULTI_PAYMENT_VALUE && cashierMultiPayments.length) select.value = CASHIER_MULTI_PAYMENT_VALUE;
+            else if (visible.some(acc => String(acc.id) === String(previous))) select.value = previous;
+            else if (visible[0]) select.value = visible[0].id;
+            if (!visible.length) select.innerHTML = '<option value="">لا يوجد صندوق مالي</option>';
+        }
+
+        function getSelectedAccount() {
+            const select = document.getElementById('accountSelectBox');
+            if (select?.value === CASHIER_MULTI_PAYMENT_VALUE) return null;
+            return fundsDB.accounts.find(acc => String(acc.id) === String(select?.value)) || null;
+        }
+
+        function openCashierMultiPayment() {
+            const cfg = getCashierCurrencyConfig();
+            const currencyId = cfg.enabled ? getInvoiceCurrencyId() : cfg.baseCurrencyId;
+            const totals = computeInvoiceTotals();
+            const maxNative = window.CashtopMulti?.fromBase?.(totals.total, currencyId) ?? totals.total;
+            const currentPaid = Math.min(maxNative, Math.max(0, Number(document.getElementById('invoicePaidAmount')?.value || 0)));
+            return window.CashtopMulti?.openMultiPayment?.({
+                title: 'تحصيل متعدد إلى الصناديق',
+                accounts: fundsDB.accounts || [],
+                transactionCurrencyId: currencyId,
+                direction: 'in',
+                maxTransactionAmount: maxNative,
+                initialSplits: cashierMultiPayments,
+                defaultTransactionAmount: cashierMultiPayments.length ? 0 : currentPaid,
+                onSave: (splits, totalNative) => {
+                    cashierMultiPayments = splits.map(item => ({...item}));
+                    const select = document.getElementById('accountSelectBox');
+                    if (select) select.value = CASHIER_MULTI_PAYMENT_VALUE;
+                    const paidInput = document.getElementById('invoicePaidAmount');
+                    if (paidInput) paidInput.value = Number(totalNative).toFixed(3).replace(/\.?0+$/,'');
+                    isPaidManuallyEdited = true;
+                    calculateTotals(false);
+                }
+            });
+        }
+
+        function handleCashierAccountChange() {
+            const select = document.getElementById('accountSelectBox');
+            if (!select) return;
+            if (select.value === CASHIER_MULTI_PAYMENT_VALUE) {
+                if (!openCashierMultiPayment()) {
+                    select.value = fundsDB.accounts?.[0]?.id || '';
+                }
+            } else {
+                cashierMultiPayments = [];
+            }
+        }
+
+        function isMainStockBranch(branchId) {
+            const normalized = String(branchId || 'MAIN').trim().toUpperCase();
+            // جلسات الفرع الرئيسي تُخزّن بالقيمة MAIN، وليس بمعرّف سجل الفرع.
+            // عدم اعتبار MAIN فرعاً رئيسياً كان يكتب الخصم داخل branchStocks.MAIN
+            // ثم يعيد الكمية الأصلية بعد حفظ الفاتورة.
+            if (!branchId || normalized === 'MAIN') return true;
+            const branch = branchesData.find(item => String(item.id) === String(branchId));
+            if (branch?.isMain === true) return true;
+            return !branchesData.some(item => item.isMain === true) && String(branchesData[0]?.id || '') === String(branchId);
+        }
+
+        function roundStockQuantity(value) {
+            const number = Number(value || 0);
+            if (!Number.isFinite(number)) return 0;
+            return Math.max(0, Number(number.toFixed(6)));
+        }
+
+        function cashierUnitChainForProduct(product) {
+            return window.CashtopMulti?.normalizeProductChain(product) || [{ id: 'piece', name: product?.pieceName || 'قطعة', factorToBase: 1, salePrice: Number(product?.pricePiece || product?.price || 0) }];
+        }
+
+        function cashierNormalizeUnitId(product, unitId) {
+            const chain = cashierUnitChainForProduct(product);
+            if (!chain.length) return 'piece';
+            if (unitId === 'piece') return chain[0].id;
+            if (unitId === 'unit') return chain[chain.length - 1].id;
+            return chain.some(level => String(level.id) === String(unitId)) ? unitId : chain[0].id;
+        }
+
+        function cashierUnitForItem(item) {
+            if (!item || item.isCustom || item.isVariant) return { id: 'piece', name: item?.pieceName || 'قطعة', factorToBase: 1, salePrice: Number(item?.price || 0) };
+            const product = productsData.find(product => String(product.id) === String(item.id)) || item;
+            const chain = cashierUnitChainForProduct(product);
+            const normalizedId = cashierNormalizeUnitId(product, item.selectedUnit);
+            return chain.find(level => String(level.id) === String(normalizedId)) || chain[0];
+        }
+
+        function cashierUnitFactor(item) {
+            return Math.max(0.000001, Number(cashierUnitForItem(item)?.factorToBase || 1));
+        }
+
+        function cashierAddToBasketByUnit(productId, unitId) {
+            const product = productsData.find(item => String(item.id) === String(productId));
+            if (!product) return false;
+            const chain = cashierUnitChainForProduct(product);
+            const normalizedId = cashierNormalizeUnitId(product, unitId);
+            const unit = chain.find(level => String(level.id) === String(normalizedId)) || chain[0];
+            const factor = Math.max(0.000001, Number(unit.factorToBase || 1));
+            const availablePieces = getAvailableStock(product.id);
+            if (availablePieces + 1e-9 < factor) {
+                showToast(`المخزون لا يحتوي ${factor} ${chain[0]?.name || 'قطعة'} لإضافة ${unit.name}.`, 'error');
+                return false;
+            }
+            const existing = basketItems.find(item => String(item.id) === String(product.id) && String(cashierNormalizeUnitId(product, item.selectedUnit)) === String(normalizedId) && !item.isCustom && !item.isVariant);
+            const unitPrice = getEffectiveProductPrice(product, normalizedId);
+            if (existing) existing.qty = normalizeQuantity(Number(existing.qty || 0) + 1);
+            else basketItems.push({
+                id: product.id, name: product.name, price: unitPrice, referencePrice: unitPrice,
+                costPerPiece: Number(product.cost || 0), cost: Number(product.cost || 0) * factor, qty: 1,
+                selectedUnit: normalizedId, unitName: unit.name, pieceName: chain[0]?.name || 'قطعة',
+                piecesPerUnit: factor, unitChain: chain, hasSaleUnit: chain.length > 1,
+                isCustom: false, isVariant: false
+            });
+            renderBasket();
+            return true;
+        }
+
+        function itemQuantityInPieces(item) {
+            const quantity = roundStockQuantity(item?.qty || 0);
+            return roundStockQuantity(quantity * cashierUnitFactor(item));
+        }
+
+        function getBranchDisplayName(branchId) {
+            return branchesData.find(item => String(item.id) === String(branchId))?.name || '';
+        }
+
+        function isExpiredDate(value) {
+            if (!value) return false;
+            const end = new Date(`${String(value).slice(0, 10)}T23:59:59`);
+            return Number.isFinite(end.getTime()) && end.getTime() < Date.now();
+        }
+
+        function getTrackedLotState(product, branchId = stockBranchId) {
+            // Cashtop core exposes only the lots of the active data branch, so
+            // FEFO/expiry logic is safe for both the main branch and sub-branches.
+            if (!Array.isArray(product?.inventoryLots)) return { tracked: 0, expired: 0, sellable: 0 };
+            return product.inventoryLots.reduce((state, lot) => {
+                if (String(lot?.warehouseId || 'shop') !== 'shop') return state;
+                const remaining = Math.max(0, Number(lot?.remainingPieces ?? lot?.quantityPieces ?? 0));
+                state.tracked += remaining;
+                if (isExpiredDate(lot?.expiryDate)) state.expired += remaining;
+                else state.sellable += remaining;
+                return state;
+            }, { tracked: 0, expired: 0, sellable: 0 });
+        }
+
+        function allocateLotsForSale(product, pieces, branchId = stockBranchId) {
+            if (!Array.isArray(product?.inventoryLots) || pieces <= 0) return [];
+            let remainingToAllocate = Math.max(0, Number(pieces || 0));
+            const allocations = [];
+            const lots = product.inventoryLots
+                .filter(lot => String(lot?.warehouseId || 'shop') === 'shop' && !isExpiredDate(lot?.expiryDate) && Number(lot?.remainingPieces ?? lot?.quantityPieces ?? 0) > 0)
+                .sort((a, b) => {
+                    const ad = a.expiryDate ? new Date(a.expiryDate).getTime() : Number.POSITIVE_INFINITY;
+                    const bd = b.expiryDate ? new Date(b.expiryDate).getTime() : Number.POSITIVE_INFINITY;
+                    return ad - bd || new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+                });
+            lots.forEach(lot => {
+                if (remainingToAllocate <= 0) return;
+                const available = Math.max(0, Number(lot.remainingPieces ?? lot.quantityPieces ?? 0));
+                const used = Math.min(available, remainingToAllocate);
+                if (used <= 0) return;
+                lot.remainingPieces = Math.max(0, available - used);
+                allocations.push({ lotId: lot.id, quantityPieces: used, expiryDate: lot.expiryDate || '', batchNumber: lot.batchNumber || '' });
+                remainingToAllocate -= used;
+            });
+            return allocations;
+        }
+
+        function restoreLotAllocations(product, allocations) {
+            if (!Array.isArray(product?.inventoryLots) || !Array.isArray(allocations)) return;
+            allocations.forEach(allocation => {
+                const lot = product.inventoryLots.find(item => String(item?.id) === String(allocation?.lotId));
+                if (lot) lot.remainingPieces = Math.max(0, Number(lot.remainingPieces ?? lot.quantityPieces ?? 0)) + Math.max(0, Number(allocation.quantityPieces || 0));
+            });
+        }
+
+        function getProductStockForBranch(product, branchId = stockBranchId) {
+            if (!product) return 0;
+            // cashtop-core يعيد المنتج مُسقطاً على الفرع النشط، لذلك stockPieces
+            // هو الرصيد الحقيقي للفرع الحالي سواء كان MAIN أو فرعاً فرعياً.
+            const baseStock = Math.max(0, Number(product.stockPieces || 0));
+            const lots = getTrackedLotState(product, branchId);
+            // عندما تغطي الدفعات كامل الرصيد، لا نعرض الكمية المنتهية للبيع.
+            if (lots.tracked + 0.001 >= baseStock) return Math.max(0, baseStock - lots.expired);
+            return baseStock;
+        }
+
+        function getVariantStockForBranch(variant, branchId = stockBranchId) {
+            if (!variant) return 0;
+            // qty هو رصيد المقاس بعد إسقاط بيانات المنتج على الفرع النشط.
+            return Number(variant.qty || 0);
+        }
+
+        function changeProductStockForBranch(product, item, direction, branchId = stockBranchId) {
+            if (!product || item.isCustom) return;
+            const quantity = roundStockQuantity(item.qty || 0);
+            const pieces = itemQuantityInPieces(item);
+            const mainBranch = isMainStockBranch(branchId);
+            if (direction < 0) item.lotAllocations = allocateLotsForSale(product, pieces, branchId);
+            else if (direction > 0 && Array.isArray(item.lotAllocations)) restoreLotAllocations(product, item.lotAllocations);
+
+            if (item.isVariant && product.hasVariants && Array.isArray(product.variants)) {
+                const variant = product.variants.find(v => v.size === item.variantSize && v.color === item.variantColor);
+                if (!variant) return;
+                if (mainBranch) {
+                    variant.qty = roundStockQuantity(Number(variant.qty || 0) + direction * quantity);
+                    product.stockPieces = roundStockQuantity(Number(product.stockPieces || 0) + direction * pieces);
+                } else {
+                    const nextVariantStock = roundStockQuantity(Number(variant.qty || 0) + direction * quantity);
+                    variant.qty = nextVariantStock;
+                    if (!variant.branchStocks || typeof variant.branchStocks !== 'object') variant.branchStocks = {};
+                    variant.branchStocks[branchId] = nextVariantStock;
+                    const nextProductStock = roundStockQuantity(Number(product.stockPieces || 0) + direction * pieces);
+                    product.stockPieces = nextProductStock;
+                    if (!product.branchStocks || typeof product.branchStocks !== 'object') product.branchStocks = {};
+                    product.branchStocks[branchId] = nextProductStock;
+                }
+                return;
+            }
+
+            if (mainBranch) {
+                product.stockPieces = roundStockQuantity(Number(product.stockPieces || 0) + direction * pieces);
+                // تنظيف أثر النسخ السابقة التي كتبت رصيداً خاطئاً داخل MAIN.
+                if (product.branchStocks && Object.prototype.hasOwnProperty.call(product.branchStocks, 'MAIN')) delete product.branchStocks.MAIN;
+            } else {
+                const nextStock = roundStockQuantity(Number(product.stockPieces || 0) + direction * pieces);
+                product.stockPieces = nextStock;
+                if (!product.branchStocks || typeof product.branchStocks !== 'object') product.branchStocks = {};
+                product.branchStocks[branchId] = nextStock;
+            }
+        }
+
+        function collectStockRequirements(items) {
+            const products = new Map();
+            const variants = new Map();
+            (items || []).forEach(item => {
+                if (!item || item.isCustom) return;
+                const productId = String(item.id);
+                if (item.isVariant) {
+                    const key = `${productId}::${item.variantSize || ''}::${item.variantColor || ''}`;
+                    variants.set(key, roundStockQuantity((variants.get(key) || 0) + Number(item.qty || 0)));
+                } else {
+                    products.set(productId, roundStockQuantity((products.get(productId) || 0) + itemQuantityInPieces(item)));
+                }
+            });
+            return { products, variants };
+        }
+
+        function validateStockBeforeIssue(items, branchId = stockBranchId) {
+            const productReq = new Map(), materialReq = new Map(), variants = new Map();
+            (items || []).forEach(item => {
+                if (!item || item.isCustom) return;
+                const product = productsData.find(prod => String(prod.id) === String(item.id));
+                if (!product) return;
+                if (isCompositeProduct(product) && !item.isVariant) {
+                    compositeRequirements(product.id, itemQuantityInPieces(item)).forEach(row => {
+                        const map = row.sourceType === 'material' ? materialReq : productReq;
+                        map.set(String(row.itemId), roundStockQuantity((map.get(String(row.itemId)) || 0) + row.quantityPieces));
+                    });
+                } else if (item.isVariant) {
+                    const key = `${item.id}::${item.variantSize || ''}::${item.variantColor || ''}`;
+                    variants.set(key, roundStockQuantity((variants.get(key) || 0) + Number(item.qty || 0)));
+                } else productReq.set(String(item.id), roundStockQuantity((productReq.get(String(item.id)) || 0) + itemQuantityInPieces(item)));
+            });
+            for (const [productId, requiredPieces] of productReq) {
+                const product = productsData.find(prod => String(prod.id) === productId);
+                const available = roundStockQuantity(getProductStockForBranch(product, branchId));
+                if (!product || available + 1e-9 < requiredPieces) return { ok:false, message:`المخزون غير كافٍ للمكون [${product?.name || productId}]. المتاح ${quantityDisplay(available)} والمطلوب ${quantityDisplay(requiredPieces)}.` };
+            }
+            for (const [materialId, requiredPieces] of materialReq) {
+                const material = materialsData.find(row => String(row.id) === materialId);
+                const available = roundStockQuantity(componentBaseStock(material, branchId));
+                if (!material || available + 1e-9 < requiredPieces) return { ok:false, message:`مخزون الصنف التصنيعي غير كافٍ [${material?.name || materialId}]. المتاح ${quantityDisplay(available)} والمطلوب ${quantityDisplay(requiredPieces)}.` };
+            }
+            for (const [key, requiredQuantity] of variants) {
+                const [productId, size, color] = key.split('::'), product = productsData.find(prod => String(prod.id) === productId), variant = product?.variants?.find(v => String(v.size || '') === size && String(v.color || '') === color), available = roundStockQuantity(getVariantStockForBranch(variant, branchId));
+                if (!product || !variant || available + 1e-9 < requiredQuantity) return {ok:false,message:`المخزون غير كافٍ للمقاس المحدد من [${product?.name || productId}].`};
+            }
+            return { ok:true };
+        }
+
+        function verifyPersistedStock(expectedProducts, touchedItems) {
+            const persisted = readArray('cashtop_products');
+            const ids = new Set((touchedItems || []).filter(item => item && !item.isCustom).map(item => String(item.id)));
+            for (const id of ids) {
+                const expected = expectedProducts.find(item => String(item.id) === id);
+                const actual = persisted.find(item => String(item.id) === id);
+                if (!expected || !actual) throw new Error(`STOCK_PERSISTENCE_MISSING:${id}`);
+                if (Math.abs(Number(expected.stockPieces || 0) - Number(actual.stockPieces || 0)) > 1e-6) {
+                    throw new Error(`STOCK_PERSISTENCE_MISMATCH:${id}`);
+                }
+                (expected.variants || []).forEach((variant, index) => {
+                    const actualVariant = (actual.variants || [])[index];
+                    if (actualVariant && Math.abs(Number(variant.qty || 0) - Number(actualVariant.qty || 0)) > 1e-6) {
+                        throw new Error(`VARIANT_STOCK_PERSISTENCE_MISMATCH:${id}:${index}`);
+                    }
+                });
+            }
+            return persisted;
+        }
+
+        function adjustProductStock(items, direction, branchId = stockBranchId) {
+            (items || []).forEach(item => {
+                if (item.isCustom) return;
+                const product = productsData.find(prod => String(prod.id) === String(item.id));
+                if (product) {
+                    if (isCompositeProduct(product) && !item.isVariant) changeCompositeStock(product, item, direction, branchId);
+                    else changeProductStockForBranch(product, item, direction, branchId);
+                }
+            });
+        }
+
+        function removeCustomerInvoiceDebt(customer, invoiceId) {
+            if (!customer || !Array.isArray(customer.debtInvoices)) return;
+            customer.debtInvoices = customer.debtInvoices.filter(entry => String(entry?.invoiceId) !== String(invoiceId));
+        }
+
+        function upsertCustomerInvoiceDebt(customer, invoice) {
+            if (!customer || !invoice || Number(invoice.debt || 0) <= 0) return;
+            if (!Array.isArray(customer.debtInvoices)) customer.debtInvoices = [];
+            removeCustomerInvoiceDebt(customer, invoice.id);
+            customer.debtInvoices.push({
+                id: `CUSTOMER_DEBT_${invoice.id}`,
+                invoiceId: invoice.id,
+                date: invoice.date,
+                total: Number(invoice.total || 0),
+                paid: Number(invoice.paid || 0),
+                amount: Number(invoice.debt || 0),
+                remaining: Number(invoice.debt || 0),
+                status: 'open',
+                sourceType: 'sale'
+            });
+        }
+
+        function reverseIssuedInvoice(invoice, skipStock = false) {
+            if (!invoice || invoice.status === 'draft') return;
+            if (!skipStock) adjustProductStock(invoice.items, +1, invoice.branchId || null);
+            const customer = customersData.find(c => String(c.id) === String(invoice.customerId)) || customersData.find(c => c.name === invoice.customer);
+            if (customer && parseFloat(invoice.debt) > 0) {
+                customer.balance = (parseFloat(customer.balance) || 0) - parseFloat(invoice.debt);
+                removeCustomerInvoiceDebt(customer, invoice.id);
+            }
+            const cfg = getCashierCurrencyConfig();
+            const paymentRows = Array.isArray(invoice.payments) && invoice.payments.length ? invoice.payments : null;
+            if (paymentRows) {
+                paymentRows.forEach((payment, paymentIndex) => {
+                    const account = fundsDB.accounts.find(acc => String(acc.id) === String(payment.accountId)) || null;
+                    if (!account) return;
+                    const accountCurrencyId = payment.accountCurrencyId || account.currencyId || cfg.baseCurrencyId;
+                    const reversalNative = Number(payment.accountAmount || payment.accountAmountNative || 0);
+                    if (!(reversalNative > 0)) return;
+                    account.balance = (parseFloat(account.balance) || 0) - reversalNative;
+                    fundsDB.accountLogs.push({
+                        id: `LOG_REV_${invoice.id}_${paymentIndex}_${Date.now()}`,
+                        sourceType: 'sale-reversal', sourceId: invoice.id,
+                        accountId: account.id, date: new Date().toISOString(), type: 'سحب', amount: reversalNative,
+                        baseAmount: Number(payment.baseAmount || 0), currencyId: accountCurrencyId,
+                        notes: `عكس قيد فاتورة بيع [${invoice.id}] بسبب التعديل`
+                    });
+                });
+            } else {
+                const account = fundsDB.accounts.find(acc => String(acc.id) === String(invoice.accountId)) || null;
+                const accountCurrencyId = account?.currencyId || invoice.accountCurrencyId || invoice.currencyId || cfg.baseCurrencyId;
+                const reversalNative = Number.isFinite(Number(invoice.accountAmountNative))
+                    ? Number(invoice.accountAmountNative)
+                    : (window.CashtopMulti?.accountAmountFromBase?.(Number(invoice.paid || 0), accountCurrencyId) ?? window.CashtopMulti?.fromBase?.(Number(invoice.paid || 0), accountCurrencyId) ?? Number(invoice.paid || 0));
+                if (account && reversalNative > 0) {
+                    account.balance = (parseFloat(account.balance) || 0) - reversalNative;
+                    fundsDB.accountLogs.push({
+                        id: `LOG_REV_${invoice.id}_${Date.now()}`,
+                        sourceType: 'sale-reversal', sourceId: invoice.id,
+                        accountId: account.id, date: new Date().toISOString(), type: 'سحب', amount: reversalNative,
+                        baseAmount: Number(invoice.paid || 0), currencyId: accountCurrencyId,
+                        notes: `عكس قيد فاتورة بيع [${invoice.id}] بسبب التعديل`
+                    });
+                }
+            }
+        }
+
+        function manufacturingRecipeForProduct(productId) {
+            const product = productsData.find(item => String(item.id) === String(productId));
+            return manufacturingRecipesData.find(recipe => String(recipe.finishedProductId) === String(productId) && (recipe.consumptionMode === 'onSale' || recipe.virtualStock === true || product?.manufacturingMode === 'components-on-sale' || product?.generatedByManufacturing === true)) || null;
+        }
+
+        function isCompositeProduct(product) { return Boolean(product && manufacturingRecipeForProduct(product.id)); }
+
+        function inventoryComponent(type, id) {
+            return type === 'material' ? materialsData.find(x => String(x.id) === String(id)) : productsData.find(x => String(x.id) === String(id));
+        }
+
+        function componentBaseStock(item, branchId = stockBranchId) {
+            if (!item) return 0;
+            if (isMainStockBranch(branchId)) return Math.max(0, Number(item.stockPieces || 0));
+            return Math.max(0, Number(item.branchStocks?.[branchId] ?? item.stockPieces ?? 0));
+        }
+
+        function componentUnitFactor(component, unitId) {
+            const chain = window.CashtopMulti?.normalizeProductChain?.(component) || component?.unitChain || [{id:'piece',factorToBase:1}];
+            return Math.max(0.000001, Number(chain.find(level => String(level.id) === String(unitId))?.factorToBase || 1));
+        }
+
+        function compositeRequirements(productId, soldFinishedPieces) {
+            const recipe = manufacturingRecipeForProduct(productId);
+            if (!recipe) return [];
+            return (recipe.ingredients || []).map(ingredient => {
+                const sourceType = ingredient.sourceType === 'material' ? 'material' : 'product';
+                const itemId = ingredient.itemId || ingredient.productId;
+                const component = inventoryComponent(sourceType, itemId);
+                const factor = componentUnitFactor(component, ingredient.unitId);
+                const quantityPieces = roundStockQuantity(Number(ingredient.qty ?? ingredient.qtyPerUnit ?? 0) * Number(soldFinishedPieces || 0) * factor);
+                return { sourceType, itemId, component, quantityPieces, unitId: ingredient.unitId || '', name: component?.name || ingredient.name || '' };
+            }).filter(x => x.itemId && x.quantityPieces > 0);
+        }
+
+        function compositeAvailablePieces(productId, branchId = stockBranchId) {
+            const req = compositeRequirements(productId, 1);
+            if (!req.length) return Number.POSITIVE_INFINITY;
+            return req.reduce((max, row) => Math.min(max, componentBaseStock(row.component, branchId) / Math.max(0.000001, row.quantityPieces)), Number.POSITIVE_INFINITY);
+        }
+
+        function changeComponentBaseStock(row, direction, branchId = stockBranchId) {
+            const component = row.component || inventoryComponent(row.sourceType, row.itemId);
+            if (!component) return;
+            const qty = roundStockQuantity(row.quantityPieces || 0);
+            if (row.sourceType === 'product') {
+                const chain = cashierUnitChainForProduct(component), baseUnit = chain[0]?.id || 'piece';
+                const fake = { id: component.id, qty, selectedUnit: baseUnit, isCustom: false, isVariant: false, lotAllocations: row.lotAllocations || [] };
+                changeProductStockForBranch(component, fake, direction, branchId);
+                if (direction < 0) row.lotAllocations = fake.lotAllocations || [];
+                return;
+            }
+            if (isMainStockBranch(branchId)) component.stockPieces = roundStockQuantity(Number(component.stockPieces || 0) + direction * qty);
+            else {
+                if (!component.branchStocks || typeof component.branchStocks !== 'object') component.branchStocks = {};
+                const next = roundStockQuantity(Number(component.branchStocks[branchId] ?? component.stockPieces ?? 0) + direction * qty);
+                component.branchStocks[branchId] = next;
+                component.stockPieces = next;
+            }
+        }
+
+        function changeCompositeStock(product, item, direction, branchId = stockBranchId) {
+            let rows = direction > 0 && Array.isArray(item.componentAllocations) && item.componentAllocations.length
+                ? item.componentAllocations.map(row => ({...row, component: inventoryComponent(row.sourceType, row.itemId)}))
+                : compositeRequirements(product.id, itemQuantityInPieces(item));
+            rows.forEach(row => changeComponentBaseStock(row, direction, branchId));
+            if (direction < 0) item.componentAllocations = rows.map(({component, ...row}) => row);
+        }
+
+        // ==========================================
+        // المخزون الوهمي في السلة
+        // ==========================================
+        function getBasketPiecesForProduct(id) {
+            let total = 0;
+            basketItems.forEach(item => {
+                if(String(item.id) === String(id) && !item.isCustom && !item.isVariant) {
+                    total += itemQuantityInPieces(item);
+                }
+            });
+            return total;
+        }
+
+        function getAvailableStock(id) {
+            const prod = productsData.find(p => String(p.id) === String(id));
+            if(!prod) return 0;
+            if (isCompositeProduct(prod)) return compositeAvailablePieces(prod.id) - getBasketPiecesForProduct(id);
+            return getProductStockForBranch(prod) - getBasketPiecesForProduct(id);
+        }
+
+        // المخزون الوهمي للمقاسات
+        function getBasketPiecesForVariant(prodId, size, color) {
+            let total = 0;
+            basketItems.forEach(item => {
+                if(String(item.id) === String(prodId) && item.isVariant && item.variantSize === size && item.variantColor === color) {
+                    total += item.qty;
+                }
+            });
+            return total;
+        }
+
+        function getAvailableVariantStock(prodId, size, color, initialQty) {
+            const product = productsData.find(item => String(item.id) === String(prodId));
+            const variant = product?.variants?.find(item => item.size === size && item.color === color);
+            const available = variant ? getVariantStockForBranch(variant) : Number(initialQty || 0);
+            return available - getBasketPiecesForVariant(prodId, size, color);
+        }
+
+        // ==========================================
+        // اختيار العملاء والتسعير
+        // ==========================================
+        function normalizeCustomerText(value) {
+            return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        }
+
+        function getCustomerGroup(customer) {
+            if (!customer) return null;
+            return customerGroupsData.find(g => String(g.id) === String(customer.group)) ||
+                   customerGroupsData.find(g => Array.isArray(g.customerIds) && g.customerIds.map(String).includes(String(customer.id))) || null;
+        }
+
+        function getEffectiveProductPrice(product, unit = 'piece') {
+            if (!product) return 0;
+            const group = getCustomerGroup(selectedCustomer);
+            const groupPrice = group?.prices?.[product.id] || group?.prices?.[String(product.id)] || product.groupPrices?.[group?.id];
+            const unitId = cashierNormalizeUnitId(product, unit);
+            return window.CashtopMulti?.getProductUnitPrice(product, unitId, groupPrice) ?? Number(product.pricePiece || product.price || 0);
+        }
+
+        function showCustomerSuggestions() {
+            const input = document.getElementById('customerNameInput');
+            const inputVal = normalizeCustomerText(input.value);
+            const box = document.getElementById('customerSuggestions');
+            if (!inputVal) {
+                box.style.display = 'none';
+                selectedCustomer = null;
+                recalculateBasketPrices();
+                return;
+            }
+            const exact = customersData.find(c => normalizeCustomerText(c.name) === inputVal || normalizeCustomerText(c.phone) === inputVal);
+            if (exact && (!selectedCustomer || String(selectedCustomer.id) !== String(exact.id))) selectCustomer(exact, false);
+            const filtered = customersData.filter(c => normalizeCustomerText(c.name).includes(inputVal) || normalizeCustomerText(c.phone).includes(inputVal)).slice(0, 20);
+            box.innerHTML = '';
+            filtered.forEach(customer => {
+                const group = getCustomerGroup(customer);
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerHTML = `<div class="cust-info"><i class="fa-solid fa-user"></i> ${customer.name} ${group ? `<span style="color:#f39c12;">(${group.name})</span>` : ''}</div><span class="suggestion-meta">${customer.phone || 'بدون رقم'}</span>`;
+                div.onmousedown = e => { e.preventDefault(); selectCustomer(customer, true); };
+                box.appendChild(div);
+            });
+            box.style.display = filtered.length ? 'block' : 'none';
+        }
+
+        function resolveTypedCustomer() {
+            const value = normalizeCustomerText(document.getElementById('customerNameInput').value);
+            if (!value) return;
+            const exact = customersData.find(c => normalizeCustomerText(c.name) === value || normalizeCustomerText(c.phone) === value);
+            if (exact) selectCustomer(exact, false);
+            else if (selectedCustomer && normalizeCustomerText(selectedCustomer.name) !== value) {
+                selectedCustomer = null;
+                recalculateBasketPrices();
+            }
+        }
+
+        function selectCustomer(customer, notify = true) {
+            selectedCustomer = customer;
+            document.getElementById('customerNameInput').value = customer.name;
+            document.getElementById('customerPhoneInput').value = customer.phone || '';
+            document.getElementById('customerSuggestions').style.display = 'none';
+            recalculateBasketPrices();
+            const group = getCustomerGroup(customer);
+            if (notify) showToast(group ? `تم تطبيق أسعار مجموعة [${group.name}] للعميل ${customer.name}` : `تم اختيار العميل ${customer.name} بالسعر العادي`, 'success');
+        }
+
+        function recalculateBasketPrices() {
+            const group = getCustomerGroup(selectedCustomer);
+            basketItems.forEach(item => {
+                const prod = productsData.find(p => String(p.id) === String(item.id));
+                if (!prod || item.isCustom) return;
+                item.price = getEffectiveProductPrice(prod, item.selectedUnit);
+                item.referencePrice = item.price;
+                item.appliedGroupId = group?.id || null;
+                item.appliedGroupName = group?.name || null;
+            });
+            renderBasket();
+        }
+
+        // ==========================================
+        // المنتجات وتفعيل خيار (نفد)
+        // ==========================================
+        function renderProductsGrid() {
+            const container = document.getElementById('productsGridContainer');
+            container.innerHTML = '';
+            
+            if(productsData.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:20px; color:#999;">لا توجد منتجات مسجلة، يرجى إضافة منتجات.</div>`;
+                return;
+            }
+
+            productsData.forEach(prod => {
+                // إذا كان المنتج له مقاسات، نحسب المخزون المتاح من جميع مقاساته
+                let availStock = 0;
+                if (prod.hasVariants && prod.variants) {
+                    prod.variants.forEach(v => {
+                        availStock += getAvailableVariantStock(prod.id, v.size, v.color, v.qty);
+                    });
+                } else {
+                    availStock = getAvailableStock(prod.id);
+                }
+
+                const isOutOfStock = availStock <= 0;
+                
+                const card = document.createElement('div');
+                card.className = `product-item-card ${isOutOfStock ? 'out-of-stock' : ''}`;
+                
+                card.onclick = () => {
+                    runCashierStep('product card click', () => {
+                        if (isOutOfStock) {
+                            showToast('الكمية انتهت من المخزون!', 'error');
+                            return;
+                        }
+                        if (prod.hasVariants) openVariantModal(prod.id);
+                        else addToBasket(prod.id);
+                    });
+                };
+                
+                let stockStr = '';
+                if (isOutOfStock) {
+                    stockStr = isCompositeProduct(prod) ? 'المخزون نفد' : 'نفد';
+                } else {
+                    if (prod.hasVariants) {
+                        stockStr = `المقاسات: ${availStock}`;
+                    } else {
+                        const chain = cashierUnitChainForProduct(prod);
+                        let remaining = Number(availStock || 0);
+                        const parts = [];
+                        [...chain].reverse().forEach((level, reverseIndex) => {
+                            const factor = Math.max(0.000001, Number(level.factorToBase || 1));
+                            if (reverseIndex === chain.length - 1) {
+                                if (remaining > 0 || !parts.length) parts.push(`${quantityDisplay(remaining)} ${level.name}`);
+                            } else {
+                                const count = Math.floor((remaining + 1e-9) / factor);
+                                if (count > 0) { parts.push(`${count} ${level.name}`); remaining = roundStockQuantity(remaining - count * factor); }
+                            }
+                        });
+                        stockStr = `المخزون: ${parts.join(' + ')}`;
+                    }
+                }
+
+                card.innerHTML = `
+                    <div class="product-icon-box"><i class="fa-solid fa-box"></i></div>
+                    <div class="product-item-title">${prod.name}</div>
+                    ${isCompositeProduct(prod) ? '<div class="product-type-badge"><i class="fa-solid fa-cube"></i> غير متعدد</div>' : ''}
+                    <div class="product-item-price">${cashierBaseSymbol()} ${moneyDisplay(getEffectiveProductPrice(prod, 'piece'))}</div>
+                    <div class="stock-text">${stockStr}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterProducts() {
+            const searchVal = document.getElementById('searchProductInput').value.toLowerCase();
+            const cards = document.querySelectorAll('#productsGridContainer .product-item-card');
+            productsData.forEach((prod, index) => {
+                const match = prod.name.toLowerCase().includes(searchVal) || (prod.barcode && prod.barcode.includes(searchVal));
+                if(cards[index]) cards[index].style.display = match ? 'flex' : 'none';
+            });
+        }
+
+        // ==========================================
+        // وظائف نافذة المقاسات
+        // ==========================================
+        function openVariantModal(productId) {
+            const prod = productsData.find(p => String(p.id) === String(productId));
+            if (!prod) return;
+
+            const container = document.getElementById('variantOptionsContainer');
+            container.innerHTML = '';
+
+            prod.variants.forEach((v, vIndex) => {
+                let avail = getAvailableVariantStock(prod.id, v.size, v.color, v.qty);
+                let isOut = avail <= 0;
+                
+                let btn = document.createElement('button');
+                btn.className = 'variant-btn-option';
+                if (isOut) btn.disabled = true;
+                
+                btn.innerHTML = `
+                    <span>${v.size} ${v.color ? '- '+v.color : ''}</span> 
+                    <span style="color:${isOut ? '#dd4b39' : '#00a65a'}; font-size:11px;">${isOut ? 'نفد' : 'متاح: '+avail}</span>
+                `;
+                
+                if(!isOut) {
+                    btn.onclick = () => {
+                        addToBasketVariant(prod.id, vIndex);
+                        closeModal('variantModal');
+                    };
+                }
+                container.appendChild(btn);
+            });
+            openModal('variantModal');
+        }
+
+        function addToBasketVariant(productId, vIndex) {
+            const product = productsData.find(p => String(p.id) === String(productId));
+            const variant = product?.variants?.[vIndex];
+            if (!product || !variant) { showToast('تعذر العثور على بيانات الصنف أو المقاس. تم تحديث المنتجات.', 'error'); refreshCashierDataFromStorage('cashtop_products'); return false; }
+            
+            let avail = getAvailableVariantStock(product.id, variant.size, variant.color, variant.qty);
+            if (avail + 1e-9 < getQuantitySettings().step) {
+                showToast('الكمية انتهت من المخزون!', 'error');
+                return false;
+            }
+
+            const existingItem = basketItems.find(item => String(item.id) === String(productId) && item.isVariant && item.variantSize === variant.size && item.variantColor === variant.color);
+            
+            let itemPrice = getEffectiveProductPrice(product, 'piece');
+
+            const incrementQty = normalizeQuantity(Math.min(1, avail));
+            if (existingItem) {
+                existingItem.qty = normalizeQuantity(Number(existingItem.qty || 0) + incrementQty);
+            } else {
+                basketItems.push({ 
+                    id: product.id, 
+                    name: `${product.name} (${variant.size} ${variant.color ? '- '+variant.color : ''})`, 
+                    price: itemPrice, referencePrice: itemPrice, 
+                    cost: product.cost,
+                    qty: incrementQty, 
+                    selectedUnit: 'piece', 
+                    unitName: product.unitName || 'وحدة', 
+                    pieceName: product.pieceName || 'قطعة',
+                    piecesPerUnit: 1, // المقاسات تباع بالقطعة عادة
+                    hasSaleUnit: false,
+                    isCustom: false,
+                    isVariant: true,
+                    variantSize: variant.size,
+                    variantColor: variant.color
+                });
+            }
+            renderBasket();
+            return true;
+        }
+
+        // ==========================================
+        // وظائف السلة للمنتج العادي ومنع السالب
+        // ==========================================
+        function addToBasket(productId) {
+            const product = productsData.find(p => String(p.id) === String(productId));
+            if (!product) { refreshCashierDataFromStorage('cashtop_products'); showToast('تعذر العثور على الصنف. تم تحديث قائمة المنتجات.', 'error'); return false; }
+            const chain = cashierUnitChainForProduct(product);
+            const baseUnit = chain[0];
+            let avail = getAvailableStock(productId);
+            if (avail + 1e-9 < getQuantitySettings().step) { showToast('الكمية انتهت من المخزون!', 'error'); return; }
+            const existingItem = basketItems.find(item => String(item.id) === String(productId) && String(cashierNormalizeUnitId(product, item.selectedUnit)) === String(baseUnit.id) && !item.isCustom && !item.isVariant);
+            const itemPrice = getEffectiveProductPrice(product, baseUnit.id);
+            const incrementQty = normalizeQuantity(Math.min(1, avail));
+            if (existingItem) existingItem.qty = normalizeQuantity(Number(existingItem.qty || 0) + incrementQty);
+            else basketItems.push({
+                id: product.id, name: product.name, price: itemPrice, referencePrice: itemPrice, costPerPiece: Number(product.cost || 0), cost: product.cost, qty: incrementQty,
+                selectedUnit: baseUnit.id, unitName: chain[chain.length - 1]?.name || '', pieceName: baseUnit.name || 'قطعة',
+                piecesPerUnit: Number(chain[chain.length - 1]?.factorToBase || 1), unitChain: chain,
+                hasSaleUnit: chain.length > 1, isCustom: false, isVariant: false
+            });
+            renderBasket();
+            return true;
+        }
+
+        function handleQuickProductSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('qpName').value.trim();
+            const cost = parseFloat(document.getElementById('qpCost').value) || 0;
+            const price = parseFloat(document.getElementById('qpPrice').value) || 0;
+            const stock = normalizeQuantity(document.getElementById('qpStock').value);
+
+            basketItems.push({ 
+                id: `CUSTOM_${Date.now()}`, 
+                name: name, price: price, referencePrice: price, cost: cost, qty: stock, 
+                selectedUnit: 'piece', unitName: '', pieceName: 'قطعة', piecesPerUnit: 1, hasSaleUnit: false, isCustom: true, isVariant: false 
+            });
+
+            renderBasket();
+            document.getElementById('quickProductForm').reset();
+            closeModal('quickProductModal');
+            showToast('تمت إضافة الصنف للسلة بنجاح', 'success');
+        }
+
+        function renderBasket() {
+            const container = document.getElementById('basketItemsContainer');
+            container.innerHTML = '';
+
+            if(basketItems.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#999; padding:20px; font-size:12px;">السلة فارغة حالياً</div>`;
+                document.getElementById('mobile-badge').innerText = '0';
+                calculateTotals();
+                renderProductsGrid(); 
+                return;
+            }
+
+            let totalQty = 0;
+            basketItems.forEach((item, index) => {
+                if (!Number.isFinite(Number(item.referencePrice))) item.referencePrice = Number(item.price || 0);
+                item.qty = getQuantitySettings().qtyByPrice ? normalizePriceDerivedQuantity(item.qty) : normalizeQuantity(item.qty);
+                totalQty += Number(item.qty || 0);
+                
+                let unitSelectorHtml = '';
+                if (item.isCustom) {
+                    unitSelectorHtml = `<span style="font-size:10px; color:#f39c12; background:#fff9ec; padding:2px 5px; border-radius:3px;">بدون مخزون</span>`;
+                } else if (item.isVariant) {
+                    unitSelectorHtml = `<span class="badge-variant-info">مخصص</span>`;
+                } else {
+                    const product = productsData.find(product => String(product.id) === String(item.id)) || item;
+                    const chain = cashierUnitChainForProduct(product);
+                    item.unitChain = chain;
+                    item.hasSaleUnit = chain.length > 1;
+                    item.selectedUnit = cashierNormalizeUnitId(product, item.selectedUnit);
+                    const options = chain.map(level => `<option value="${String(level.id)}" ${String(item.selectedUnit) === String(level.id) ? 'selected' : ''}>${String(level.name)}</option>`).join('');
+                    unitSelectorHtml = `<select class="unit-select" onchange="updateItemUnit(${index}, this.value)">${options}</select>`;
+                }
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'basket-item';
+                itemDiv.innerHTML = `
+                    <div class="item-row-top">
+                        <div class="item-name-badge">
+                            <span class="item-title">${item.name}</span>
+                            ${unitSelectorHtml}
+                        </div>
+                        <div class="item-top-actions">
+                            <button type="button" class="btn-item-info" onclick="openBasketItemInfo(${index})" title="معلومات التكلفة والربح"><i class="fa-solid fa-chart-line"></i></button>
+                            <button class="btn-delete-item" onclick="removeBasketItem(${index})" title="حذف الصنف"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <div class="item-row-controls">
+                        <div class="quantity-control">
+                            <button type="button" class="btn-qty" onclick="updateQty(${index}, -1)" title="إنقاص 1"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" step="${getQuantitySettings().qtyByPrice ? 'any' : getQuantitySettings().step}" min="0.000001" class="qty-num" value="${quantityDisplay(item.qty)}" onchange="changeQtyDirect(${index}, this.value)">
+                            <button type="button" class="btn-qty" onclick="updateQty(${index}, 1)" title="زيادة 1"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        <div class="price-total-wrap">
+                            <span class="item-line-total">الإجمالي: <strong>${moneyDisplay(Number(item.price || 0) * Number(item.qty || 0))} ${cashierBaseSymbol()}</strong></span>
+                            <div class="editable-price-control">
+                                <input type="number" step="0.001" value="${(getQuantitySettings().qtyByPrice ? Number(item.price || 0) * Number(item.qty || 0) : Number(item.price || 0)).toFixed(3).replace(/\.?0+$/, '')}" onchange="changePriceDirect(${index}, this.value)" title="${getQuantitySettings().qtyByPrice ? 'أدخل المبلغ المطلوب لتتغير الكمية تلقائياً' : 'سعر الوحدة'}">
+                                <span class="currency-black">${cashierBaseSymbol()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+            document.getElementById('mobile-badge').innerText = quantityDisplay(totalQty);
+            calculateTotals();
+            renderProductsGrid(); 
+        }
+
+        function updateItemUnit(index, value) {
+            const item = basketItems[index];
+            if (!item || item.isCustom || item.isVariant) return;
+            const product = productsData.find(product => String(product.id) === String(item.id)) || item;
+            const oldId = cashierNormalizeUnitId(product, item.selectedUnit);
+            const newId = cashierNormalizeUnitId(product, value);
+            if (String(oldId) === String(newId)) return;
+            const chain = cashierUnitChainForProduct(product);
+            const oldFactor = Number(chain.find(level => String(level.id) === String(oldId))?.factorToBase || 1);
+            const newFactor = Number(chain.find(level => String(level.id) === String(newId))?.factorToBase || 1);
+            const diff = Number(item.qty || 0) * (newFactor - oldFactor);
+            if (diff > 0 && getAvailableStock(item.id) + 1e-9 < diff) {
+                showToast('المخزون لا يكفي للتحويل إلى هذه الوحدة!', 'error'); renderBasket(); return;
+            }
+            item.selectedUnit = newId;
+            item.piecesPerUnit = newFactor;
+            item.unitName = chain.find(level => String(level.id) === String(newId))?.name || item.unitName;
+            item.costPerPiece = Number(product.cost || item.costPerPiece || 0);
+            item.cost = item.costPerPiece * newFactor;
+            recalculateBasketPrices();
+        }
+
+        function canUseQuantity(item, newQty) {
+            if (item.isCustom) return true;
+            const currentQty = Number(item.qty || 0);
+            const diffQty = newQty - currentQty;
+            if (diffQty <= 0) return true;
+            if (item.isVariant) {
+                const prod = productsData.find(p => String(p.id) === String(item.id));
+                const variant = prod?.variants?.find(vx => vx.size === item.variantSize && vx.color === item.variantColor);
+                const available = getAvailableVariantStock(item.id, item.variantSize, item.variantColor, Number(variant?.qty || 0));
+                return available + 1e-9 >= diffQty;
+            }
+            const diffPieces = diffQty * cashierUnitFactor(item);
+            return getAvailableStock(item.id) + 1e-9 >= diffPieces;
+        }
+
+        function updateQty(index, delta) {
+            const item = basketItems[index];
+            if (!item) return;
+            const numericDelta = Number(delta || 0);
+            const currentQty = Number(item.qty || 0);
+            if (numericDelta < 0 && currentQty <= 1 + 1e-9) {
+                basketItems.splice(index, 1);
+                renderBasket();
+                return;
+            }
+            const cfg = getQuantitySettings();
+            const rawQuantity = currentQty + numericDelta;
+            const newQty = cfg.qtyByPrice ? normalizePriceDerivedQuantity(rawQuantity) : normalizeQuantity(rawQuantity);
+            if (!canUseQuantity(item, newQty)) {
+                showToast('الكمية المطلوبة أكبر من المخزون المتاح!', 'error');
+                return;
+            }
+            item.qty = newQty;
+            renderBasket();
+        }
+
+        function changeQtyDirect(index, value) {
+            const item = basketItems[index];
+            if (!item) return;
+            const cfg = getQuantitySettings();
+            const newQty = cfg.qtyByPrice ? normalizePriceDerivedQuantity(value) : normalizeQuantity(value);
+            if (!canUseQuantity(item, newQty)) {
+                showToast('الكمية المطلوبة أكبر من المخزون المتاح!', 'error');
+                renderBasket();
+                return;
+            }
+            item.qty = newQty;
+            renderBasket();
+        }
+
+        function changePriceDirect(index, value) {
+            const item = basketItems[index];
+            if (!item) return;
+            const enteredValue = Math.max(0, parseFloat(value) || 0);
+            const cfg = getQuantitySettings();
+            if (cfg.qtyByPrice) {
+                const basePrice = Math.max(0, Number(item.referencePrice || item.price || 0));
+                if (basePrice <= 0) {
+                    showToast('لا يمكن حساب الكمية لأن سعر الصنف يساوي صفراً.', 'error');
+                    renderBasket();
+                    return;
+                }
+                const newQty = normalizePriceDerivedQuantity(enteredValue / basePrice);
+                if (!canUseQuantity(item, newQty)) {
+                    showToast('المبلغ المدخل يحتاج كمية أكبر من المخزون المتاح!', 'error');
+                    renderBasket();
+                    return;
+                }
+                item.price = basePrice;
+                item.qty = newQty;
+                renderBasket();
+            } else {
+                item.price = enteredValue;
+                item.referencePrice = enteredValue;
+                renderBasket();
+            }
+        }
+
+        function selectedBasketItemUnitMeta(item) {
+            if (!item) return { name: 'وحدة', factor: 1, cost: 0 };
+            if (item.isCustom) return { name: item.unitName || 'وحدة', factor: 1, cost: Number(item.cost || 0) };
+            if (item.isVariant) return { name: item.unitName || item.pieceName || 'قطعة', factor: 1, cost: Number(item.cost || item.costPerPiece || 0) };
+            const product = productsData.find(product => String(product.id) === String(item.id)) || item;
+            const chain = cashierUnitChainForProduct(product);
+            const unitId = cashierNormalizeUnitId(product, item.selectedUnit);
+            const unit = chain.find(level => String(level.id) === String(unitId)) || chain[0] || { name: 'قطعة', factorToBase: 1 };
+            const factor = Math.max(0.000001, Number(unit.factorToBase || 1));
+            const baseCost = Number(product.cost ?? item.costPerPiece ?? 0);
+            return { name: unit.name || 'قطعة', factor, cost: baseCost * factor };
+        }
+
+        function openBasketItemInfo(index) {
+            const item = basketItems[index];
+            if (!item) return;
+            const meta = selectedBasketItemUnitMeta(item);
+            const sale = Number(item.price || 0);
+            const qty = Number(item.qty || 0);
+            const unitProfit = sale - Number(meta.cost || 0);
+            const lineProfit = unitProfit * qty;
+            const isLoss = unitProfit < -1e-9;
+            const lineIsLoss = lineProfit < -1e-9;
+            document.getElementById('itemInfoName').textContent = `${item.name} — ${meta.name}`;
+            document.getElementById('itemInfoCostLabel').textContent = `تكلفة ${meta.name}`;
+            document.getElementById('itemInfoCost').textContent = `${moneyDisplay(meta.cost)} ${cashierBaseSymbol()}`;
+            document.getElementById('itemInfoSale').textContent = `${moneyDisplay(sale)} ${cashierBaseSymbol()}`;
+            document.getElementById('itemInfoProfitLabel').textContent = isLoss ? `الخسارة المقدرة لكل ${meta.name}` : `الربح المقدر لكل ${meta.name}`;
+            document.getElementById('itemInfoProfit').textContent = `${moneyDisplay(Math.abs(unitProfit))} ${cashierBaseSymbol()}`;
+            document.getElementById('itemInfoLineProfitLabel').textContent = lineIsLoss ? 'خسارة الكمية الحالية' : 'ربح الكمية الحالية';
+            document.getElementById('itemInfoLineProfit').textContent = `${moneyDisplay(Math.abs(lineProfit))} ${cashierBaseSymbol()}`;
+            const unitCard = document.getElementById('itemInfoProfitCard');
+            const lineCard = document.getElementById('itemInfoLineProfitCard');
+            unitCard.classList.remove('profit', 'loss');
+            lineCard.classList.remove('profit', 'loss');
+            unitCard.classList.add(isLoss ? 'loss' : 'profit');
+            lineCard.classList.add(lineIsLoss ? 'loss' : 'profit');
+            openModal('itemInfoModal');
+        }
+
+        function removeBasketItem(index) { basketItems.splice(index, 1); renderBasket(); }
+
+        function clearBasket() {
+            if (editingOriginalInvoice && editingOriginalInvoice.status !== 'draft' && editingInventoryRestored) {
+                productsData = readArray('cashtop_products');
+            }
+            basketItems = [];
+            stockBranchId = sessionBranchId;
+            discountValueInput = 0.00;
+            globalDiscountCalculated = 0.00;
+            currentlyEditingInvoiceId = null;
+            editingOriginalInvoice = null;
+            editingInventoryRestored = false;
+            selectedCustomer = null;
+            isPaidManuallyEdited = false;
+            cashierMultiPayments = [];
+            offerDiscountCalculated = 0;
+            salesTaxCalculated = 0;
+            document.getElementById('discountInputAmount').value = '0.00';
+            document.getElementById('customerNameInput').value = '';
+            document.getElementById('customerPhoneInput').value = '';
+            document.getElementById('invoiceNotesInput').value = '';
+            document.getElementById('mobile-badge').innerText = '0';
+            renderBasket(); // التفريغ يرجع المخزون الوهمي
+        }
+
+        // ==========================================
+        // حساب الإجماليات والخصم
+        // ==========================================
+        function setDiscountType(type) {
+            discountMode = type;
+            document.getElementById('typeFixedBtn').classList.toggle('active', type === 'fixed');
+            document.getElementById('typePercentBtn').classList.toggle('active', type === 'percent');
+            document.getElementById('discountInputLabel').innerText = type === 'fixed' ? `قيمة الخصم (${cashierBaseSymbol()})` : 'نسبة الخصم المئوية (%)';
+            calculateTotals(false); 
+        }
+
+        function applyDiscountValue() {
+            if (!window.Cashtop?.can?.('sales.discount')) { showToast('لا تملك صلاحية تطبيق الخصم', 'error'); return; }
+            discountValueInput = parseFloat(document.getElementById('discountInputAmount').value) || 0.00;
+            closeModal('discountModal');
+            calculateTotals(true);
+        }
+
+        function handlePaidInput() {
+            isPaidManuallyEdited = true;
+            calculateTotals(false);
+        }
+
+        function isActiveWindow(item) {
+            if (item.active === false || item.status === 'inactive') return false;
+            const now = Date.now();
+            const parseBoundary = (value, endOfDay = false) => {
+                if (!value) return endOfDay ? Number.POSITIVE_INFINITY : 0;
+                const date = new Date(value);
+                if (endOfDay && /^\d{4}-\d{2}-\d{2}$/.test(String(value))) date.setHours(23, 59, 59, 999);
+                return date.getTime();
+            };
+            const start = parseBoundary(item.start, false);
+            const end = parseBoundary(item.end, true);
+            return (!start || now >= start) && (!Number.isFinite(end) || now <= end);
+        }
+
+        function calculateOfferDiscount(subtotal) {
+            const activeOffers = offersData.filter(isActiveWindow);
+            let discount = 0;
+            activeOffers.forEach(offer => {
+                const type = normalizeOfferType(offer);
+                if (type === 'cart') {
+                    if (subtotal >= Math.max(0, Number(offer.minTotal || 0))) {
+                        const value = Math.max(0, Number(offer.value || 0));
+                        discount += offer.discountType === 'fixed' ? value : subtotal * value / 100;
+                    }
+                    return;
+                }
+                basketItems.forEach(item => {
+                    if (!offerMatchesItem(offer, item)) return;
+                    const qty = Number(item.qty || 0);
+                    const price = Number(item.price || 0);
+                    const line = price * qty;
+                    if (type === 'percentage') discount += line * Math.max(0, Number(offer.value || 0)) / 100;
+                    else if (type === 'fixed') discount += Math.min(line, Math.max(0, Number(offer.value || 0)) * qty);
+                    else if (type === 'bogo') {
+                        const buy = Math.max(1, Number(offer.buyQty || 1));
+                        const free = Math.max(1, Number(offer.freeQty || 1));
+                        const groups = Math.floor(qty / (buy + free));
+                        discount += groups * free * price;
+                    } else if (type === 'quantity') {
+                        const minimum = Math.max(1, Number(offer.minQty || 1));
+                        if (qty >= minimum) discount += line * Math.max(0, Number(offer.value || 0)) / 100;
+                    }
+                });
+            });
+            return Math.min(subtotal, Math.max(0, discount));
+        }
+
+        function getApplicableOfferIds() {
+            const subtotal = basketItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+            return offersData.filter(offer => {
+                if (!isActiveWindow(offer)) return false;
+                const type = normalizeOfferType(offer);
+                if (type === 'cart') return subtotal >= Math.max(0, Number(offer.minTotal || 0)) && Number(offer.value || 0) > 0;
+                return basketItems.some(item => {
+                    if (!offerMatchesItem(offer, item)) return false;
+                    const qty = Number(item.qty || 0);
+                    if (type === 'bogo') return qty >= Math.max(1, Number(offer.buyQty || 1) + Number(offer.freeQty || 1));
+                    if (type === 'quantity') return qty >= Math.max(1, Number(offer.minQty || 1)) && Number(offer.value || 0) > 0;
+                    return Number(offer.value || 0) > 0;
+                });
+            }).map(offer => offer.id);
+        }
+
+
+        function computeInvoiceTotals() {
+            const subtotal = basketItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 0)), 0);
+            const manualDiscount = Math.min(subtotal, Math.max(0, discountMode === 'fixed'
+                ? Number(discountValueInput || 0)
+                : subtotal * Number(discountValueInput || 0) / 100));
+            const offerDiscount = calculateOfferDiscount(Math.max(0, subtotal - manualDiscount));
+            const discount = Math.min(subtotal, manualDiscount + offerDiscount);
+            const taxable = Math.max(0, subtotal - discount);
+            const taxInfo = window.Cashtop?.calculateTax?.(taxable, 'sales') || { tax: 0, total: taxable };
+            const tax = Number(taxInfo.tax || 0);
+            const total = Math.max(0, Number(taxInfo.total ?? taxable));
+            const cfg = getCashierCurrencyConfig();
+            const currencyId = cfg.enabled ? getInvoiceCurrencyId() : cfg.baseCurrencyId;
+            const paidNativeInput = Math.max(0, Number(document.getElementById('invoicePaidAmount')?.value || 0));
+            const paidBaseInput = window.CashtopMulti?.toBase?.(paidNativeInput, currencyId) ?? paidNativeInput;
+            const paid = Math.min(total, paidBaseInput);
+            const paidNative = window.CashtopMulti?.fromBase?.(paid, currencyId) ?? paid;
+            return { subtotal, manualDiscount, offerDiscount, discount, taxable, tax, total, paid, paidNative, currencyId, debt: Math.max(0, total - paid) };
+        }
+
+        function calculateTotals(updatePaidInput = true) {
+            let totals = computeInvoiceTotals();
+            manualDiscountCalculated = totals.manualDiscount;
+            offerDiscountCalculated = totals.offerDiscount;
+            globalDiscountCalculated = totals.discount;
+            salesTaxCalculated = totals.tax;
+            const paidInput = document.getElementById('invoicePaidAmount');
+            if (updatePaidInput && !isPaidManuallyEdited && paidInput) {
+                const nativeTotal = window.CashtopMulti?.fromBase?.(totals.total, totals.currencyId) ?? totals.total;
+                paidInput.value = moneyDisplay(nativeTotal);
+                totals = computeInvoiceTotals();
+            }
+            const symbol = cashierBaseSymbol();
+            document.querySelectorAll('.summarySubtotalText').forEach(el => el.innerText = moneyDisplay(totals.subtotal) + ' ' + symbol);
+            document.querySelectorAll('.summaryDiscountText').forEach(el => el.innerText = moneyDisplay(totals.discount) + ' ' + symbol);
+            document.querySelectorAll('.summaryTaxText').forEach(el => el.innerText = moneyDisplay(totals.tax) + ' ' + symbol);
+            document.querySelectorAll('.summaryTotalText').forEach(el => el.innerText = moneyDisplay(totals.total) + ' ' + symbol);
+            document.querySelectorAll('.summaryDebtText').forEach(el => el.innerText = moneyDisplay(totals.debt) + ' ' + symbol);
+            return totals;
+        }
+
+        // ==========================================
+        // العمليات (تعليق - حفظ)
+        // ==========================================
+        function holdInvoice() {
+            if (!window.Cashtop?.can?.('sales.hold')) { showToast('لا تملك صلاحية تعليق الفواتير', 'error'); return; }
+            if (editingOriginalInvoice && editingOriginalInvoice.status !== 'draft') { showToast('لا يمكن تحويل فاتورة صادرة إلى معلقة. احفظ التعديل أو ألغِه.', 'warning'); return; }
+            if(basketItems.length === 0) { showToast('السلة فارغة!', 'error'); return; }
+
+            const invoiceObj = buildInvoiceData('draft'); 
+            let invoicesDB = readArray('cashtop_invoices');
+            
+            if(currentlyEditingInvoiceId) { invoicesDB = invoicesDB.filter(inv => inv.id !== currentlyEditingInvoiceId); }
+            
+            invoicesDB.push(invoiceObj);
+            localStorage.setItem('cashtop_invoices', JSON.stringify(invoicesDB));
+
+            showToast('تم تعليق الفاتورة بنجاح!', 'warning'); 
+            clearBasket(); // التفريغ سيعيد المخزون الوهمي
+        }
+
+        async function printThermalInvoice(invoice) {
+            if (!window.CashtopPrinter?.printInvoice) {
+                showToast('وحدة الطباعة الحرارية غير متاحة حالياً', 'error');
+                return false;
+            }
+            try {
+                const result = await window.CashtopPrinter.printInvoice(invoice);
+                if (result?.mode === 'bluetooth') showToast('تم إرسال الفاتورة مباشرة إلى طابعة Bluetooth', 'success');
+                return true;
+            } catch (error) {
+                console.error(error);
+                showToast(error?.message || 'تعذر إرسال الفاتورة للطباعة', 'error');
+                return false;
+            }
+        }
+
+        function setInvoiceSaveBusy(busy) {
+            document.querySelectorAll('.btn-save-only, .btn-save-print').forEach(button => {
+                button.disabled = Boolean(busy);
+                button.style.opacity = busy ? '.65' : '';
+                button.style.pointerEvents = busy ? 'none' : '';
+            });
+        }
+
+        function saveFinalInvoice(printStatus = false) {
+            if (invoiceSaveInProgress) { showToast('جاري حفظ الفاتورة، انتظر لحظة.', 'warning'); return; }
+            invoiceSaveInProgress = true;
+            setInvoiceSaveBusy(true);
+            const snapshotKeys = ['cashtop_products','cashtop_materials','cashtop_customers','cashtop_funds_db','cashtop_invoices','cashtop_sales_offers'];
+            const snapshots = Object.fromEntries(snapshotKeys.map(key => [key, localStorage.getItem(key)]));
+            try {
+            const requiredPermission = editingOriginalInvoice ? 'sales.edit' : 'sales.create';
+            if (!window.Cashtop?.can?.(requiredPermission)) { showToast('لا تملك الصلاحية اللازمة لحفظ هذه الفاتورة', 'error'); return; }
+            if (printStatus && !window.Cashtop?.can?.('sales.print')) { showToast('سيتم الحفظ دون طباعة لأن صلاحية الطباعة غير متاحة', 'warning'); printStatus = false; }
+            if(basketItems.length === 0) { showToast('السلة فارغة!', 'error'); return; }
+            const stockCheck = validateStockBeforeIssue(basketItems, stockBranchId);
+            if (!stockCheck.ok) { showToast(stockCheck.message, 'error'); return; }
+
+            const invoiceObj = buildInvoiceData('issued');
+            invoiceObj.stockMovements = basketItems.filter(item => !item.isCustom).map(item => ({
+                productId: item.id,
+                variantSize: item.variantSize || '',
+                variantColor: item.variantColor || '',
+                selectedUnit: item.selectedUnit || 'piece',
+                quantity: roundStockQuantity(item.qty || 0),
+                quantityPieces: itemQuantityInPieces(item)
+            }));
+            invoiceObj.stockAppliedLocallyAt = new Date().toISOString();
+            if (!Number.isFinite(invoiceObj.total) || invoiceObj.total <= 0) { showToast('إجمالي الفاتورة غير صحيح. راجع الأسعار والكميات.', 'error'); return; }
+            if (invoiceObj.paid > 0 && invoiceObj.paymentMethod === 'دفع متعدد') {
+                const splitBaseTotal = (invoiceObj.payments || []).reduce((sum, payment) => sum + Number(payment.baseAmount || 0), 0);
+                if (!invoiceObj.payments?.length || Math.abs(splitBaseTotal - Number(invoiceObj.paid || 0)) > 0.01) {
+                    showToast('مبالغ الدفع المتعدد لا تطابق المبلغ المدفوع. افتح دفع متعدد واحفظ التوزيع من جديد.', 'error'); return;
+                }
+            } else if (invoiceObj.paid > 0 && !fundsDB.accounts.some(acc => String(acc.id) === String(invoiceObj.accountId))) {
+                showToast('اختر صندوقاً للتحصيل قبل الحفظ.', 'error'); return;
+            }
+            if (invoiceObj.debt > 0 && !window.Cashtop?.can?.('sales.credit')) { showToast('لا تملك صلاحية تسجيل بيع آجل أو دين', 'error'); return; }
+            if (Number(invoiceObj.discount || 0) > 0 && !window.Cashtop?.can?.('sales.discount')) { showToast('لا تملك صلاحية تطبيق الخصم', 'error'); return; }
+            let offersChanged = false;
+            (editingOriginalInvoice?.offerIds || []).forEach(offerId => {
+                const oldOffer = offersData.find(o => String(o.id) === String(offerId));
+                if (oldOffer) {
+                    oldOffer.used = Math.max(0, Number(oldOffer.used || 0) - 1);
+                    offersChanged = true;
+                }
+            });
+
+            // في وضع تعديل فاتورة صادرة: عكس القيد المالي والذمة أولاً، والمخزون يكون قد أُعيد مؤقتاً عند الاستدعاء.
+            if (editingOriginalInvoice && editingOriginalInvoice.status !== 'draft') {
+                reverseIssuedInvoice(editingOriginalInvoice, editingInventoryRestored);
+            }
+            
+            // تسجيل الدين بقيمته الخاصة بهذه الفاتورة على العميل.
+            if(invoiceObj.debt > 0 && invoiceObj.customer !== 'عميل نقدي') {
+                let debtCustomer = selectedCustomer || customersData.find(c => String(c.id) === String(invoiceObj.customerId)) || customersData.find(c => c.name === invoiceObj.customer);
+                if (!debtCustomer) {
+                    debtCustomer = { id: `C_${Date.now()}`, name: invoiceObj.customer, phone: invoiceObj.phone, portalKey: String(Math.floor(100000 + Math.random() * 900000)), group: 'retail', balance: 0, createdAt: new Date().toISOString() };
+                    customersData.push(debtCustomer);
+                }
+                debtCustomer.balance = (parseFloat(debtCustomer.balance) || 0) + invoiceObj.debt;
+                invoiceObj.customerId = debtCustomer.id;
+                upsertCustomerInvoiceDebt(debtCustomer, invoiceObj);
+            }
+
+            // خصم المخزون الحقيقي من الفرع الذي دخل منه المدير أو الموظف.
+            adjustProductStock(basketItems, -1, stockBranchId);
+
+            // ترحيل المبلغ المقبوض إلى صندوق واحد أو عدة صناديق مع التحويل بين العملات عبر العملة الأساسية.
+            if (invoiceObj.paid > 0 && invoiceObj.paymentMethod === 'دفع متعدد') {
+                const splitBaseTotal = (invoiceObj.payments || []).reduce((sum, payment) => sum + Number(payment.baseAmount || 0), 0);
+                if (!invoiceObj.payments?.length || Math.abs(splitBaseTotal - Number(invoiceObj.paid || 0)) > 0.01) {
+                    showToast('مبالغ الدفع المتعدد لا تطابق المبلغ المدفوع. افتح دفع متعدد واحفظ التوزيع من جديد.', 'error'); return;
+                }
+                invoiceObj.payments.forEach((payment, paymentIndex) => {
+                    const account = fundsDB.accounts.find(acc => String(acc.id) === String(payment.accountId));
+                    if (!account) throw new Error(`الصندوق [${payment.accountName || payment.accountId}] غير موجود.`);
+                    account.balance = (parseFloat(account.balance) || 0) + Number(payment.accountAmount || 0);
+                    fundsDB.accountLogs.push({
+                        id: `LOG_SALE_${invoiceObj.id}_${paymentIndex}_${Date.now()}`,
+                        sourceType: 'sale', sourceId: invoiceObj.id,
+                        accountId: account.id, date: invoiceObj.date, type: 'إيداع', amount: Number(payment.accountAmount || 0),
+                        baseAmount: Number(payment.baseAmount || 0), currencyId: payment.accountCurrencyId || account.currencyId,
+                        transactionAmount: Number(payment.transactionAmount || 0), transactionCurrencyId: invoiceObj.currencyId,
+                        notes: `تحصيل متعدد لفاتورة بيع [${invoiceObj.id}] من [${invoiceObj.customer}]`
+                    });
+                });
+            } else {
+                const selectedAccount = fundsDB.accounts.find(acc => String(acc.id) === String(invoiceObj.accountId)) || null;
+                if (invoiceObj.paid > 0 && !selectedAccount) { showToast('اختر صندوقاً للتحصيل قبل الحفظ.', 'error'); return; }
+                if (selectedAccount && invoiceObj.paid > 0) {
+                    const settlement = window.CashtopMulti?.settleToAccount?.(Number(invoiceObj.paidNative || 0), invoiceObj.currencyId, selectedAccount)
+                        || { accountAmount: Number(invoiceObj.paidNative || 0), accountCurrencyId: selectedAccount.currencyId || invoiceObj.currencyId, baseAmount: Number(invoiceObj.paid || 0) };
+                    selectedAccount.balance = (parseFloat(selectedAccount.balance) || 0) + Number(settlement.accountAmount || 0);
+                    invoiceObj.accountCurrencyId = settlement.accountCurrencyId;
+                    invoiceObj.accountAmountNative = Number(settlement.accountAmount || 0);
+                    fundsDB.accountLogs.push({
+                        id: `LOG_SALE_${invoiceObj.id}_${Date.now()}`,
+                        sourceType: 'sale', sourceId: invoiceObj.id,
+                        accountId: selectedAccount.id, date: invoiceObj.date, type: 'إيداع', amount: Number(settlement.accountAmount || 0),
+                        baseAmount: Number(invoiceObj.paid || 0), currencyId: settlement.accountCurrencyId,
+                        transactionAmount: Number(invoiceObj.paidNative || 0), transactionCurrencyId: invoiceObj.currencyId,
+                        notes: `تحصيل فاتورة بيع [${invoiceObj.id}] من [${invoiceObj.customer}]`
+                    });
+                }
+            }
+            const saleCustomer = selectedCustomer || customersData.find(c => String(c.id) === String(invoiceObj.customerId));
+            if (saleCustomer) saleCustomer.lastPurchaseAt = invoiceObj.date;
+
+            // حفظ الفاتورة
+            let invoicesDB = readArray('cashtop_invoices');
+            if(currentlyEditingInvoiceId) invoicesDB = invoicesDB.filter(inv => inv.id !== currentlyEditingInvoiceId);
+            invoicesDB.push(invoiceObj);
+            (invoiceObj.offerIds || []).forEach(offerId => {
+                const offer = offersData.find(o => String(o.id) === String(offerId));
+                if (offer) {
+                    offer.used = Number(offer.used || 0) + 1;
+                    offersChanged = true;
+                }
+            });
+            const invoiceChanges = {
+                cashtop_products: productsData,
+                cashtop_materials: materialsData,
+                cashtop_customers: customersData,
+                cashtop_funds_db: fundsDB,
+                cashtop_invoices: invoicesDB
+            };
+            if (offersChanged) invoiceChanges.cashtop_sales_offers = offersData;
+            if (window.Cashtop?.atomicSetItems) window.Cashtop.atomicSetItems(invoiceChanges, { label: 'save-sales-invoice' });
+            else Object.entries(invoiceChanges).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
+            productsData = verifyPersistedStock(productsData, basketItems);
+            window.CashtopTransientNotifications?.notifyInvoice?.(invoiceObj).catch?.(()=>null);
+
+            if(printStatus) {
+                showToast('تم حفظ الفاتورة محلياً، وجاري تجهيز الطباعة.', 'success');
+                printThermalInvoice(invoiceObj).catch(error => console.error('print invoice:', error));
+            } else {
+                showToast(navigator.onLine ? 'تم حفظ الفاتورة بنجاح!' : 'تم حفظ الفاتورة محلياً، وستتزامن تلقائياً عند عودة الإنترنت.', 'success');
+            }
+
+            basketItems = [];
+            stockBranchId = sessionBranchId;
+            discountValueInput = 0.00;
+            globalDiscountCalculated = 0.00;
+            currentlyEditingInvoiceId = null;
+            editingOriginalInvoice = null;
+            editingInventoryRestored = false;
+            selectedCustomer = null;
+            isPaidManuallyEdited = false;
+            cashierMultiPayments = [];
+            offerDiscountCalculated = 0;
+            salesTaxCalculated = 0;
+            document.getElementById('discountInputAmount').value = '0.00';
+            document.getElementById('customerNameInput').value = '';
+            document.getElementById('customerPhoneInput').value = '';
+            document.getElementById('invoiceNotesInput').value = '';
+            document.getElementById('mobile-badge').innerText = '0';
+            
+            renderBasket(); 
+        
+                customersData = readArray('cashtop_customers');
+                fundsDB = readObject('cashtop_funds_db', { accounts: [], accountLogs: [] });
+            } catch (error) {
+                console.error('[CASH TOP 2] save invoice transaction:', error);
+                snapshotKeys.forEach(key => {
+                    const value = snapshots[key];
+                    if (value == null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+                });
+                productsData = readArray('cashtop_products');
+                materialsData = readArray('cashtop_materials');
+                customersData = readArray('cashtop_customers');
+                fundsDB = readObject('cashtop_funds_db', { accounts: [], accountLogs: [] });
+                showToast('تعذر حفظ الفاتورة بالكامل، وتم التراجع عن أي حركة جزئية لحماية المخزون والحسابات.', 'error');
+                runCashierStep('save rollback basket', renderBasket);
+            } finally {
+                invoiceSaveInProgress = false;
+                setInvoiceSaveBusy(false);
+                refreshCashierFundsNow();
+            }
+        }
+
+        function buildInvoiceData(status) {
+            const customerName = document.getElementById('customerNameInput').value.trim() || 'عميل نقدي';
+            const customerPhone = document.getElementById('customerPhoneInput').value.trim();
+            const totals = calculateTotals(false);
+            const total = totals.total;
+            const paid = totals.paid;
+            const debt = totals.debt;
+            const account = getSelectedAccount();
+            const isMultiPayment = document.getElementById('accountSelectBox')?.value === CASHIER_MULTI_PAYMENT_VALUE && cashierMultiPayments.length > 0;
+            const currency = window.CashtopMulti?.getCurrency?.(totals.currencyId) || getCashierCurrencyConfig().base;
+            const session = window.Cashtop?.getSession?.() || {};
+
+            return {
+                id: currentlyEditingInvoiceId || `INV_${Date.now()}`,
+                status: status,
+                date: new Date().toISOString(),
+                customer: customerName,
+                customerId: selectedCustomer?.id || editingOriginalInvoice?.customerId || null,
+                phone: customerPhone,
+                accountId: isMultiPayment ? CASHIER_MULTI_PAYMENT_VALUE : (account?.id || 1),
+                accountName: isMultiPayment ? 'دفع متعدد' : (account?.name || 'صندوق الكاش الرئيسي'),
+                paymentMethod: isMultiPayment ? 'دفع متعدد' : (account?.name || 'كاش'),
+                payments: isMultiPayment ? cashierMultiPayments.map(item => ({...item})) : [],
+                user: session.displayName || session.username || 'مستخدم',
+                branchId: stockBranchId || null,
+                branchName: getBranchDisplayName(stockBranchId),
+                items: basketItems.map(item => ({...item})),
+                subtotal: totals.subtotal,
+                discount: totals.discount,
+                manualDiscount: totals.manualDiscount,
+                offerDiscount: totals.offerDiscount,
+                offerIds: getApplicableOfferIds(),
+                tax: totals.tax,
+                taxSettings: window.Cashtop?.getTaxSettings?.() || {},
+                total: total,
+                paid: paid,
+                paidNative: totals.paidNative,
+                currencyId: totals.currencyId,
+                currencyName: currency.name,
+                currencySymbol: currency.symbol || currency.code,
+                exchangeRatePer100Base: Number(currency.ratePer100Base || 100),
+                debt: debt,
+                notes: document.getElementById('invoiceNotesInput').value
+            };
+        }
+
+        function openSuspendedModal() {
+            if (!window.Cashtop?.can?.('sales.hold')) { showToast('لا تملك صلاحية عرض الفواتير المعلقة', 'error'); return; }
+            const container = document.getElementById('suspendedListContainer');
+            container.innerHTML = '';
+            const invoicesDB = readArray('cashtop_invoices');
+            const suspendedInvoices = invoicesDB.filter(inv => inv.status === 'draft');
+
+            if(suspendedInvoices.length === 0) {
+                container.innerHTML = `<p style="text-align:center; padding:15px; color:#777;">لا يوجد فواتير معلقة حالياً.</p>`;
+            } else {
+                suspendedInvoices.forEach(inv => {
+                    const dateStr = new Date(inv.date).toLocaleString('en-GB');
+                    const div = document.createElement('div');
+                    div.className = 'suspended-item';
+                    div.innerHTML = `
+                        <div>
+                            <strong>${inv.customer}</strong><br>
+                            <span style="font-size:11px; color:#666;">${dateStr} - المبلغ: ${inv.total} ${cashierBaseSymbol()}</span>
+                        </div>
+                        <button onclick="loadInvoiceForEdit('${inv.id}')">استدعاء</button>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+            openModal('suspendedModal');
+        }
+
+        function loadInvoiceForEdit(invoiceId) {
+            const invoicesDB = readArray('cashtop_invoices');
+            const inv = invoicesDB.find(i => i.id === invoiceId);
+            const requiredPermission = inv?.status === 'draft' ? 'sales.hold' : 'sales.edit';
+            if (!window.Cashtop?.can?.(requiredPermission)) { showToast('لا تملك صلاحية استدعاء أو تعديل هذه الفاتورة', 'error'); return; }
+            if(inv) {
+                if (sessionBranchId && inv.branchId && String(inv.branchId) !== String(sessionBranchId)) {
+                    showToast('لا يمكن تعديل فاتورة صادرة من فرع آخر.', 'error');
+                    return;
+                }
+                stockBranchId = inv.branchId || sessionBranchId || null;
+                currentlyEditingInvoiceId = inv.id;
+                editingOriginalInvoice = cloneData(inv, null);
+                editingInventoryRestored = false;
+                if (inv.status !== 'draft') {
+                    adjustProductStock(inv.items, +1, stockBranchId);
+                    editingInventoryRestored = true;
+                }
+                basketItems = (inv.items || []).map(item => ({...item}));
+                selectedCustomer = customersData.find(c => String(c.id) === String(inv.customerId)) || customersData.find(c => c.name === inv.customer) || null;
+                populateInvoiceCurrencySelect(inv.currencyId || getCashierCurrencyConfig().baseCurrencyId);
+                cashierMultiPayments = Array.isArray(inv.payments) ? inv.payments.map(item => ({...item})) : [];
+                if (document.getElementById('accountSelectBox')) {
+                    if (cashierMultiPayments.length) document.getElementById('accountSelectBox').value = CASHIER_MULTI_PAYMENT_VALUE;
+                    else if (inv.accountId) document.getElementById('accountSelectBox').value = inv.accountId;
+                }
+                
+                let hasExceeded = false;
+                basketItems.forEach(item => {
+                    if (!item.isCustom) {
+                        if (item.isVariant) {
+                            const prod = productsData.find(p => String(p.id) === String(item.id));
+                            const v = prod.variants.find(vx => vx.size === item.variantSize && vx.color === item.variantColor);
+                            if (getAvailableVariantStock(item.id, item.variantSize, item.variantColor, v.qty) < 0) hasExceeded = true;
+                        } else {
+                            if (getAvailableStock(item.id) < 0) hasExceeded = true;
+                        }
+                    }
+                });
+                
+                if(hasExceeded) showToast('تنبيه: بعض الأصناف في الفاتورة المعلقة تتجاوز المخزون المتوفر حالياً.', 'warning');
+
+                globalDiscountCalculated = inv.discount || 0;
+                    discountValueInput = globalDiscountCalculated;
+                discountMode = 'fixed'; 
+                setDiscountType('fixed');
+                document.getElementById('discountInputAmount').value = discountValueInput;
+                document.getElementById('customerNameInput').value = inv.customer === 'عميل نقدي' ? '' : inv.customer;
+                document.getElementById('customerPhoneInput').value = inv.phone || '';
+                document.getElementById('invoiceNotesInput').value = inv.notes || '';
+                
+                renderBasket();
+                setTimeout(() => {
+                    isPaidManuallyEdited = true;
+                    const editCurrencyId = inv.currencyId || getCashierCurrencyConfig().baseCurrencyId;
+                    document.getElementById('invoicePaidAmount').value = Number.isFinite(Number(inv.paidNative)) ? inv.paidNative : (window.CashtopMulti?.fromBase?.(Number(inv.paid || 0), editCurrencyId) ?? Number(inv.paid || 0));
+                    calculateTotals(false);
+                }, 100);
+
+                closeModal('suspendedModal');
+                showToast('تم استدعاء الفاتورة، يمكنك تعديلها الآن.', 'success');
+                if(window.innerWidth <= 992) switchPosTab('basket', document.getElementById('tab-basket'));
+            }
+        }
+
+        // ==========================================
+        // باركود ونوافذ وتاريخ
+        // ==========================================
+        function normalizeBarcode(value) {
+            return String(value || '').trim().replace(/[\r\n\t]/g, '');
+        }
+
+        function findBarcodeMatch(code) {
+            const normalized = normalizeBarcode(code);
+            if (!normalized) return null;
+            for (const product of productsData) {
+                const chain = cashierUnitChainForProduct(product);
+                const base = chain[0];
+                const pieceCodes = [product.barcode, product.pieceBarcode, base?.barcode].filter(Boolean).map(normalizeBarcode);
+                if (pieceCodes.includes(normalized)) return { type: product.hasVariants ? 'variants' : 'chain', product, unitId: base.id };
+            }
+            for (const product of productsData) {
+                if (product.hasVariants && Array.isArray(product.variants)) {
+                    const variantIndex = product.variants.findIndex(variant => normalizeBarcode(variant?.barcode) === normalized);
+                    if (variantIndex >= 0) return { type: 'variant', product, variantIndex };
+                }
+            }
+            for (const product of productsData) {
+                const chain = cashierUnitChainForProduct(product);
+                for (const level of chain.slice(1)) {
+                    const codes = [level.barcode, (level === chain[chain.length - 1] ? product.unitBarcode : '')].filter(Boolean).map(normalizeBarcode);
+                    if (codes.includes(normalized)) return { type: 'chain', product, unitId: level.id };
+                }
+            }
+            return null;
+        }
+
+        function productSupportsSaleUnit(product) {
+            return cashierUnitChainForProduct(product).length > 1;
+        }
+
+        function basketItemSupportsSaleUnit(item) {
+            if (!item || item.isCustom || item.isVariant) return false;
+            const product = productsData.find(product => String(product.id) === String(item.id)) || item;
+            return cashierUnitChainForProduct(product).length > 1;
+        }
+
+        function addToBasketUnit(productId) {
+            const product = productsData.find(item => String(item.id) === String(productId));
+            if (!product) return false;
+            const chain = cashierUnitChainForProduct(product);
+            return cashierAddToBasketByUnit(productId, chain[chain.length - 1]?.id);
+        }
+
+        function processBarcodeCode(rawCode, source = 'hardware') {
+            const code = normalizeBarcode(rawCode);
+            if (!code) return false;
+            const match = findBarcodeMatch(code);
+            if (!match) {
+                showToast(`باركود غير معرّف: ${code}`, 'error');
+                return false;
+            }
+            let added = false;
+            if (match.type === 'chain') added = cashierAddToBasketByUnit(match.product.id, match.unitId);
+            else if (match.type === 'variants') { openVariantModal(match.product.id); added = true; }
+            else if (match.type === 'variant') added = addToBasketVariant(match.product.id, match.variantIndex) === true;
+            if (added && source === 'camera') showToast(`تمت قراءة وإضافة [${match.product.name}]`, 'success');
+            const directInput = document.getElementById('barcodeDirectInput');
+            if (directInput) directInput.value = '';
+            return added;
+        }
+
+        function handleBarcodeScan(event) {
+            if (event.key !== 'Enter' && event.key !== 'Tab') return;
+            event.preventDefault();
+            processBarcodeCode(event.target.value, 'hardware');
+            event.target.value = '';
+        }
+
+        function handleBarcodePaste(event) {
+            const pasted = String(event.clipboardData?.getData('text') || '').trim();
+            if (!pasted) return;
+            event.preventDefault();
+            processBarcodeCode(pasted, 'hardware');
+            event.target.value = '';
+        }
+
+        let cashierCameraController = null;
+        let cashierCameraStarting = false;
+        let cashierCameraRequestId = 0;
+
+        async function openCashierCamera() {
+            if (cashierCameraStarting || cashierCameraController) return;
+            const requestId = ++cashierCameraRequestId;
+            openModal('cameraModal');
+            const status = document.getElementById('cashierCameraStatus');
+            if (status) status.textContent = 'جاري طلب صلاحية الكاميرا وتشغيل الماسح...';
+            cashierCameraStarting = true;
+            try {
+                const controller = await window.CashtopBarcode.startCameraScanner({
+                    container: 'cashierCameraReader',
+                    sound: true,
+                    soundUrl: 'qr.mp3',
+                    continuous: true,
+                    onDetected: code => {
+                        const added = processBarcodeCode(code, 'camera');
+                        if (status) status.textContent = added
+                            ? 'تمت الإضافة. الكاميرا ما زالت تعمل ويمكنك مسح صنف آخر.'
+                            : 'لم تتم الإضافة. الكاميرا ما زالت تعمل ويمكنك المحاولة بباركود آخر.';
+                    },
+                    onError: (error, message) => {
+                        console.error('[CASH TOP 2] cashier camera:', error);
+                        if (status) status.textContent = message || window.CashtopBarcode.getErrorMessage(error);
+                    }
+                });
+                if (requestId !== cashierCameraRequestId || !document.getElementById('cameraModal')?.classList.contains('active')) {
+                    try { await controller?.stop?.(); } catch (_) {}
+                    return;
+                }
+                cashierCameraController = controller;
+            } catch (error) {
+                if (requestId === cashierCameraRequestId) showToast(window.CashtopBarcode?.getErrorMessage?.(error) || 'تعذر فتح الكاميرا', 'error');
+            } finally {
+                if (requestId === cashierCameraRequestId) cashierCameraStarting = false;
+            }
+        }
+
+        async function closeCashierCamera() {
+            cashierCameraRequestId++;
+            const controller = cashierCameraController;
+            cashierCameraController = null;
+            cashierCameraStarting = false;
+            closeModal('cameraModal');
+            try { await controller?.stop?.(); } catch (_) {}
+            const reader = document.getElementById('cashierCameraReader');
+            if (reader) reader.innerHTML = '';
+        }
+
+        function initializeBarcodeReaders() {
+            if (document.documentElement.dataset.cashierBarcodeBound === 'true') return;
+            document.documentElement.dataset.cashierBarcodeBound = 'true';
+            window.CashtopBarcode?.bindHardwareScanner?.({
+                minLength: 3,
+                maxGap: 100,
+                onScan: code => processBarcodeCode(code, 'hardware')
+            });
+            window.addEventListener('pagehide', closeCashierCamera);
+            const direct = document.getElementById('barcodeDirectInput');
+            if (direct && !document.activeElement?.matches?.('input,textarea,select')) direct.focus({ preventScroll: true });
+        }
+
+        let calcExpression = '';
+        function pressCalc(val) {
+            const screen = document.getElementById('calcScreen');
+            if (val === 'C') { calcExpression = ''; screen.value = '0'; }
+            else if (val === '=') {
+                try { screen.value = eval(calcExpression) || '0'; calcExpression = screen.value; }
+                catch { screen.value = 'خطأ'; calcExpression = ''; }
+            } else { 
+                if (screen.value === '0' && val !== '.') { calcExpression = ''; }
+                calcExpression += val; screen.value = calcExpression; 
+            }
+        }
+
+        function openModal(modalId) {
+            window.Cashtop?.closeTransientUi?.();
+            const modal = document.getElementById(modalId);
+            if (!modal) return false;
+            modal.classList.add('active');
+            return true;
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId)?.classList.remove('active');
+            window.Cashtop?.closeTransientUi?.({ closeSidebar: false });
+        }
+
+        const tabsOrder = ['products', 'basket', 'invoice-data'];
+        let currentActiveTabIndex = 0;
+        function switchPosTab(tabName, buttonElement) {
+            const index = tabsOrder.indexOf(tabName);
+            const section = document.getElementById(`${tabName}-sec`);
+            if (index < 0 || !section) return false;
+            window.Cashtop?.closeTransientUi?.();
+            document.querySelectorAll('.nav-tab-button').forEach(btn => btn.classList.toggle('active', btn.dataset.posTab === tabName));
+            const resolvedButton = buttonElement || document.querySelector(`[data-pos-tab="${tabName}"]`);
+            resolvedButton?.classList.add('active');
+            currentActiveTabIndex = index;
+            document.querySelectorAll('.pos-section').forEach(sec => sec.classList.remove('mobile-active-section'));
+            section.classList.add('mobile-active-section');
+            if (tabName === 'invoice-data') calculateTotals(false);
+            requestAnimationFrame(() => {
+                section.style.display = '';
+                section.scrollTop = 0;
+            });
+            return true;
+        }
+
+        function bindPosTabs() {
+            const nav = document.querySelector('.mobile-pos-nav');
+            if (nav && nav.dataset.bound !== 'true') {
+                nav.dataset.bound = 'true';
+                nav.addEventListener('click', event => {
+                    const button = event.target.closest?.('[data-pos-tab]');
+                    if (!button || !nav.contains(button)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    switchPosTab(button.dataset.posTab, button);
+                });
+            }
+            document.querySelectorAll('[data-pos-tab]').forEach(button => {
+                button.type = 'button';
+                button.setAttribute('aria-controls', `${button.dataset.posTab}-sec`);
+            });
+        }
+
+        function setCurrentDate() {
+            const field = document.getElementById('invoiceCurrentDate');
+            if (!field) return;
+            const update = () => { if (field.isConnected) field.value = new Date().toLocaleString('en-GB'); };
+            update();
+            if (!window.__cashTopCashierClock) window.__cashTopCashierClock = setInterval(update, 60000);
+        }
+        
+        function setupSwipeGestures() {
+            const container = document.getElementById('swipeContainer');
+            if (!container || container.dataset.swipeBound === 'true') return;
+            container.dataset.swipeBound = 'true';
+            let touchstartX = 0, touchendX = 0, touchstartY = 0, touchendY = 0;
+            let ignoreGesture = false;
+
+            container.addEventListener('touchstart', function(event) {
+                const target = event.target instanceof Element ? event.target : null;
+                ignoreGesture = Boolean(target?.closest('input, textarea, select, button, .modal-overlay, .basket-items-list'));
+                const touch = event.changedTouches?.[0];
+                if (!touch) return;
+                touchstartX = touch.screenX;
+                touchstartY = touch.screenY;
+            }, { passive: true });
+            container.addEventListener('touchend', function(event) {
+                if (ignoreGesture || document.querySelector('.modal-overlay.active')) return;
+                const touch = event.changedTouches?.[0];
+                if (!touch) return;
+                touchendX = touch.screenX;
+                touchendY = touch.screenY;
+                const diffX = touchstartX - touchendX;
+                const diffY = touchstartY - touchendY;
+                if (window.innerWidth <= 992 && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 70) {
+                    const next = diffX < 0 ? currentActiveTabIndex - 1 : currentActiveTabIndex + 1;
+                    if (next >= 0 && next < tabsOrder.length) switchPosTab(tabsOrder[next]);
+                }
+            }, { passive: true });
+        }
+
+        function refreshCashierDatasets(key) {
+            if (invoiceSaveInProgress) return;
+            if (!key || key === 'cashtop_products') {
+                productsData = readArray('cashtop_products');
+                runCashierStep('refresh products', renderProductsGrid);
+            }
+            if (!key || key === 'cashtop_customers') {
+                customersData = readArray('cashtop_customers');
+                if (selectedCustomer) selectedCustomer = customersData.find(customer => String(customer.id) === String(selectedCustomer.id)) || null;
+                runCashierStep('resolve typed customer', resolveTypedCustomer);
+            }
+            if (!key || key === 'cashtop_customer_groups') {
+                customerGroupsData = readArray('cashtop_customer_groups');
+                runCashierStep('refresh prices', recalculateBasketPrices);
+                runCashierStep('resolve typed customer', resolveTypedCustomer);
+            }
+            if (!key || key === 'cashtop_sales_offers') {
+                offersData = readArray('cashtop_sales_offers');
+                runCashierStep('refresh totals', calculateTotals);
+            }
+            if (!key || key === 'cashtop_funds_db') {
+                fundsDB = readObject('cashtop_funds_db', { accounts: [], accountLogs: [] });
+                if (!Array.isArray(fundsDB.accounts)) fundsDB.accounts = [];
+                if (!Array.isArray(fundsDB.accountLogs)) fundsDB.accountLogs = [];
+                runCashierStep('refresh accounts', populateAccountsSelect);
+            }
+        }
+
+        window.addEventListener('cashtop:remote-applied', event => refreshCashierDatasets(event.detail?.key));
+        window.addEventListener('storage', event => {
+            if (['cashtop_products', 'cashtop_customers', 'cashtop_customer_groups', 'cashtop_sales_offers', 'cashtop_funds_db'].includes(event.key)) {
+                refreshCashierDatasets(event.key);
+            }
+        });
+        window.addEventListener('pageshow', () => {
+            window.Cashtop?.closeTransientUi?.();
+            runCashierStep('pageshow tabs', () => {
+                bindPosTabs();
+                const active = tabsOrder[currentActiveTabIndex] || 'products';
+                switchPosTab(active);
+            });
+        });
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"cashier.html"}</script>
+</body>
+
+</html>

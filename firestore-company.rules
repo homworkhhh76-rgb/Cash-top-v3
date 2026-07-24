@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // قواعد مشاريع/قواعد الشركات.
+    function signedIn() { return request.auth != null; }
+
+    match /cashtopAdmin/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /companyKeys/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /licenses/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /users/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /companies/{companyId} {
+      allow read, write: if signedIn();
+      match /{document=**} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    match /pushSubscriptions/{document=**} {
+      allow read, write: if false;
+    }
+
+    // لا يسمح لقواعد الشركات بحفظ سجل القواعد الرئيسي.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

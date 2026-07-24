@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>سندات القبض والصرف - كاش توب 2</title>
+    <!-- استيراد خط القاهرة -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبات التصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        
+        /* الحماية التامة لمنع تمدد الشاشة (Zoom-out bug) للموبايل */
+        html, body { 
+            background-color: #f4f6f9; 
+            color: #333; 
+            overflow-x: hidden; 
+            width: 100vw; 
+            max-width: 100%; 
+        }
+        
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; padding: 20px; }
+
+        /* الكروت العلوية */
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+        .main-card { border-radius: 4px; color: white; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; min-height: 85px; overflow: hidden; }
+
+        .card-receipts { background-color: #00a65a; } 
+        .card-payments { background-color: #dd4b39; } 
+        .card-safe-balance { background-color: #00c0ef; }
+        .card-sands-count { background-color: #605ca8; }
+
+        .card-content-side { display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+        .card-header-title { font-size: 13px; font-weight: 600; opacity: 0.9; }
+        .card-stat { font-size: 22px; font-weight: 800; }
+        .card-icon-side { opacity: 0.25; font-size: 35px; }
+
+        /* شريط العمليات */
+        .action-bar { background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; width: 100%; }
+        .search-box { display: flex; align-items: center; flex: 1; max-width: 450px; position: relative; width: 100%; }
+        .search-control { width: 100%; padding: 10px 38px 10px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 4px; outline: none; transition: 0.3s;}
+        .search-control:focus { border-color: #00c0ef; box-shadow: 0 0 0 2px rgba(0,192,239,0.2);}
+        .search-box i { position: absolute; right: 12px; color: #999; font-size: 14px; }
+
+        .btn-add-sand { background-color: #00a65a; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; white-space: nowrap; transition: 0.3s;}
+        .btn-add-sand:hover { background-color: #008d4c; }
+
+        /* سجل السندات */
+        .table-container { background-color: white; border-radius: 6px; border-top: 4px solid #00c0ef; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 100%; overflow: hidden; }
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; gap: 15px; width: 100%; }
+        .table-title { font-size: 16px; font-weight: 800; color: #333; white-space: nowrap; }
+
+        .export-group { display: flex; gap: 8px; align-items: center; }
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; transition: 0.3s; white-space: nowrap; }
+        .btn-export.pdf:hover { color: #dd4b39; border-color: #dd4b39; background-color: #fef2f2;}
+        .btn-export.excel:hover { color: #00a65a; border-color: #00a65a; background-color: #f0fdf4;}
+        .btn-export.image:hover { color: #00c0ef; border-color: #00c0ef; background-color: #f0f9ff;}
+
+        .table-responsive-box { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 950px; }
+        .data-table th { font-weight: 800; color: #444; padding: 15px 10px; border-bottom: 2px solid #ddd; background-color: #f8fafc; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
+
+        .badge-receipt { background-color: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 4px; font-weight: 800; }
+        .badge-payment { background-color: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 4px; font-weight: 800; }
+        .badge-destination-client { background-color: rgba(0, 192, 239, 0.1); color: #0284c7; padding: 5px 12px; border-radius: 4px; font-weight: 700; border: 1px solid rgba(0, 192, 239, 0.2); }
+        .badge-destination-supplier { background-color: rgba(243, 156, 18, 0.1); color: #b45309; padding: 5px 12px; border-radius: 4px; font-weight: 700; border: 1px solid rgba(243, 156, 18, 0.2); }
+        .badge-destination-other { background-color: #f1f5f9; color: #475569; padding: 5px 12px; border-radius: 4px; font-weight: 700; border: 1px solid #cbd5e1; }
+
+        .actions-wrapper { display: flex; justify-content: center; gap: 4px; }
+        .action-btn { background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; font-size: 14px; padding: 6px 8px; border-radius: 4px; transition: all 0.2s; }
+        .btn-pdf-act { color: #dc2626; } .btn-pdf-act:hover { background: #dc2626; color: white; border-color: #dc2626;}
+        .btn-excel-act { color: #16a34a; } .btn-excel-act:hover { background: #16a34a; color: white; border-color: #16a34a;}
+        .btn-image-act { color: #0284c7; } .btn-image-act:hover { background: #0284c7; color: white; border-color: #0284c7;}
+        .btn-print-act { color: #605ca8; } .btn-print-act:hover { background: #605ca8; color: white; border-color: #605ca8;}
+        .btn-edit-act { color: #ea580c; } .btn-edit-act:hover { background: #ea580c; color: white; border-color: #ea580c;}
+        .btn-delete-act { color: #e11d48; } .btn-delete-act:hover { background: #e11d48; color: white; border-color: #e11d48;}
+
+        /* النوافذ المنبثقة */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s ease; padding: 15px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: white; width: 100%; max-width: 650px; border-radius: 8px; border-top: 5px solid #00a65a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); padding: 25px; transform: translateY(-30px); transition: 0.3s ease; max-height: 95vh; overflow-y: auto;}
+        #deleteModal .modal-box { border-top: 5px solid #e11d48; max-width: 400px; text-align: center; }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; transition: 0.2s;}
+        .modal-close:hover { color: #e11d48; }
+
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        .form-row.full-width { grid-template-columns: 1fr; }
+        .form-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #475569; }
+        .form-control { width: 100%; padding: 10px 12px; font-size: 13px; border: 2px solid #e2e8f0; border-radius: 4px; outline: none; background-color: #f8fafc; transition: 0.3s; }
+        .form-control:focus { border-color: #0284c7; background-color: #fff; }
+        textarea.form-control { resize: vertical; height: 70px; }
+
+        /* القوائم المنسدلة الذكية */
+        .custom-select-wrapper { position: relative; width: 100%; }
+        .search-select-input { background-color: #f8fafc; padding: 10px 12px 10px 30px; cursor: pointer; }
+        .custom-select-wrapper i.arrow-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; font-size: 12px; }
+        .select-dropdown-list { position: absolute; top: 100%; right: 0; left: 0; background: #fff; border: 2px solid #e2e8f0; border-top: none; border-radius: 0 0 6px 6px; max-height: 200px; overflow-y: auto; z-index: 999; display: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .dropdown-search-inside { padding: 8px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 2; }
+        .dropdown-search-inside input { width: 100%; padding: 8px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; }
+        .select-option-item { padding: 10px 15px; font-size: 13px; cursor: pointer; text-align: right; border-bottom: 1px solid #f1f5f9; font-weight: 600;}
+        .select-option-item:hover { background-color: #0284c7; color: white; }
+        
+        .conditional-row { display: none; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; border-top: 2px solid #f1f5f9; padding-top: 20px; margin-top: 20px; }
+        .btn-submit { background-color: #00a65a; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s; display: inline-flex; gap: 8px; align-items: center;}
+        .btn-submit:hover { background-color: #008d4c; }
+        .btn-submit.red { background-color: #e11d48; width: 100%; justify-content: center;} .btn-submit.red:hover { background-color: #be123c; }
+        .btn-cancel { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s; text-align: center;}
+        .btn-cancel:hover { background-color: #e2e8f0; }
+
+        /* التنبيهات */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 15px 25px; border-radius: 6px; color: white; font-weight: 800; font-size: 14px; opacity: 0; transform: translateY(20px); transition: 0.4s ease; pointer-events: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 10px;}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #10b981; border-right: 5px solid #047857; }
+        .toast.error { background-color: #ef4444; border-right: 5px solid #b91c1c; }
+        .toast.warning { background-color: #f59e0b; border-right: 5px solid #b45309; }
+
+        /* ========================================================= */
+        /*   الحل الجذري: إخفاء القوالب دون التأثير على عرض الشاشة   */
+        /* ========================================================= */
+        .export-template-container, #printArea { 
+            position: fixed !important; /* Fixed يفصل العنصر عن الشاشة ويمنع التمدد */
+            top: 0 !important; 
+            right: 0 !important; 
+            width: 900px !important; 
+            background: #ffffff; 
+            padding: 40px; 
+            color: #000; 
+            font-family: 'Cairo', sans-serif; 
+            direction: rtl; 
+            z-index: -9999 !important; 
+            opacity: 0.001 !important; /* شبه شفاف للرندر الصحيح */
+            pointer-events: none !important; 
+        }
+
+        .export-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0284c7; padding-bottom: 15px; margin-bottom: 30px; }
+        .export-logo-title { display: flex; align-items: center; gap: 20px; }
+        .export-logo-title i { font-size: 45px; color: #0284c7; }
+        .export-logo-title h2 { font-size: 28px; font-weight: 800; margin: 0; }
+        .export-info { text-align: left; }
+        .export-info h3 { font-size: 20px; margin: 0 0 5px 0; font-weight: 800; }
+        
+        .export-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; text-align: center; border: 2px solid #cbd5e1; }
+        .export-table th, .export-table td { border: 1px solid #cbd5e1; padding: 12px; }
+        .export-table th { background-color: #f1f5f9; font-weight: 800; font-size: 15px;}
+        .export-footer { margin-top: 40px; text-align: center; font-size: 13px; color: #64748b; border-top: 2px solid #e2e8f0; padding-top: 15px; font-weight: 700; }
+
+        /* تصميم السند الفردي للطباعة */
+        .voucher-print-box { border: 2px dashed #0284c7; padding: 30px; border-radius: 8px; margin-bottom: 20px; background-color: #f8fafc; }
+        .v-row { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 16px; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 10px;}
+        .v-amount { font-size: 24px; font-weight: 800; color: #00a65a; background: #dcfce7; padding: 5px 15px; border-radius: 4px; border: 1px solid #166534;}
+        .v-amount.payment { color: #dd4b39; background: #fee2e2; border-color: #b91c1c; }
+        .v-signatures { display: flex; justify-content: space-around; margin-top: 50px; font-weight: 800; font-size: 16px; }
+
+        /* استعلامات الميديا للطباعة الرسمية */
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; }
+            #printArea { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; z-index: 9999 !important; background: white !important;}
+            .dashboard-container, .modal-overlay, .action-bar, #toast-container { display: none !important; }
+        }
+
+        /* ========================================================= */
+        /*   تجاوب الموبايل الشامل (Mobile Optimization)             */
+        /* ========================================================= */
+        @media (max-width: 768px) {
+            .dashboard-container { padding: 10px; gap: 12px; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .main-card { min-height: 70px; padding: 12px; }
+            .card-header-title { font-size: 11px; }
+            .card-stat { font-size: 16px; }
+            .card-icon-side { font-size: 24px; }
+            
+            .action-bar { flex-direction: column; align-items: stretch; gap: 12px; padding: 12px;}
+            .search-box { max-width: 100%; }
+            .btn-add-sand { justify-content: center; width: 100%; padding: 12px; font-size: 14px;}
+            
+            .table-container { padding: 15px 10px; }
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 12px; }
+            .table-title { text-align: center; font-size: 15px; }
+            
+            /* تمرير أفقي سلس لأزرار التصدير في الموبايل */
+            .export-group { display: flex; flex-direction: row; overflow-x: auto; gap: 8px; width: 100%; padding-bottom: 5px; justify-content: space-between; scrollbar-width: none; }
+            .export-group::-webkit-scrollbar { display: none; }
+            .btn-export { flex: 1; justify-content: center; padding: 8px 5px; font-size: 12px; flex-shrink: 0; }
+            
+            .form-row { grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px;}
+            .modal-footer { flex-direction: column; gap: 10px;}
+            .btn-submit, .btn-cancel { width: 100%; justify-content: center;}
+            .modal-box { padding: 15px; }
+        }
+    
+        .voucher-currency-wrap{display:none}.voucher-currency-wrap.active{display:block}.voucher-currency-wrap small{display:block;font-size:11px;color:#64748b;margin-top:4px}
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div class="dashboard-container">
+        
+        <!-- صف الكروت العلوية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-receipts">
+                <div class="card-content-side"><span class="card-header-title">إجمالي المقبوضات (وارد)</span><span class="card-stat" id="statReceipts">0.00</span></div>
+                <div class="card-icon-side"><i class="fa-solid fa-circle-arrow-down"></i></div>
+            </div>
+            <div class="main-card card-payments">
+                <div class="card-content-side"><span class="card-header-title">إجمالي المصروفات (صادر)</span><span class="card-stat" id="statPayments">0.00</span></div>
+                <div class="card-icon-side"><i class="fa-solid fa-circle-arrow-up"></i></div>
+            </div>
+            <div class="main-card card-safe-balance">
+                <div class="card-content-side"><span class="card-header-title">إجمالي رصيد الخزائن</span><span class="card-stat" id="statSafeBalance">0.00</span></div>
+                <div class="card-icon-side"><i class="fa-solid fa-vault"></i></div>
+            </div>
+            <div class="main-card card-sands-count">
+                <div class="card-content-side"><span class="card-header-title">إجمالي عدد السندات</span><span class="card-stat" id="statVouchersCount">0</span></div>
+                <div class="card-icon-side"><i class="fa-solid fa-file-invoice"></i></div>
+            </div>
+        </div>
+
+        <!-- شريط العمليات -->
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" class="search-control" placeholder="ابحث برقم السند، الصندوق، أو الجهة المعنية..." oninput="filterTable()">
+            </div>
+            <button class="btn-add-sand" onclick="openVoucherModal()"><i class="fa-solid fa-plus"></i> إنشاء سند قبض / صرف</button>
+        </div>
+
+        <!-- سجل السندات المتجاوب -->
+        <div class="table-container">
+            <div class="table-header-wrapper">
+                <div class="table-title">سجل فواتير وسندات المعاملات المالية</div>
+                <div class="export-group">
+                    <button class="btn-export excel" onclick="exportAllVouchersExcel()"><i class="fa-solid fa-file-excel"></i> اكسل</button>
+                    <button class="btn-export pdf" onclick="exportAllVouchersPDF()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                    <button class="btn-export image" onclick="exportAllVouchersImage()"><i class="fa-solid fa-image"></i> صورة</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>رقم السند</th>
+                            <th>نوع السند</th>
+                            <th>التاريخ</th>
+                            <th>الصندوق / الحساب</th>
+                            <th>الجهة المعنية</th>
+                            <th>المبلغ (₪)</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vouchersTableBody">
+                        <!-- تملأ برمجياً -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة لإضافة/تعديل السند -->
+    <div class="modal-overlay" id="voucherModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="voucherModalTitle"><i class="fa-solid fa-file-signature"></i> إنشاء سند مالّي جديد</div>
+                <button class="modal-close" onclick="closeModal('voucherModal')">&times;</button>
+            </div>
+            <form id="voucherForm" onsubmit="saveVoucher(event)">
+                <input type="hidden" id="editVoucherId" value="">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>نوع السند</label>
+                        <select class="form-control" id="vType" required>
+                            <option value="قبض">سند قبض (وارد للصندوق)</option>
+                            <option value="صرف">سند صرف (صادر من الصندوق)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ السند</label>
+                        <input type="date" class="form-control" id="vDate" required>
+                    </div>
+                </div>
+
+                <div class="form-row voucher-currency-wrap" id="voucherCurrencyWrap">
+                    <div class="form-group">
+                        <label>عملة السند</label>
+                        <select class="form-control" id="vCurrencySelect" onchange="handleVoucherCurrencyChange()"></select>
+                        <small id="voucherCurrencyHint"></small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>الصندوق / الحساب المالي (الرصيد)</label>
+                        <div class="custom-select-wrapper">
+                            <input type="text" class="form-control search-select-input" id="vAccountInput" placeholder="اختر الحساب..." readonly required>
+                            <input type="hidden" id="vAccountId" class="hidden-select-value" required>
+                            <i class="fa-solid fa-chevron-down arrow-icon"></i>
+                            <div class="select-dropdown-list" id="accountDropdownList">
+                                <div class="dropdown-search-inside"><input type="text" placeholder="اكتب للبحث عن صندوق..."></div>
+                                <div id="accountOptionsContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>الجهة المرتبطة بالسند</label>
+                        <select class="form-control" id="relationType" required onchange="handleRelationChange()">
+                            <option value="">اختر نوع الارتباط...</option>
+                            <option value="client">عميل (زبون)</option>
+                            <option value="supplier">مورد (شركة)</option>
+                            <option value="other">جهة أخرى / مصروفات عامة</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row full-width conditional-row" id="clientRow">
+                    <div class="form-group">
+                        <label>اختيار العميل</label>
+                        <div class="custom-select-wrapper">
+                            <input type="text" class="form-control search-select-input" id="vClientInput" placeholder="ابحث عن اسم العميل هنا..." readonly>
+                            <input type="hidden" id="vClientId" class="hidden-select-value">
+                            <i class="fa-solid fa-chevron-down arrow-icon"></i>
+                            <div class="select-dropdown-list" id="clientDropdownList">
+                                <div class="dropdown-search-inside"><input type="text" placeholder="اكتب اسم العميل..."></div>
+                                <div id="clientOptionsContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row full-width conditional-row" id="supplierRow">
+                    <div class="form-group">
+                        <label>اختيار المورد</label>
+                        <div class="custom-select-wrapper">
+                            <input type="text" class="form-control search-select-input" id="vSupplierInput" placeholder="ابحث عن اسم المورد هنا..." readonly>
+                            <input type="hidden" id="vSupplierId" class="hidden-select-value">
+                            <i class="fa-solid fa-chevron-down arrow-icon"></i>
+                            <div class="select-dropdown-list" id="supplierDropdownList">
+                                <div class="dropdown-search-inside"><input type="text" placeholder="اكتب اسم المورد..."></div>
+                                <div id="supplierOptionsContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row full-width conditional-row" id="otherRow">
+                    <div class="form-group">
+                        <label>اسم الجهة أو بند المصروف (يدوي)</label>
+                        <input type="text" class="form-control" id="vOtherName" placeholder="مثال: فاتورة كهرباء، رواتب، شركة شحن...">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label id="vAmountLabel">المبلغ</label>
+                        <input type="number" step="0.01" class="form-control" id="vAmount" placeholder="0.00" required min="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-row full-width">
+                    <div class="form-group">
+                        <label>البيان / الملاحظات (تظهر في السند)</label>
+                        <textarea class="form-control" id="vNotes" placeholder="اكتب البيان وتفاصيل الدفعة أو القبض..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('voucherModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-floppy-disk"></i> حفظ واعتماد القيود</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد الحذف -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 50px; color: #dd4b39;"></i>
+            </div>
+            <h3 style="text-align: center; color: #333; margin-bottom: 15px; font-weight: 800;">تأكيد مسح السند</h3>
+            <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
+                هل أنت متأكد من رغبتك بحذف السند رقم: <strong id="deleteRefText" style="color: #dd4b39;"></strong>؟<br>سيتم عمل قيود عكسية لاسترجاع أرصدة (الصندوق والجهة المعنية) تلقائياً قبل الحذف.
+            </p>
+            <div class="modal-footer" style="justify-content: center; gap: 10px; border: none;">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')" style="margin:0;">تراجع</button>
+                <button type="button" class="btn-submit red" onclick="executeDelete()" style="margin:0;"><i class="fa-solid fa-trash-can"></i> نعم، احذف وعالج الأرصدة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- التنبيهات -->
+    <div id="toast-container"></div>
+
+    <!-- قوالب التصدير والطباعة المخفية -->
+    
+    <!-- 1. قالب الكشف الشامل (لـ PDF و Image) -->
+    <div id="exportAllTemplate" class="export-template-container">
+        <div class="export-header">
+            <div class="export-logo-title">
+                <i class="fa-solid fa-file-invoice"></i>
+                <div>
+                    <h2>كاش توب - Cash Top</h2>
+                    <span style="font-size:12px; color:#777;">النظام المالي المحاسبي المتكامل</span>
+                </div>
+            </div>
+            <div class="export-info">
+                <h3>سجل فواتير وسندات القبض والصرف</h3>
+                <p id="exportPrintDateAll">تاريخ الإصدار: </p>
+            </div>
+        </div>
+        <table class="export-table">
+            <thead>
+                <tr>
+                    <th>رقم السند</th>
+                    <th>نوع السند</th>
+                    <th>التاريخ</th>
+                    <th>الصندوق / الحساب</th>
+                    <th>الجهة المعنية</th>
+                    <th>البيان</th>
+                    <th>المبلغ (₪)</th>
+                </tr>
+            </thead>
+            <tbody id="exportDataTableBodyAll"></tbody>
+            <tfoot>
+                <tr style="background-color: #f1f5f9; font-weight: bold; font-size: 14px;">
+                    <td colspan="6" style="text-align: left;">إجمالي السندات المعروضة:</td>
+                    <td id="exportTotalAmountAll" style="color: #00a65a;">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="export-footer">تم استخراج هذا السجل آلياً من نظام كاش توب للتدقيق الداخلي.</div>
+    </div>
+
+    <!-- 2. قالب طباعة وتصدير السند الفردي (وصل استلام/صرف احترافي) -->
+    <div id="printArea">
+        <div id="individualVoucherTemplate" style="width: 800px; padding: 40px; margin: 0 auto; background: white; border: 2px solid #ccc; font-family: 'Cairo', sans-serif; direction: rtl;">
+            <div class="export-header" style="border-bottom-color: #00a65a;" id="vPrintHeaderBorder">
+                <div class="export-logo-title">
+                    <i class="fa-solid fa-money-check-dollar" id="vPrintIcon" style="color: #00a65a;"></i>
+                    <div>
+                        <h2>كاش توب - Cash Top</h2>
+                        <span style="font-size:12px; color:#777;">إدارة مالية موثوقة</span>
+                    </div>
+                </div>
+                <div class="export-info" style="text-align: left;">
+                    <h3 id="vPrintTitle" style="color: #00a65a; font-size: 24px;">سند قبض</h3>
+                    <p style="font-weight: bold; font-size:14px;">رقم السند: <span id="vPrintRef"></span></p>
+                    <p>التاريخ: <span id="vPrintDate"></span></p>
+                </div>
+            </div>
+
+            <div class="voucher-print-box">
+                <div class="v-row">
+                    <span><span id="vPrintActionText">استلمنا من السيد/ة:</span> <span style="color:#0284c7;" id="vPrintTarget"></span></span>
+                    <span class="v-amount" id="vPrintAmountBadge">0.00 ₪</span>
+                </div>
+                <div class="v-row" style="margin-top: 15px;">
+                    <span>مبلغاً وقدره (بالأرقام): <strong id="vPrintAmount"></strong> فقط لا غير.</span>
+                </div>
+                <div class="v-row">
+                    <span>وذلك عن / البيان: <span style="font-weight:normal;" id="vPrintNotes"></span></span>
+                </div>
+                <div class="v-row" style="border:none; margin-bottom:0;">
+                    <span>حساب الصندوق/البنك المعتمد: <span style="font-weight:normal;" id="vPrintAccount"></span></span>
+                </div>
+            </div>
+
+            <div class="v-signatures">
+                <div>توقيع المحاسب (المستلم): ........................</div>
+                <div>توقيع الجهة المعنية: ........................</div>
+                <div>الختم المعتمد:</div>
+            </div>
+            
+            <div class="export-footer" style="margin-top: 50px;">تم إصدار هذا السند آلياً من نظام كاش توب - يحتفظ بالأصل وتُسلم النسخة للمستفيد.</div>
+        </div>
+    </div>
+
+    <script>
+        /* ========================================================== */
+        /*   دوال مساعدة لفتح وإغلاق النوافذ والتنبيهات               */
+        /* ========================================================== */
+        function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            let icon = type === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : (type === 'error' ? '<i class="fa-solid fa-circle-xmark"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>');
+            toast.innerHTML = `${icon} ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+        }
+
+        /* ========================================================== */
+        /*   تهيئة قواعد البيانات ومحاكاتها                           */
+        /* ========================================================== */
+        let fundsDB = { accounts: [], accountLogs: [] };
+        let clientsDB = [];
+        let suppliersDB = [];
+        let vouchersDB = [];
+        let voucherToDelete = null;
+
+        function readArray(key) {
+            try {
+                const value = JSON.parse(localStorage.getItem(key) || '[]');
+                if (Array.isArray(value)) return value;
+                if (value && typeof value === 'object') return Object.values(value);
+            } catch (_) {}
+            return [];
+        }
+
+        function readFunds() {
+            try {
+                const value = JSON.parse(localStorage.getItem('cashtop_funds_db') || '{}');
+                return {
+                    ...value,
+                    accounts: Array.isArray(value?.accounts) ? value.accounts : [],
+                    accountLogs: Array.isArray(value?.accountLogs) ? value.accountLogs : []
+                };
+            } catch (_) { return { accounts: [], accountLogs: [] }; }
+        }
+
+        function reloadVoucherData() {
+            fundsDB = readFunds();
+            clientsDB = readArray('cashtop_customers');
+            suppliersDB = readArray('cashtop_suppliers');
+            vouchersDB = readArray('cashtop_vouchers');
+        }
+
+        window.onload = function() {
+            reloadVoucherData();
+            document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+            initLayout();
+        };
+
+        window.addEventListener('storage', function(e) {
+            const key = String(e.key || '').replace(/^.*::(cashtop_[^:]+)$/, '$1');
+            if (['cashtop_funds_db','cashtop_customers','cashtop_suppliers','cashtop_vouchers','cashtop_settings'].includes(key)) {
+                reloadVoucherData();
+                initLayout();
+            }
+        });
+        window.addEventListener('cashtop:remote-applied', function(e) {
+            if (['cashtop_funds_db','cashtop_customers','cashtop_suppliers','cashtop_vouchers','cashtop_settings'].includes(e.detail?.key)) {
+                reloadVoucherData();
+                initLayout();
+            }
+        });
+
+        function initLayout() {
+            populateVoucherCurrencySelect();
+            populateSelects();
+            renderTable();
+            renderStats();
+        }
+
+        function refreshVoucherFundsNow() {
+            fundsDB = readFunds();
+            populateVoucherCurrencySelect(voucherCurrencyId());
+            populateSelects();
+            renderStats();
+        }
+        window.addEventListener('cashtop:funds-changed', refreshVoucherFundsNow);
+        window.addEventListener('cashtop:data-changed', function(e) {
+            if (e.detail?.key === 'cashtop_funds_db') refreshVoucherFundsNow();
+        });
+        document.addEventListener('pointerdown', function(e) {
+            if (e.target?.closest?.('#vAccountInput, #accountDropdownList, #accountOptionsContainer')) refreshVoucherFundsNow();
+        }, true);
+        document.addEventListener('focusin', function(e) {
+            if (e.target?.id === 'vAccountInput') refreshVoucherFundsNow();
+        });
+
+        /* ========================================================== */
+        /*   تعبئة القوائم المنسدلة الذكية                            */
+        /* ========================================================== */
+        function voucherCurrencyConfig() {
+            return window.CashtopMulti?.getCurrencyConfig?.() || {enabled:false,baseCurrencyId:'ILS',base:{id:'ILS',symbol:'₪',code:'ILS',ratePer100Base:100},currencies:[{id:'ILS',name:'شيكل',symbol:'₪',code:'ILS',ratePer100Base:100}]};
+        }
+        function voucherCurrencyId(){ const cfg=voucherCurrencyConfig(); return document.getElementById('vCurrencySelect')?.value || cfg.baseCurrencyId; }
+        function normalizeVoucherAccountCurrencies(){ const cfg=voucherCurrencyConfig(); (fundsDB.accounts||[]).forEach(a=>{if(!a.currencyId)a.currencyId=cfg.baseCurrencyId;}); }
+        function populateVoucherCurrencySelect(preferredId=''){
+            const cfg=voucherCurrencyConfig(), select=document.getElementById('vCurrencySelect'), wrap=document.getElementById('voucherCurrencyWrap');
+            if(!select)return; const previous=preferredId||select.value||cfg.baseCurrencyId;
+            select.innerHTML=cfg.currencies.map(c=>`<option value="${c.id}">${c.name} (${c.symbol||c.code})</option>`).join('');
+            select.value=cfg.currencies.some(c=>String(c.id)===String(previous))?previous:cfg.baseCurrencyId;
+            wrap?.classList.toggle('active',cfg.enabled===true);
+            const cur=window.CashtopMulti?.getCurrency?.(select.value)||cfg.base;
+            const hint=document.getElementById('voucherCurrencyHint'); if(hint)hint.textContent=String(cur.id)===String(cfg.baseCurrencyId)?'العملة الأساسية':`100 ${cfg.base.symbol||cfg.base.code} = ${Number(cur.ratePer100Base||0)} ${cur.symbol||cur.code}`;
+            const label=document.getElementById('vAmountLabel'); if(label)label.textContent=`المبلغ (${cur.symbol||cur.code})`;
+            normalizeVoucherAccountCurrencies();
+        }
+        function handleVoucherCurrencyChange(){ document.getElementById('vAccountId').value=''; document.getElementById('vAccountInput').value=''; populateVoucherCurrencySelect(voucherCurrencyId()); populateSelects(); }
+        function voucherNativeAmount(v){ const cfg=voucherCurrencyConfig(); const cid=v?.currencyId||cfg.baseCurrencyId; return Number.isFinite(Number(v?.amountNative))?Number(v.amountNative):(window.CashtopMulti?.fromBase?.(Number(v?.amount||0),cid)??Number(v?.amount||0)); }
+        function voucherDisplayAmount(v){ const cfg=voucherCurrencyConfig(); const cid=v?.currencyId||cfg.baseCurrencyId; const cur=window.CashtopMulti?.getCurrency?.(cid)||cfg.base; return `${voucherNativeAmount(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:3})} ${cur.symbol||cur.code}`; }
+
+        function populateSelects() {
+            const accContainer = document.getElementById('accountOptionsContainer');
+            accContainer.innerHTML = '';
+            normalizeVoucherAccountCurrencies();
+            const cfg=voucherCurrencyConfig(); const cid=cfg.enabled?voucherCurrencyId():cfg.baseCurrencyId;
+            if(fundsDB.accounts) {
+                fundsDB.accounts.forEach(a => {
+                    const cur=window.CashtopMulti?.getCurrency?.(a.currencyId||cfg.baseCurrencyId)||cfg.base;
+                    accContainer.innerHTML += `<div class="select-option-item" data-value="${a.id}">${a.name} [${a.type}] — ${Number(a.balance||0).toFixed(2)} ${cur.symbol||cur.code}</div>`;
+                });
+            }
+
+            const cliContainer = document.getElementById('clientOptionsContainer');
+            cliContainer.innerHTML = '';
+            clientsDB.forEach(c => {
+                cliContainer.innerHTML += `<div class="select-option-item" data-value="${c.id}">${c.name}</div>`;
+            });
+
+            const supContainer = document.getElementById('supplierOptionsContainer');
+            supContainer.innerHTML = '';
+            suppliersDB.forEach(s => {
+                supContainer.innerHTML += `<div class="select-option-item" data-value="${s.id}">${s.name}</div>`;
+            });
+
+            initCustomSelects(); 
+        }
+
+        function handleRelationChange() {
+            const val = document.getElementById('relationType').value;
+            document.getElementById('clientRow').style.display = 'none';
+            document.getElementById('supplierRow').style.display = 'none';
+            document.getElementById('otherRow').style.display = 'none';
+
+            document.getElementById('vClientInput').required = false;
+            document.getElementById('vSupplierInput').required = false;
+            document.getElementById('otherRow').querySelector('input').required = false;
+
+            if (val === 'client') {
+                document.getElementById('clientRow').style.display = 'block';
+                document.getElementById('vClientInput').required = true;
+            }
+            else if (val === 'supplier') {
+                document.getElementById('supplierRow').style.display = 'block';
+                document.getElementById('vSupplierInput').required = true;
+            }
+            else if (val === 'other') {
+                document.getElementById('otherRow').style.display = 'block';
+                document.getElementById('otherRow').querySelector('input').required = true;
+            }
+        }
+
+        function initCustomSelects() {
+            document.querySelectorAll('.custom-select-wrapper').forEach(wrapper => {
+                const input = wrapper.querySelector('.search-select-input');
+                const hiddenInput = wrapper.querySelector('.hidden-select-value');
+                const list = wrapper.querySelector('.select-dropdown-list');
+                const searchInput = wrapper.querySelector('.dropdown-search-inside input');
+                
+                // تنظيف الأحداث القديمة لمنع التكرار
+                let newInp = input.cloneNode(true);
+                input.parentNode.replaceChild(newInp, input);
+                
+                newInp.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.select-dropdown-list').forEach(d => { if(d !== list) d.style.display = 'none'; });
+                    list.style.display = list.style.display === 'block' ? 'none' : 'block';
+                    if(list.style.display === 'block' && searchInput) {
+                        searchInput.value = ''; // تفريغ البحث عند الفتح
+                        const items = list.querySelectorAll('.select-option-item');
+                        items.forEach(i => i.style.display = 'block');
+                        searchInput.focus();
+                    }
+                });
+
+                if(searchInput) {
+                    searchInput.addEventListener('input', function() {
+                        const filter = this.value.trim().toLowerCase();
+                        const items = list.querySelectorAll('.select-option-item');
+                        items.forEach(item => {
+                            const text = item.textContent.toLowerCase();
+                            item.style.display = text.includes(filter) ? 'block' : 'none';
+                        });
+                    });
+                }
+
+                wrapper.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('select-option-item')) {
+                        e.stopPropagation();
+                        newInp.value = e.target.textContent;
+                        hiddenInput.value = e.target.getAttribute('data-value');
+                        list.style.display = 'none';
+                    }
+                });
+            });
+
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.select-dropdown-list').forEach(list => list.style.display = 'none');
+            });
+        }
+
+        /* ========================================================== */
+        /*   حساب الإحصائيات وبناء الجدول                             */
+        /* ========================================================== */
+        function renderStats() {
+            let receipts = 0, payments = 0;
+            vouchersDB.forEach(v => {
+                if(v.type === 'قبض') receipts += parseFloat(v.amount);
+                else payments += parseFloat(v.amount);
+            });
+
+            let safeBalance = 0;
+            if(fundsDB.accounts) fundsDB.accounts.forEach(a => safeBalance += (window.CashtopMulti?.toBase?.(parseFloat(a.balance)||0, a.currencyId || voucherCurrencyConfig().baseCurrencyId) ?? (parseFloat(a.balance)||0)));
+
+            document.getElementById('statReceipts').innerText = receipts.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('statPayments').innerText = payments.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('statSafeBalance').innerText = safeBalance.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('statVouchersCount').innerText = vouchersDB.length;
+        }
+
+        function renderTable(data = vouchersDB) {
+            const tbody = document.getElementById('vouchersTableBody');
+            const sortedData = (Array.isArray(data) ? data : []).slice().reverse();
+            const createRow = v => {
+                const badgeType = v.type === 'قبض' ? `<span class="badge-receipt">سند قبض <i class="fa-solid fa-arrow-down"></i></span>` : `<span class="badge-payment">سند صرف <i class="fa-solid fa-arrow-up"></i></span>`;
+                const amountStyle = v.type === 'قبض' ? 'color:#00a65a;font-weight:bold;' : 'color:#dd4b39;font-weight:bold;';
+                let relBadge = '';
+                if(v.relationType === 'client') relBadge = `<span class="badge-destination-client">${v.relationName}</span>`;
+                else if(v.relationType === 'supplier') relBadge = `<span class="badge-destination-supplier">${v.relationName}</span>`;
+                else relBadge = `<span class="badge-destination-other">${v.relationName}</span>`;
+                const account = (fundsDB.accounts || []).find(x => x.id == v.accountId);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${v.refNumber}</strong></td><td>${badgeType}</td><td>${v.date}</td><td>${account?.name || '-'}</td><td>${relBadge}</td>
+                    <td style="${amountStyle}">${voucherDisplayAmount(v)}</td>
+                    <td><div class="actions-wrapper">
+                        <button class="action-btn btn-pdf-act" title="تحميل PDF" onclick="exportVoucherPDF('${v.id}')"><i class="fa-solid fa-file-pdf"></i></button>
+                        <button class="action-btn btn-image-act" title="تحميل صورة" onclick="exportVoucherImage('${v.id}')"><i class="fa-solid fa-image"></i></button>
+                        <button class="action-btn btn-print-act" title="طباعة السند" onclick="printVoucher('${v.id}')"><i class="fa-solid fa-print"></i></button>
+                        <button class="action-btn btn-edit-act" title="تعديل السند" onclick="editVoucher('${v.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn btn-delete-act" title="حذف السند" onclick="confirmDelete('${v.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                    </div></td>`;
+                return tr;
+            };
+            if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(tbody, sortedData, createRow, { chunkSize: 90, eagerLimit: 180, colspan: 7, emptyHtml: `<tr><td colspan="7" style="padding:20px;color:#888;">لا توجد سندات مالية مسجلة بعد...</td></tr>` });
+            else { tbody.innerHTML=''; if (!sortedData.length) tbody.innerHTML=`<tr><td colspan="7" style="padding:20px;color:#888;">لا توجد سندات مالية مسجلة بعد...</td></tr>`; else sortedData.forEach(v=>tbody.appendChild(createRow(v))); }
+        }
+
+        async function filterTable() {
+            const q = String(document.getElementById('searchInput').value || '').trim();
+            const sequence = filterTable._sequence = (filterTable._sequence || 0) + 1;
+            const fallback=()=>!q?vouchersDB:vouchersDB.filter(v=>{
+                const z=q.toLowerCase();return String(v?.refNumber||'').toLowerCase().includes(z)||String(v?.relationName||'').toLowerCase().includes(z)||String(v?.notes||'').toLowerCase().includes(z);
+            });
+            const filtered=q&&vouchersDB.length>=800&&window.Cashtop?.runWorkerTask
+                ?await window.Cashtop.runWorkerTask('filter-records',{records:vouchersDB,query:q,fields:['refNumber','relationName','notes']},fallback)
+                :fallback();
+            if(sequence!==filterTable._sequence)return;
+            renderTable(filtered);
+        }
+
+        /* ========================================================== */
+        /*   حفظ / تعديل السند (مع معالجة الأرصدة تلقائياً)           */
+        /* ========================================================== */
+        function openVoucherModal() {
+            document.getElementById('voucherForm').reset();
+            document.getElementById('editVoucherId').value = '';
+            document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+            populateVoucherCurrencySelect(voucherCurrencyConfig().baseCurrencyId);
+            populateSelects();
+            document.getElementById('vAccountInput').value = ''; document.getElementById('vAccountId').value = '';
+            document.getElementById('vClientInput').value = ''; document.getElementById('vClientId').value = '';
+            document.getElementById('vSupplierInput').value = ''; document.getElementById('vSupplierId').value = '';
+            handleRelationChange();
+            
+            document.getElementById('voucherModalTitle').innerHTML = '<i class="fa-solid fa-file-signature"></i> إنشاء سند مالّي جديد';
+            openModal('voucherModal');
+        }
+
+        function applyFinancialImpact(voucher, isReversal = false) {
+            const amount = Math.max(0, Number(voucher?.amount || 0)); // بالعملة الأساسية للذمم والتقارير
+            const transactionNativeAmount = Math.max(0, voucherNativeAmount(voucher)); // بعملة السند
+            const account = fundsDB.accounts.find(item => String(item?.id) === String(voucher.accountId));
+            if (!account) throw new Error('ACCOUNT_NOT_FOUND');
+            const accountCurrencyId = voucher.accountCurrencyId || account.currencyId || voucherCurrencyConfig().baseCurrencyId;
+            const nativeAmount = Math.max(0, Number.isFinite(Number(voucher.accountAmountNative))
+                ? Number(voucher.accountAmountNative)
+                : (window.CashtopMulti?.accountAmountFromBase?.(amount, accountCurrencyId) ?? transactionNativeAmount));
+            if (!amount || !nativeAmount) throw new Error('INVALID_VOUCHER_AMOUNT');
+
+            if (isReversal) {
+                if (voucher.type === 'قبض') account.balance = Number(account.balance || 0) - nativeAmount;
+                else account.balance = Number(account.balance || 0) + nativeAmount;
+                fundsDB.accountLogs = (fundsDB.accountLogs || []).filter(log => !(String(log?.sourceType || '') === 'voucher' && String(log?.sourceId || '') === String(voucher.id)));
+            } else {
+                if (voucher.type === 'قبض') account.balance = Number(account.balance || 0) + nativeAmount;
+                else account.balance = Number(account.balance || 0) - nativeAmount;
+                if (account.balance < -0.0001) throw new Error('INSUFFICIENT_FUNDS');
+                fundsDB.accountLogs.push({
+                    id: `LOG_V_${voucher.id}_${Date.now()}`,
+                    sourceType: 'voucher', sourceId: voucher.id,
+                    accountId: account.id, date: voucher.date,
+                    type: voucher.type === 'قبض' ? 'إيداع' : 'سحب', amount: nativeAmount, baseAmount: amount, currencyId: accountCurrencyId,
+                    transactionAmount: transactionNativeAmount, transactionCurrencyId: voucher.currencyId || voucherCurrencyConfig().baseCurrencyId,
+                    notes: `${voucher.type === 'قبض' ? 'سند قبض' : 'سند صرف'} [${voucher.refNumber}] | ${voucher.relationName} | ${voucher.notes || ''}`
+                });
+            }
+
+            if (voucher.relationType === 'client') {
+                const client = clientsDB.find(item => String(item?.id) === String(voucher.relationId));
+                if (!client) throw new Error('CLIENT_NOT_FOUND');
+                const direction = voucher.type === 'قبض' ? -1 : 1;
+                client.balance = Number(client.balance || 0) + (isReversal ? -direction : direction) * amount;
+            } else if (voucher.relationType === 'supplier') {
+                const supplier = suppliersDB.find(item => String(item?.id) === String(voucher.relationId));
+                if (!supplier) throw new Error('SUPPLIER_NOT_FOUND');
+                if (!Array.isArray(supplier.movements)) supplier.movements = [];
+                if (isReversal) {
+                    supplier.movements = supplier.movements.filter(movement => !(String(movement?.refType || '') === 'voucher' && String(movement?.refId || '') === String(voucher.id)));
+                } else {
+                    supplier.movements.push({
+                        id: `M_V_${voucher.id}_${Date.now()}`,
+                        type: voucher.type === 'صرف' ? 'payment' : 'debt',
+                        amount,
+                        note: `${voucher.type === 'صرف' ? 'دفعة للمورد' : 'قبض من المورد'} بسند [${voucher.refNumber}]`,
+                        date: voucher.date,
+                        refType: 'voucher', refId: voucher.id
+                    });
+                }
+            }
+        }
+
+        function saveVoucher(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editVoucherId').value;
+            const isEdit = Boolean(editId);
+            const type = document.getElementById('vType').value;
+            const date = document.getElementById('vDate').value;
+            const accountId = document.getElementById('vAccountId').value;
+            const relType = document.getElementById('relationType').value;
+            const cfg = voucherCurrencyConfig();
+            const currencyId = cfg.enabled ? voucherCurrencyId() : cfg.baseCurrencyId;
+            const amountNative = Math.max(0, Number(document.getElementById('vAmount').value || 0));
+            const amount = window.CashtopMulti?.toBase?.(amountNative, currencyId) ?? amountNative;
+            const notes = document.getElementById('vNotes').value.trim();
+            if (!accountId || amountNative <= 0) { showToast('اختر الصندوق وأدخل مبلغاً صحيحاً.', 'error'); return; }
+
+            let relId = '', relName = '';
+            if (relType === 'client') {
+                relId = document.getElementById('vClientId').value;
+                relName = document.getElementById('vClientInput').value;
+                if (!relId) { showToast('يجب تحديد العميل!', 'error'); return; }
+            } else if (relType === 'supplier') {
+                relId = document.getElementById('vSupplierId').value;
+                relName = document.getElementById('vSupplierInput').value;
+                if (!relId) { showToast('يجب تحديد المورد!', 'error'); return; }
+            } else {
+                relName = document.getElementById('vOtherName').value.trim();
+                if (!relName) { showToast('يجب كتابة اسم الجهة!', 'error'); return; }
+            }
+
+            const chosenAccount = fundsDB.accounts.find(a => String(a.id) === String(accountId));
+            if (!chosenAccount) { showToast('اختر صندوقاً مالياً صحيحاً.', 'error'); return; }
+            const oldVoucher = isEdit ? vouchersDB.find(v => String(v.id) === String(editId)) : null;
+            const cur = window.CashtopMulti?.getCurrency?.(currencyId) || cfg.base;
+            const settlement = window.CashtopMulti?.settleToAccount?.(amountNative, currencyId, chosenAccount)
+                || { accountAmount: amountNative, accountCurrencyId: chosenAccount.currencyId || currencyId, baseAmount: amount };
+            const newVoucher = {
+                id: isEdit ? editId : `V_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                refNumber: oldVoucher?.refNumber || `#SND-${Date.now().toString().slice(-7)}`,
+                type, date, accountId, relationType: relType, relationId: relId, relationName: relName, amount, amountNative, currencyId,
+                accountAmountNative: Number(settlement.accountAmount || 0), accountCurrencyId: settlement.accountCurrencyId,
+                currencyName: cur.name, currencySymbol: cur.symbol || cur.code, exchangeRatePer100Base: Number(cur.ratePer100Base || 100), notes,
+                updatedAt: new Date().toISOString()
+            };
+            const snapshots = {
+                funds: JSON.parse(JSON.stringify(fundsDB)), clients: JSON.parse(JSON.stringify(clientsDB)),
+                suppliers: JSON.parse(JSON.stringify(suppliersDB)), vouchers: JSON.parse(JSON.stringify(vouchersDB))
+            };
+            try {
+                if (oldVoucher) applyFinancialImpact(oldVoucher, true);
+                applyFinancialImpact(newVoucher, false);
+                if (oldVoucher) vouchersDB[vouchersDB.findIndex(v => String(v.id) === String(editId))] = newVoucher;
+                else vouchersDB.push(newVoucher);
+                localStorage.setItem('cashtop_vouchers', JSON.stringify(vouchersDB));
+                localStorage.setItem('cashtop_funds_db', JSON.stringify(fundsDB));
+                localStorage.setItem('cashtop_customers', JSON.stringify(clientsDB));
+                localStorage.setItem('cashtop_suppliers', JSON.stringify(suppliersDB));
+                closeModal('voucherModal');
+                initLayout();
+                showToast(isEdit ? 'تم تعديل السند وعكس القيد السابق ثم ترحيل الجديد.' : 'تم إصدار السند وترحيل الصندوق والذمة.', 'success');
+            } catch (error) {
+                fundsDB = snapshots.funds; clientsDB = snapshots.clients; suppliersDB = snapshots.suppliers; vouchersDB = snapshots.vouchers;
+                const message = error.message === 'INSUFFICIENT_FUNDS' ? 'رصيد الصندوق لا يغطي مبلغ الصرف.' : 'تعذر ترحيل السند بالكامل، ولم يتم حفظ أي حركة جزئية.';
+                showToast(message, 'error');
+                console.error(error);
+            }
+        }
+
+        function editVoucher(id) {
+            let v = vouchersDB.find(x => x.id === id);
+            if(v) {
+                document.getElementById('editVoucherId').value = v.id;
+                document.getElementById('vType').value = v.type;
+                document.getElementById('vDate').value = v.date;
+                populateVoucherCurrencySelect(v.currencyId || voucherCurrencyConfig().baseCurrencyId);
+                populateSelects();
+                
+                let acc = fundsDB.accounts.find(a => a.id == v.accountId);
+                if(acc) {
+                    document.getElementById('vAccountId').value = acc.id;
+                    document.getElementById('vAccountInput').value = acc.name;
+                }
+
+                document.getElementById('relationType').value = v.relationType;
+                handleRelationChange();
+                
+                if(v.relationType === 'client') {
+                    document.getElementById('vClientId').value = v.relationId;
+                    document.getElementById('vClientInput').value = v.relationName;
+                } else if(v.relationType === 'supplier') {
+                    document.getElementById('vSupplierId').value = v.relationId;
+                    document.getElementById('vSupplierInput').value = v.relationName;
+                } else {
+                    document.getElementById('vOtherName').value = v.relationName;
+                }
+
+                document.getElementById('vAmount').value = voucherNativeAmount(v);
+                document.getElementById('vNotes').value = v.notes || '';
+
+                document.getElementById('voucherModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> تعديل بيانات السند ومعالجة القيود';
+                openModal('voucherModal');
+            }
+        }
+
+        /* ========================================================== */
+        /*   حذف السند وعكس القيود                                    */
+        /* ========================================================== */
+        function confirmDelete(id) {
+            let v = vouchersDB.find(x => x.id === id);
+            if(v) {
+                voucherToDelete = v;
+                document.getElementById('deleteRefText').innerText = v.refNumber;
+                openModal('deleteModal');
+            }
+        }
+
+        function executeDelete() {
+            if (!voucherToDelete) return;
+            const snapshots = {
+                funds: JSON.parse(JSON.stringify(fundsDB)), clients: JSON.parse(JSON.stringify(clientsDB)),
+                suppliers: JSON.parse(JSON.stringify(suppliersDB)), vouchers: JSON.parse(JSON.stringify(vouchersDB))
+            };
+            try {
+                applyFinancialImpact(voucherToDelete, true);
+                vouchersDB = vouchersDB.filter(v => String(v.id) !== String(voucherToDelete.id));
+                localStorage.setItem('cashtop_vouchers', JSON.stringify(vouchersDB));
+                localStorage.setItem('cashtop_funds_db', JSON.stringify(fundsDB));
+                localStorage.setItem('cashtop_customers', JSON.stringify(clientsDB));
+                localStorage.setItem('cashtop_suppliers', JSON.stringify(suppliersDB));
+                closeModal('deleteModal');
+                initLayout();
+                showToast('تم حذف السند وعكس حركة الصندوق والذمة.', 'success');
+                voucherToDelete = null;
+            } catch (error) {
+                fundsDB = snapshots.funds; clientsDB = snapshots.clients; suppliersDB = snapshots.suppliers; vouchersDB = snapshots.vouchers;
+                showToast('تعذر حذف السند؛ لم يتم تنفيذ حركة جزئية.', 'error');
+                console.error(error);
+            }
+        }
+
+        /* ========================================================== */
+        /*   تصدير السندات (شامل)                                     */
+        /* ========================================================== */
+        function prepareGlobalExport() {
+            document.getElementById('exportPrintDateAll').innerText = `تاريخ الإصدار: ${new Date().toLocaleString('en-GB')}`;
+            const tbody = document.getElementById('exportDataTableBodyAll');
+            tbody.innerHTML = '';
+            let total = 0;
+
+            if(vouchersDB.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="padding:15px; color:#999;">لا توجد سندات.</td></tr>`;
+            } else {
+                vouchersDB.forEach(v => {
+                    let isR = v.type === 'قبض';
+                    let c = isR ? '#00a65a' : '#dd4b39';
+                    total += isR ? parseFloat(v.amount) : -parseFloat(v.amount);
+                    
+                    let accName = '-';
+                    if(fundsDB.accounts) { let a = fundsDB.accounts.find(x => x.id == v.accountId); if(a) accName = a.name; }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:bold;">${v.refNumber}</td>
+                            <td style="color:${c}; font-weight:bold;">${v.type}</td>
+                            <td dir="ltr">${v.date}</td>
+                            <td>${accName}</td>
+                            <td style="font-weight:bold;">${v.relationName}</td>
+                            <td style="text-align:right;">${v.notes||'-'}</td>
+                            <td style="font-weight:bold; color:${c};">${parseFloat(v.amount).toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+                        </tr>
+                    `;
+                });
+            }
+            let totEl = document.getElementById('exportTotalAmountAll');
+            totEl.innerText = total.toLocaleString('en-US',{minimumFractionDigits:2}) + ' ₪';
+            totEl.style.color = total >= 0 ? '#00a65a' : '#dd4b39';
+        }
+
+        function exportAllVouchersExcel() {
+            if(vouchersDB.length === 0) { showToast("لا توجد بيانات للتصدير", "warning"); return;}
+            let ws_data = [
+                ["نظام كاش توب - سجل فواتير وسندات القبض والصرف"],
+                ["تاريخ الاستخراج:", new Date().toLocaleString('en-GB')],
+                [],
+                ["رقم السند", "نوع السند", "التاريخ", "الصندوق / الحساب", "الجهة المعنية", "المبلغ (₪)", "البيان / الملاحظات"]
+            ];
+            
+            let total = 0;
+            vouchersDB.forEach(v => {
+                let accName = fundsDB.accounts.find(a=>a.id==v.accountId)?.name || '-';
+                let amt = parseFloat(v.amount);
+                total += v.type === 'قبض' ? amt : -amt;
+                ws_data.push([v.refNumber, v.type, v.date, accName, v.relationName, amt, v.notes||'']);
+            });
+
+            ws_data.push([]);
+            ws_data.push(["", "", "", "", "صافي السندات المعروضة:", total]);
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "سجل السندات");
+            XLSX.writeFile(wb, `سجل_السندات_الشامل_${Date.now()}.xlsx`);
+            showToast("تم تصدير الإكسل بنجاح.", "success");
+        }
+
+        async function exportAllVouchersPDF() {
+            if(vouchersDB.length === 0) { showToast("لا توجد بيانات للتصدير", "warning"); return; }
+            prepareGlobalExport();
+            const area = document.getElementById("exportAllTemplate");
+            showToast("جاري إنشاء سجل السندات كجدول PDF...", "success");
+            try {
+                await CashtopExport.exportElementTablesToPDF(area, `سجل_السندات_الشامل_${Date.now()}.pdf`, {
+                    title: 'سجل فواتير وسندات القبض والصرف',
+                    orientation: 'landscape'
+                });
+                showToast("تم التصدير لـ PDF بنجاح.", "success");
+            } catch (err) { console.error(err); showToast('تعذر إنشاء PDF.', 'error'); }
+        }
+
+        function exportAllVouchersImage() {
+            if(vouchersDB.length === 0) { showToast("لا توجد بيانات للتصدير", "warning"); return;}
+            prepareGlobalExport();
+            const area = document.getElementById("exportAllTemplate");
+            
+            showToast("جاري المعالجة... يرجى الانتظار", "success");
+
+            html2canvas(area, { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `سجل_السندات_الشامل_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast("تم استخراج الصورة بنجاح.", "success");
+            });
+        }
+
+        /* ========================================================== */
+        /*   تجهيز وطباعة السند الفردي                                */
+        /* ========================================================== */
+        function prepareIndividualVoucherPrint(id) {
+            let v = vouchersDB.find(x => x.id === id);
+            if(!v) return false;
+
+            let isR = v.type === 'قبض';
+            let accName = fundsDB.accounts.find(a=>a.id==v.accountId)?.name || '-';
+
+            document.getElementById('vPrintHeaderBorder').style.borderBottomColor = isR ? '#00a65a' : '#dd4b39';
+            document.getElementById('vPrintIcon').style.color = isR ? '#00a65a' : '#dd4b39';
+            
+            let titleEl = document.getElementById('vPrintTitle');
+            titleEl.innerText = isR ? 'سند قبض مالي' : 'سند صرف مالي';
+            titleEl.style.color = isR ? '#00a65a' : '#dd4b39';
+
+            document.getElementById('vPrintRef').innerText = v.refNumber;
+            document.getElementById('vPrintDate').innerText = v.date;
+            
+            document.getElementById('vPrintActionText').innerText = isR ? 'استلمنا من السيد/ة (الجهة):' : 'صُرف إلى السيد/ة (الجهة):';
+            document.getElementById('vPrintTarget').innerText = v.relationName;
+            
+            let badge = document.getElementById('vPrintAmountBadge');
+            badge.innerText = voucherDisplayAmount(v);
+            if(isR) { badge.classList.remove('payment'); } else { badge.classList.add('payment'); }
+
+            document.getElementById('vPrintAmount').innerText = voucherDisplayAmount(v);
+            document.getElementById('vPrintNotes').innerText = v.notes || 'دفعة مالية';
+            document.getElementById('vPrintAccount').innerText = accName;
+
+            return true;
+        }
+
+        function printVoucher(id) {
+            if(!prepareIndividualVoucherPrint(id)) return;
+            window.print();
+        }
+
+        async function exportVoucherPDF(id) {
+            if(!prepareIndividualVoucherPrint(id)) return;
+            const v = vouchersDB.find(x => x.id === id);
+            if (!v) return;
+            const accName = fundsDB.accounts.find(a => a.id == v.accountId)?.name || '-';
+            const rows = [
+                ['رقم السند', v.refNumber || '-'],
+                ['نوع السند', v.type || '-'],
+                ['التاريخ', v.date || '-'],
+                ['الصندوق / الحساب', accName],
+                ['الجهة المعنية', v.relationName || '-'],
+                ['المبلغ (₪)', parseFloat(v.amount || 0).toFixed(2)],
+                ['البيان / الملاحظات', v.notes || 'دفعة مالية']
+            ];
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: `${v.type === 'قبض' ? 'سند قبض مالي' : 'سند صرف مالي'} — ${v.refNumber || ''}`,
+                    columns: ['البيان', 'القيمة'],
+                    rows,
+                    filename: `${v.refNumber || 'سند'}_${Date.now()}.pdf`,
+                    orientation: 'portrait'
+                });
+                showToast("تم تنزيل السند لـ PDF بنجاح.", "success");
+            } catch (err) { console.error(err); showToast('تعذر إنشاء السند PDF.', 'error'); }
+        }
+
+        function exportVoucherImage(id) {
+            if(!prepareIndividualVoucherPrint(id)) return;
+            showToast("جاري استخراج السند كصورة...", "success");
+
+            let v = vouchersDB.find(x => x.id === id);
+            html2canvas(document.getElementById("individualVoucherTemplate"), { scale: 2, backgroundColor: "#ffffff" }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${v.refNumber}_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                showToast("تم حفظ السند كصورة بنجاح.", "success");
+            });
+        }
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"sands.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

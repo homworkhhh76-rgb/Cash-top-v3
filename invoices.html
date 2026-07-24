@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة الفواتير - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات الاحترافية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبة تصوير الفاتورة كصورة -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* التنسيقات الأصلية المرفقة */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .main-card { border-radius: 4px; color: white; padding: 20px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 85px; }
+        .card-total-sales { background-color: #00c0ef; }
+        .card-paid { background-color: #00a65a; }
+        .card-debts { background-color: #dd4b39; } 
+        .card-count { background-color: #605ca8; }
+        .card-content-side { display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap; }
+        .card-header-title { font-size: 15px; font-weight: bold; white-space: nowrap; }
+        .card-stat { font-size: 22px; font-weight: 700; }
+        .card-icon-side { opacity: 0.3; font-size: 26px; }
+        .action-bar { background-color: white; padding: 15px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .invoice-report-tools { background:#fff; padding:14px 15px; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,.05); display:flex; align-items:end; gap:10px; flex-wrap:wrap; }
+        .invoice-report-field { display:flex; flex-direction:column; gap:5px; min-width:150px; }
+        .invoice-report-field label { font-size:11px; font-weight:700; color:#64748b; }
+        .invoice-report-field select, .invoice-report-field input { height:38px; border:1px solid #d2d6de; border-radius:4px; padding:6px 10px; font:600 12px Cairo; background:#fff; outline:none; }
+        .invoice-report-field select:focus, .invoice-report-field input:focus { border-color:#00c0ef; }
+        .invoice-report-actions { display:flex; gap:8px; margin-inline-start:auto; flex-wrap:wrap; }
+        .btn-report-export { border:0; border-radius:4px; padding:9px 15px; color:#fff; font:700 12px Cairo; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+        .btn-report-excel { background:#15803d; } .btn-report-pdf { background:#dc2626; }
+        .report-period-note { font-size:11px; color:#64748b; align-self:center; }
+        .search-box { display: flex; align-items: center; flex: 1; max-width: 500px; position: relative; }
+        .search-control { width: 100%; padding: 8px 38px 8px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 3px; outline: none; transition: border-color 0.2s; }
+        .search-control:focus { border-color: #00c0ef; }
+        .search-box i { position: absolute; right: 12px; color: #999; font-size: 14px; }
+        .btn-create-invoice { background-color: #00a65a; color: white; border: none; padding: 8px 18px; border-radius: 3px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s; text-decoration: none;}
+        .btn-create-invoice:hover { background-color: #008d4c; }
+        .table-container { background-color: white; border-radius: 4px; border-top: 3px solid #00c0ef; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .table-header { font-size: 16px; font-weight: bold; color: #444; margin-bottom: 15px; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f9f9f9; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; white-space: nowrap; }
+        .badge-paid, .badge-partial, .badge-unpaid, .badge-user { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 3px; color: white; font-weight: 600; }
+        .badge-paid { background-color: #5cb85c; }
+        .badge-partial { background-color: #f39c12; }
+        .badge-unpaid { background-color: #dd4b39; }
+        .badge-user { background-color: #605ca8; }
+        .invoice-link { color: #3c8dbc; text-decoration: none; font-weight: bold; }
+        .actions-wrapper { display: flex; justify-content: center; gap: 6px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 5px; border-radius: 3px; transition: all 0.2s ease; }
+        .btn-view { color: #00c0ef; } .btn-view:hover { background-color: rgba(0, 192, 239, 0.1); }
+        .btn-edit { color: #f39c12; } .btn-edit:hover { background-color: rgba(243, 156, 18, 0.1); }
+        .btn-print { color: #00a65a; } .btn-print:hover { background-color: rgba(0, 166, 90, 0.1); }
+        .btn-image { color: #605ca8; } .btn-image:hover { background-color: rgba(96, 92, 168, 0.1); }
+        .btn-delete { color: #dd4b39; } .btn-delete:hover { background-color: rgba(221, 75, 57, 0.1); }
+        .btn-whatsapp { color:#16a34a; } .btn-whatsapp:hover { background:rgba(22,163,74,.1); }
+        .btn-sms { color:#2563eb; } .btn-sms:hover { background:rgba(37,99,235,.1); }
+
+        /* التجاوب */
+        @media (max-width: 992px) { .top-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } .main-card { padding: 15px 12px; min-height: 75px; } .card-content-side { gap: 8px; } .card-stat { font-size: 18px; } .table-container { overflow-x: auto; } .data-table { min-width: 1050px; } }
+        @media (max-width: 768px) { body { padding: 10px; } .action-bar { flex-direction: column; align-items: stretch; } .search-box { max-width: 100%; } .btn-create-invoice { justify-content: center; } .invoice-report-tools{align-items:stretch}.invoice-report-field{min-width:calc(50% - 6px);flex:1}.invoice-report-actions{width:100%;margin-inline-start:0}.btn-report-export{flex:1;justify-content:center} }
+
+        /* إضافات للبرمجة (النافذة المنبثقة للطباعة والتفاصيل) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: white; width: 95%; max-width: 500px; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); overflow: hidden; border-top: 3px solid #00c0ef; }
+        .modal-header { padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-weight: bold; color: #444; font-size: 16px; }
+        .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #999; }
+        .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+        .invoice-details-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        .invoice-details-table th, .invoice-details-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: right; }
+        .invoice-details-table th { background: #f9f9f9; }
+        
+        /* إخفاء العناصر عند الطباعة الفعلية */
+        @media print {
+            body * { visibility: hidden; }
+            #printable-invoice, #printable-invoice * { visibility: visible; }
+            #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; }
+            .dashboard-container, .modal-overlay { display: none !important; }
+        }
+
+        .invoice-receipt { background:#fff; color:#172033; border:1px solid #e2e8f0; border-radius:10px; padding:22px; direction:rtl; }
+        .receipt-brand { text-align:center; border-bottom:2px solid #0ea5e9; padding-bottom:14px; margin-bottom:14px; }
+        .receipt-logo { width:72px; height:72px; object-fit:contain; margin:0 auto 8px; display:block; }
+        .receipt-brand h2 { color:#0284c7; margin:0; font-size:22px; }
+        .receipt-brand p { color:#64748b; font-size:12px; margin-top:4px; }
+        .receipt-meta { display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; font-size:12px; margin-bottom:14px; }
+        .receipt-meta div { background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:7px 9px; }
+        .receipt-meta .receipt-meta-pair { grid-column:1/-1; display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+        .receipt-meta .receipt-meta-pair span { min-width:0; overflow-wrap:anywhere; }
+        .receipt-table { width:100%; border-collapse:collapse; font-size:12px; }
+        .receipt-table th { background:#0f172a; color:#fff; padding:8px 6px; }
+        .receipt-table td { border-bottom:1px solid #e2e8f0; padding:8px 6px; text-align:center; }
+        .receipt-table td:first-child, .receipt-table th:first-child { text-align:right; }
+        .receipt-totals { margin-top:14px; border-top:2px dashed #94a3b8; padding-top:10px; }
+        .receipt-total-row { display:flex; align-items:center; justify-content:space-between; padding:4px 0; font-size:13px; }
+        .receipt-total-row.final { margin-top:5px; padding:8px 10px; background:#e0f2fe; border-radius:5px; font-size:15px; font-weight:700; }
+        .receipt-notes { margin-top:12px; padding:10px; background:#fffbeb; border-right:3px solid #f59e0b; font-size:12px; }
+        .receipt-footer { text-align:center; color:#64748b; font-size:11px; margin-top:16px; border-top:1px solid #e2e8f0; padding-top:10px; }
+        .delete-modal-content { max-width:430px; border-top-color:#dd4b39; }
+        .delete-warning-icon { width:68px; height:68px; margin:0 auto 14px; border-radius:50%; background:#fee2e2; color:#dc2626; display:flex; align-items:center; justify-content:center; font-size:28px; }
+        .delete-warning-text { text-align:center; line-height:1.9; font-size:13px; color:#475569; }
+        .delete-warning-text strong { color:#b91c1c; }
+        .delete-actions { display:flex; gap:10px; margin-top:20px; }
+        .delete-actions button { flex:1; border:0; border-radius:5px; padding:10px; cursor:pointer; font-weight:700; font-family:inherit; }
+        .btn-cancel-delete { background:#e2e8f0; color:#334155; }
+        .btn-confirm-delete { background:#dc2626; color:#fff; }
+
+        /* ترحيل مجموعة فواتير المبيعات */
+        .sales-action-buttons { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+        .btn-batch-invoices { background:#605ca8; color:#fff; border:0; padding:8px 18px; border-radius:3px; font-size:13px; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+        .btn-batch-invoices:hover { background:#514d91; }
+        .batch-modal-content { width:min(1120px, 96vw); max-width:1120px; height:min(92vh, 900px); border-top-color:#605ca8; display:flex; flex-direction:column; }
+        .batch-modal-content .modal-header { flex:0 0 auto; }
+        .batch-modal-content .modal-body { flex:1 1 auto; max-height:none; overflow:auto; background:#f5f7fb; padding:16px; }
+        .batch-modal-note { display:flex; gap:10px; align-items:flex-start; background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:8px; padding:11px 13px; margin-bottom:14px; font-size:12px; line-height:1.8; }
+        .batch-invoices-container { display:flex; flex-direction:column; gap:14px; }
+        .batch-invoice-card { position:relative; background:#fff; border:1px solid #dbe3ef; border-radius:10px; box-shadow:0 2px 8px rgba(15,23,42,.05); overflow:visible; }
+        .batch-invoice-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 13px; background:#f8fafc; border-bottom:1px solid #e2e8f0; }
+        .batch-invoice-title { display:flex; align-items:center; gap:8px; color:#334155; font-size:14px; font-weight:700; }
+        .batch-remove-invoice, .batch-remove-item { border:0; background:#fee2e2; color:#b91c1c; border-radius:6px; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
+        .batch-remove-invoice { padding:7px 10px; font-size:12px; }
+        .batch-remove-item { width:34px; height:34px; flex:0 0 34px; }
+        .batch-invoice-body { padding:13px; }
+        .batch-two-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+        .batch-field { min-width:0; }
+        .batch-field label { display:block; margin-bottom:5px; color:#475569; font-size:11px; font-weight:700; }
+        .batch-input { width:100%; min-width:0; height:38px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:7px 9px; outline:none; font-family:inherit; font-size:12px; color:#172033; }
+        .batch-input:focus { border-color:#605ca8; box-shadow:0 0 0 2px rgba(96,92,168,.12); }
+        .batch-input[readonly] { background:#f1f5f9; color:#334155; font-weight:700; }
+        .batch-autocomplete { position:relative; min-width:0; }
+        .batch-suggestions { position:absolute; top:calc(100% + 4px); right:0; left:0; z-index:80; display:none; max-height:240px; overflow:auto; background:#fff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 12px 28px rgba(15,23,42,.18); padding:5px; }
+        .batch-suggestions.active { display:block; }
+        .batch-suggestion-option { width:100%; border:0; background:#fff; color:#1e293b; padding:9px 10px; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:right; cursor:pointer; font-family:inherit; }
+        .batch-suggestion-option:hover, .batch-suggestion-option:focus { background:#eef2ff; outline:none; }
+        .batch-suggestion-option span { min-width:0; display:flex; flex-direction:column; gap:2px; }
+        .batch-suggestion-option strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .batch-suggestion-option small { color:#64748b; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .batch-suggestion-option i { color:#605ca8; flex:0 0 auto; }
+        .batch-suggestion-empty { padding:10px; color:#64748b; font-size:10px; line-height:1.7; background:#f8fafc; border-radius:6px; }
+        .batch-items-box { margin-top:12px; border:1px solid #e2e8f0; border-radius:8px; overflow:visible; }
+        .batch-items-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; background:#f8fafc; border-bottom:1px solid #e2e8f0; }
+        .batch-items-head strong { font-size:12px; color:#334155; }
+        .batch-add-item { border:0; background:#e0f2fe; color:#0369a1; border-radius:6px; padding:6px 9px; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+        .batch-items-list { padding:10px; display:flex; flex-direction:column; gap:9px; }
+        .batch-item-row { display:grid; grid-template-columns:minmax(165px, 1.8fr) minmax(125px, 1.15fr) minmax(80px, .7fr) minmax(95px, .9fr) minmax(95px, .9fr) 34px; gap:8px; align-items:end; padding-bottom:9px; border-bottom:1px dashed #e2e8f0; }
+        .batch-item-row:last-child { border-bottom:0; padding-bottom:0; }
+        .batch-modal-footer { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 15px; background:#fff; border-top:1px solid #e2e8f0; }
+        .batch-footer-actions { display:flex; gap:8px; align-items:center; }
+        .batch-footer-button { border:0; border-radius:7px; padding:9px 14px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+        .batch-footer-add { background:#eef2ff; color:#4338ca; }
+        .batch-footer-save { background:#00a65a; color:#fff; min-width:160px; }
+        .batch-footer-cancel { background:#e2e8f0; color:#334155; }
+        .batch-footer-save:disabled { opacity:.6; cursor:not-allowed; }
+        .batch-summary { color:#64748b; font-size:11px; }
+
+        @media (max-width:768px) {
+            .sales-action-buttons { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); width:100%; }
+            .btn-create-invoice, .btn-batch-invoices { width:100%; padding:9px 6px; font-size:11px; }
+            .batch-modal-content { width:100vw; height:100dvh; max-height:none; border-radius:0; }
+            .batch-modal-content .modal-body { padding:9px; }
+            .batch-invoice-body { padding:9px; }
+            .batch-two-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:7px; }
+            .batch-field label { font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .batch-input { height:36px; padding:6px 7px; font-size:11px; }
+            .batch-item-row { grid-template-columns:repeat(2, minmax(0,1fr)); gap:7px; position:relative; padding-left:40px; }
+            .batch-item-row .batch-remove-item { position:absolute; left:0; bottom:9px; }
+            .batch-modal-footer { align-items:stretch; flex-direction:column; padding:9px; }
+            .batch-footer-actions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); width:100%; }
+            .batch-footer-save { width:100%; }
+            .batch-summary { text-align:center; }
+        }
+        @media (max-width:390px) {
+            .batch-invoice-head { padding:9px; }
+            .batch-remove-invoice span { display:none; }
+            .batch-field label { font-size:9px; }
+            .batch-input { font-size:10px; padding-inline:5px; }
+        }
+        @media (max-width:600px) { .receipt-meta { grid-template-columns:1fr; } .invoice-receipt { padding:14px; } }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div class="dashboard-container">
+        <!-- صف الكروت الأربعة -->
+        <div class="top-cards-grid">
+            <div class="main-card card-total-sales">
+                <div class="card-content-side">
+                    <span class="card-header-title">إجمالي المبيعات:</span>
+                    <span class="card-stat" id="stat-total-sales">0.00</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            </div>
+            <div class="main-card card-paid">
+                <div class="card-content-side">
+                    <span class="card-header-title">المدفوع نقداً:</span>
+                    <span class="card-stat" id="stat-total-paid">0.00</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-money-bill-wave"></i></div>
+            </div>
+            <div class="main-card card-debts">
+                <div class="card-content-side">
+                    <span class="card-header-title">الديون المتبقية:</span>
+                    <span class="card-stat" id="stat-total-debt">0.00</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            </div>
+            <div class="main-card card-count">
+                <div class="card-content-side">
+                    <span class="card-header-title">فواتير اليوم:</span>
+                    <span class="card-stat" id="stat-today-count">0</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-calculator"></i></div>
+            </div>
+        </div>
+
+        <!-- شريط البحث وإنشاء الفاتورة -->
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" class="search-control" placeholder="ابحث مباشرة برقم الفاتورة، اسم العميل..." oninput="filterTable()">
+            </div>
+            <div class="sales-action-buttons" data-ct-permission="sales.create">
+                <button type="button" class="btn-batch-invoices" onclick="openBatchInvoiceModal()"><i class="fa-solid fa-layer-group"></i> ترحيل فواتير مبيعات</button>
+                <a href="cashier.html" class="btn-create-invoice"><i class="fa-solid fa-plus"></i> فاتورة من الكاشير</a>
+            </div>
+        </div>
+
+        <div class="invoice-report-tools">
+            <div class="invoice-report-field">
+                <label for="invoicePeriodFilter">تصفية التقرير</label>
+                <select id="invoicePeriodFilter" onchange="handleInvoicePeriodChange()">
+                    <option value="daily">يومي - اليوم</option>
+                    <option value="weekly">أسبوعي - الأسبوع الحالي</option>
+                    <option value="monthly">شهري - الشهر الحالي</option>
+                    <option value="yearly">سنوي - السنة الحالية</option>
+                    <option value="custom">من تاريخ إلى تاريخ</option>
+                    <option value="all" selected>كل الفواتير</option>
+                </select>
+            </div>
+            <div class="invoice-report-field custom-invoice-range" style="display:none">
+                <label for="invoiceDateFrom">من تاريخ</label>
+                <input type="date" id="invoiceDateFrom" onchange="filterTable()">
+            </div>
+            <div class="invoice-report-field custom-invoice-range" style="display:none">
+                <label for="invoiceDateTo">إلى تاريخ</label>
+                <input type="date" id="invoiceDateTo" onchange="filterTable()">
+            </div>
+            <span class="report-period-note" id="invoiceReportPeriodLabel"></span>
+            <div class="invoice-report-actions">
+                <button type="button" class="btn-report-export btn-report-excel" onclick="exportInvoicesExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                <button type="button" class="btn-report-export btn-report-pdf" onclick="exportInvoicesPdf()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            </div>
+        </div>
+
+        <!-- سجل الفواتير -->
+        <div class="table-container">
+            <div class="table-header">سجل الفواتير العام</div>
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>رقم الفاتورة</th>
+                            <th>العميل</th>
+                            <th>طريقة الدفع</th>
+                            <th>الحالة</th>
+                            <th>الموظف / المدير</th>
+                            <th>الإجمالي</th>
+                            <th>المدفوع</th>
+                            <th>الدين</th>
+                            <th>التاريخ</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoices-tbody">
+                        <!-- يتم جلب البيانات برمجياً هنا -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة عرض الفاتورة -->
+    <div class="modal-overlay" id="viewModal" onclick="closeViewModal(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-inv-id">تفاصيل الفاتورة</div>
+                <button class="modal-close" type="button" onclick="document.getElementById('viewModal').classList.remove('active')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="invoice-capture-area"></div>
+        </div>
+    </div>
+
+    <!-- نافذة ترحيل عدة فواتير مبيعات وحفظ كل واحدة بصورة منفصلة -->
+    <div class="modal-overlay" id="batchInvoiceModal" onclick="closeBatchInvoiceModal(event)">
+        <div class="modal-content batch-modal-content">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-layer-group" style="color:#605ca8"></i> ترحيل فواتير مبيعات</div>
+                <button class="modal-close" type="button" onclick="hideBatchInvoiceModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="batch-modal-note"><i class="fa-solid fa-circle-info"></i><span>تُحفظ البيانات تلقائياً كمسودة محلية حتى لو أُغلقت النافذة بالخطأ. اكتب حرفاً في اسم العميل أو الصنف لعرض اقتراحات مباشرة بلا أسهم. الصنف غير الموجود أو غير المتوفر بالمخزون يُحفظ داخل الفاتورة دون خصم مخزون، والمبلغ المدفوع يُرحل إلى الصندوق المختار، بينما يُربط الدين بالعميل وبالفاتورة نفسها.</span></div>
+                <div class="batch-invoices-container" id="batchInvoicesContainer"></div>
+            </div>
+            <div class="batch-modal-footer">
+                <div class="batch-summary" id="batchInvoicesSummary">فاتورة واحدة جاهزة للترحيل</div>
+                <div class="batch-footer-actions">
+                    <button type="button" class="batch-footer-button batch-footer-cancel" onclick="hideBatchInvoiceModal()">إلغاء</button>
+                    <button type="button" class="batch-footer-button batch-footer-add" onclick="addBatchInvoice()"><i class="fa-solid fa-plus"></i> إضافة فاتورة جديدة</button>
+                    <button type="button" class="batch-footer-button batch-footer-save" id="saveBatchInvoicesButton" onclick="saveBatchInvoices()"><i class="fa-solid fa-check-double"></i> ترحيل كل الفواتير</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة حذف الفاتورة وعكس الحركة -->
+    <div class="modal-overlay" id="deleteModal" onclick="closeDeleteModal(event)">
+        <div class="modal-content delete-modal-content">
+            <div class="modal-header">
+                <div class="modal-title">حذف الفاتورة وعكس الحركة</div>
+                <button class="modal-close" type="button" onclick="hideDeleteModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="delete-warning-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="delete-warning-text">سيتم حذف الفاتورة <strong id="deleteInvoiceNumber"></strong> نهائياً، وإعادة الكميات إلى المخزون، وعكس ذمة العميل والتحصيل من الحساب المالي، وتسجيل قيد عكسي للمراجعة.</div>
+                <div class="delete-actions">
+                    <button type="button" class="btn-cancel-delete" onclick="hideDeleteModal()">إلغاء</button>
+                    <button type="button" class="btn-confirm-delete" onclick="confirmDeleteInvoice()"><i class="fa-solid fa-trash-can"></i> حذف وعكس الحركة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="invoice-document.js?v=18"></script>
+    <script src="cashtop-export.js?v=21"></script>
+    <script src="cashtop-printer.js?v=48"></script>
+    <script src="invoices.js?v=19"></script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"invoices.html"}</script>
+</body>
+
+</html>

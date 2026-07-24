@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة الصناديق - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- استيراد مكتبات التصدير (PDF, Excel, Image) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        /* شبكة الكروت العلوية */
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+        .main-card { border-radius: 4px; color: white; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; min-height: 85px; overflow: hidden; }
+
+        .card-cash-main { background-color: #00a65a; } 
+        .card-bank { background-color: #00c0ef; }
+        .card-accounts-count { background-color: #605ca8; } 
+        .card-total-funds { background-color: #34495e; }
+
+        .card-content-side { display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+        .card-header-title { font-size: 13px; font-weight: 600; opacity: 0.9; }
+        .card-stat { font-size: 22px; font-weight: 700; }
+        .card-icon-side { opacity: 0.25; font-size: 35px; }
+
+        /* شريط العمليات */
+        .action-bar { background-color: white; padding: 15px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .right-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .left-export-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .btn-action { border: none; padding: 10px 18px; border-radius: 4px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; color: white; font-weight: 600; transition: background 0.3s; }
+        .btn-add-account { background-color: #00a65a; } .btn-add-account:hover { background-color: #008d4c; }
+        .btn-transfer { background-color: #605ca8; } .btn-transfer:hover { background-color: #4b4885; }
+
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; font-weight: 600; }
+        .btn-export:hover { background-color: #f4f4f4; color: #333; }
+        .btn-export.excel-type:hover { color: #00a65a; border-color: #00a65a; }
+        .btn-export.pdf-type:hover { color: #dd4b39; border-color: #dd4b39; }
+
+        /* سجل الصناديق */
+        .table-container { background-color: white; border-radius: 6px; border-top: 3px solid #00c0ef; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; overflow: hidden;}
+        .table-header { font-size: 16px; font-weight: bold; color: #444; margin-bottom: 15px; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; }
+
+        .table-responsive-box { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 900px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f9f9f9; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; white-space: nowrap; }
+
+        .badge-account-name { background-color: #f4f6f9; color: #333; padding: 5px 12px; border-radius: 4px; font-weight: 700; border: 1px solid #d2d6de; }
+        .badge-balance-val { background-color: #e6f7ed; color: #00a65a; padding: 5px 15px; border-radius: 4px; font-weight: bold; font-size: 14px;}
+        
+        /* بادجات الألوان للأنواع الجديدة والقديمة */
+        .badge-type-cash { background-color: rgba(0, 166, 90, 0.1); color: #00a65a; padding: 4px 10px; border-radius: 4px; font-weight: 600; border: 1px solid rgba(0, 166, 90, 0.2); }
+        .badge-type-bank { background-color: rgba(0, 192, 239, 0.1); color: #00c0ef; padding: 4px 10px; border-radius: 4px; font-weight: 600; border: 1px solid rgba(0, 192, 239, 0.2); }
+        .badge-type-wallet { background-color: rgba(243, 156, 18, 0.1); color: #f39c12; padding: 4px 10px; border-radius: 4px; font-weight: 600; border: 1px solid rgba(243, 156, 18, 0.2); }
+        .badge-type-other { background-color: rgba(108, 117, 125, 0.1); color: #6c757d; padding: 4px 10px; border-radius: 4px; font-weight: 600; border: 1px solid rgba(108, 117, 125, 0.2); }
+
+        .badge-deposit { background-color: #e6f7ed; color: #00a65a; padding: 3px 10px; border-radius: 4px; font-weight: bold; }
+        .badge-withdraw { background-color: #fdeaea; color: #dd4b39; padding: 3px 10px; border-radius: 4px; font-weight: bold; }
+
+        .actions-wrapper { display: flex; justify-content: center; gap: 6px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 15px; padding: 6px; border-radius: 4px; transition: all 0.2s ease; }
+        .btn-log { color: #3c8dbc; } .btn-log:hover { background-color: rgba(60, 141, 188, 0.1); }
+        .btn-pdf { color: #dd4b39; } .btn-pdf:hover { background-color: rgba(221, 75, 57, 0.1); }
+        .btn-excel { color: #00a65a; } .btn-excel:hover { background-color: rgba(0, 166, 90, 0.1); }
+        .btn-edit { color: #f39c12; } .btn-edit:hover { background-color: rgba(243, 156, 18, 0.1); }
+        .btn-delete { color: #dd4b39; } .btn-delete:hover { background-color: rgba(221, 75, 57, 0.1); }
+
+        /* النوافذ المنبثقة */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 10px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: white; width: 100%; max-width: 500px; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: translateY(-20px); transition: transform 0.3s ease; padding: 25px; }
+        
+        #accountModal .modal-box { border-top: 4px solid #00a65a; }
+        #transferModal .modal-box { border-top: 4px solid #605ca8; }
+        #logModal .modal-box { border-top: 4px solid #3c8dbc; max-width: 700px; }
+        #deleteModal .modal-box { border-top: 4px solid #dd4b39; max-width: 400px; text-align: center; } /* نافذة الحذف الجديدة */
+        
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #aaa; transition: 0.2s;}
+        .modal-close:hover { color: #dd4b39; }
+
+        .form-group { margin-bottom: 18px; text-align: right; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #555; }
+        .form-control { width: 100%; padding: 10px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; outline: none; transition: 0.3s;}
+        .form-control:focus { border-color: #3c8dbc; box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.2); }
+        .form-control:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+        textarea.form-control { resize: vertical; height: 80px; }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 15px; }
+        .btn-green-submit { background-color: #00a65a; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: 0.3s;}
+        .btn-green-submit:hover { background-color: #008d4c; }
+        
+        .btn-purple-submit { background-color: #605ca8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: 0.3s; } 
+        .btn-purple-submit:hover { background-color: #4b4885; }
+        
+        .btn-red-submit { background-color: #dd4b39; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.3s; width: 100%;}
+        .btn-red-submit:hover { background-color: #c23321; }
+
+        .btn-cancel { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.3s; width: 100%; text-align: center;}
+        .btn-cancel:hover { background-color: #e2e8f0; }
+
+        /* التنبيهات (Toasts) الاحترافية */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 8px;}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+        .toast.warning { background-color: #f39c12; border-right: 4px solid #d48407; }
+
+        /* تصميم قوالب التصدير للطباعة والـ PDF (مخفية عن المستخدم) */
+        .export-template-container { position: absolute; top: -9999px; left: -9999px; width: 900px; background: #ffffff; padding: 40px; color: #333; font-family: 'Cairo', sans-serif; direction: rtl; z-index: -1; }
+        .export-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #3c8dbc; padding-bottom: 15px; margin-bottom: 20px; }
+        .export-logo-title { display: flex; align-items: center; gap: 15px; }
+        .export-logo-title i { font-size: 35px; color: #3c8dbc; }
+        .export-logo-title h2 { font-size: 24px; font-weight: 800; color: #333; margin: 0; }
+        .export-info { text-align: left; }
+        .export-info h3 { font-size: 18px; color: #333; margin: 0 0 5px 0; }
+        .export-info p { font-size: 12px; color: #555; margin: 0; }
+        
+        .account-summary-box { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;}
+        .account-summary-box span { color: #00a65a; font-size: 16px; }
+
+        .export-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 15px; text-align: center; }
+        .export-table th, .export-table td { border: 1px solid #ddd; padding: 10px; }
+        .export-table th { background-color: #f1f5f9; color: #333; font-weight: bold; }
+        .export-footer { margin-top: 30px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .main-card { min-height: 70px; padding: 12px; }
+            .card-header-title { font-size: 11px; }
+            .card-stat { font-size: 16px; }
+            .card-icon-side { font-size: 24px; }
+            .action-bar { flex-direction: column; align-items: stretch; gap: 12px; }
+            .right-actions, .left-export-buttons { width: 100%; justify-content: space-between; }
+            .btn-action, .btn-export { flex: 1; justify-content: center; font-size: 12px; padding: 10px; }
+            .table-container { padding: 10px; }
+            .data-table { min-width: 800px; }
+            .modal-footer { flex-direction: column; gap: 8px;}
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div class="dashboard-container">
+        
+        <!-- صف الإحصائيات العلوية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-cash-main">
+                <div class="card-content-side">
+                    <span class="card-header-title">كاش (إجمالي الصناديق)</span>
+                    <span class="card-stat" id="statCashMain">0.00</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-cash-register"></i></div>
+            </div>
+            <div class="main-card card-bank">
+                <div class="card-content-side">
+                    <span class="card-header-title">إجمالي الحسابات البنكية</span>
+                    <span class="card-stat" id="statBankMain">0.00</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-building-columns"></i></div>
+            </div>
+            <div class="main-card card-accounts-count">
+                <div class="card-content-side">
+                    <span class="card-header-title">عدد الحسابات المنشأة</span>
+                    <span class="card-stat" id="statAccountsCount">0</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-wallet"></i></div>
+            </div>
+            <div class="main-card card-total-funds">
+                <div class="card-content-side">
+                    <span class="card-header-title">إجمالي الخزينة العامة</span>
+                    <span class="card-stat" id="statTotalFunds">0.00</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-vault"></i></div>
+            </div>
+        </div>
+
+        <!-- شريط العمليات (الأزرار العامة) -->
+        <div class="action-bar">
+            <div class="right-actions">
+                <button class="btn-action btn-add-account" onclick="openAddAccountModal()"><i class="fa-solid fa-plus"></i> إضافة صندوق مالي</button>
+                <button class="btn-action btn-transfer" onclick="openModal('transferModal')"><i class="fa-solid fa-money-bill-transfer"></i> تحويل بين الحسابات</button>
+            </div>
+            <div class="left-export-buttons">
+                <!-- أزرار التصدير الشاملة المبرمجة بالكامل -->
+                <button class="btn-export excel-type" onclick="exportAllAccountsExcel()"><i class="fa-solid fa-file-excel"></i> اكسل (شامل)</button>
+                <button class="btn-export pdf-type" onclick="exportAllAccountsPDF()"><i class="fa-solid fa-file-pdf"></i> PDF (شامل)</button>
+            </div>
+        </div>
+
+        <!-- سجل الحسابات الرئيسي -->
+        <div class="table-container">
+            <div class="table-header">سجل الحسابات والصناديق والأرصدة المتوفرة</div>
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>معرف الحساب (اسم المستخدم)</th>
+                            <th>النوع</th>
+                            <th>الرصيد المتوفر</th>
+                            <th>الملاحظات السجلية</th>
+                            <th>إجراءات وتقارير فردية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accountsTableBody">
+                        <!-- تعبئة برمجية -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. نافذة إضافة/تعديل حساب مالي (تم تحسينها وتعديل أسماء الحقول) -->
+    <div class="modal-overlay" id="accountModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="accountModalTitle"><i class="fa-solid fa-wallet"></i> إضافة صندوق مالي جديد</div>
+                <button class="modal-close" onclick="closeModal('accountModal')">&times;</button>
+            </div>
+            <form id="accountForm" onsubmit="saveAccount(event)">
+                <!-- حقل مخفي لتخزين الـ ID في حالة التعديل -->
+                <input type="hidden" id="editAccountId" value="">
+                
+                <div class="form-group">
+                    <label>معرف الحساب (اسم المستخدم) - إجباري وفريد</label>
+                    <input type="text" id="accName" class="form-control" placeholder="مثال: user_cash_1 أو بنك_فلسطين..." required>
+                </div>
+                <div class="form-group">
+                    <label>نوع الحساب</label>
+                    <select id="accType" class="form-control" required onchange="toggleOtherType()">
+                        <option value="كاش">صندوق كاش (نقدي)</option>
+                        <option value="بنكي">حساب بنكي</option>
+                        <option value="محفظة">محفظة إلكترونية</option>
+                        <option value="أخرى">أخرى (كتابة يدوية)</option>
+                    </select>
+                    <!-- حقل يظهر فقط عند اختيار "أخرى" -->
+                    <input type="text" id="accTypeOther" class="form-control" style="display:none; margin-top:10px;" placeholder="اكتب نوع الحساب المخصص هنا...">
+                </div>
+                <div class="form-group">
+                    <label id="accBalanceLabel">الرصيد الافتتاحي</label>
+                    <input type="number" step="0.01" id="accBalance" class="form-control" placeholder="0.00" required>
+                </div>
+                <div class="form-group" id="accCurrencyGroup" style="display:none;">
+                    <label>عملة الصندوق / الحساب</label>
+                    <select id="accCurrency" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات إضافية (اختياري)</label>
+                    <textarea id="accNotes" class="form-control" placeholder="أكتب تفاصيل عن الحساب هنا..."></textarea>
+                </div>
+                <div class="modal-footer" style="justify-content: space-between; flex-direction: row-reverse;">
+                    <button type="submit" class="btn-green-submit" style="width: 100%; justify-content: center;"><i class="fa-solid fa-floppy-disk"></i> حفظ الحساب</button>
+                    <button type="button" class="btn-cancel" onclick="closeModal('accountModal')">إلغاء الأمر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. نافذة التحويل المالي -->
+    <div class="modal-overlay" id="transferModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-money-bill-transfer"></i> إجراء تحويل مالي بين الحسابات</div>
+                <button class="modal-close" onclick="closeModal('transferModal')">&times;</button>
+            </div>
+            <form id="transferForm" onsubmit="handleTransfer(event)">
+                <div class="form-group">
+                    <label>تحويل مــــن حساب (المرسل / خصم)</label>
+                    <select id="transferFromSelect" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <label>إلــــى حساب (المستقبل / إضافة)</label>
+                    <select id="transferToSelect" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <label>المبلغ المراد تحويله (بعملة الحساب المرسل)</label>
+                    <input type="number" step="0.01" id="transferAmount" class="form-control" placeholder="0.00" required min="0.01">
+                </div>
+                <div class="form-group">
+                    <label>بيان / ملاحظات التحويل</label>
+                    <textarea id="transferNotes" class="form-control" placeholder="اكتب سبب التحويل لإدراجه في كشف الحساب..."></textarea>
+                </div>
+                <div class="modal-footer" style="justify-content: space-between; flex-direction: row-reverse;">
+                    <button type="submit" class="btn-purple-submit" style="width: 100%; justify-content: center;"><i class="fa-solid fa-check"></i> تأكيد وإجراء التحويل</button>
+                    <button type="button" class="btn-cancel" onclick="closeModal('transferModal')">إلغاء الأمر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. نافذة استعراض الحركات السريعة (Log Modal) -->
+    <div class="modal-overlay" id="logModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-clock-history"></i> كشف الحركات السريع لـ: <span id="logAccountTitle" style="color: #3c8dbc;">-</span></div>
+                <button class="modal-close" onclick="closeModal('logModal')">&times;</button>
+            </div>
+            <div style="overflow-x: auto; max-height: 350px;">
+                <table class="data-table" style="min-width: 550px;">
+                    <thead style="position: sticky; top: 0; background: #f9f9f9; z-index: 5;">
+                        <tr>
+                            <th>التاريخ</th>
+                            <th>نوع الحركة</th>
+                            <th>القيمة (₪)</th>
+                            <th>البيان والملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('logModal')" style="width: auto;">إغلاق المعاينة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. نافذة تأكيد الحذف الجديدة كلياً (بديلة للتنبيه المزعج) -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 50px; color: #dd4b39;"></i>
+            </div>
+            <h3 style="text-align: center; color: #333; margin-bottom: 15px;">تأكيد مسح الحساب</h3>
+            <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
+                هل أنت متأكد من رغبتك بحذف حساب: <strong id="deleteAccNameText" style="color: #dd4b39;"></strong>؟<br>سيتم مسح كافة حركاته المالية المسجلة ولا يمكن التراجع عن هذه الخطوة أبداً.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 10px;">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">إلغاء وتراجع</button>
+                <button type="button" class="btn-red-submit" onclick="executeDelete()"><i class="fa-solid fa-trash-can"></i> نعم، احذف الحساب الآن</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. قالب استخراج كشف الحساب الفردي للـ PDF (مخفي) -->
+    <div id="exportIndividualTemplate" class="export-template-container">
+        <div class="export-header">
+            <div class="export-logo-title">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+                <div>
+                    <h2>كاش توب - Cash Top</h2>
+                    <span style="font-size:12px; color:#777;">النظام المالي المحاسبي المتكامل</span>
+                </div>
+            </div>
+            <div class="export-info">
+                <h3>كشف حساب تفصيلي (فردي)</h3>
+                <p id="exportPrintDateIndiv">تاريخ الإصدار: </p>
+            </div>
+        </div>
+        
+        <div class="account-summary-box">
+            <div>معرف الحساب: <span id="exportAccNameIndiv" style="color:#333;">-</span></div>
+            <div>النوع: <span id="exportAccTypeIndiv" style="color:#333;">-</span></div>
+            <div>الرصيد النهائي: <span id="exportAccBalanceIndiv">0.00 ₪</span></div>
+        </div>
+
+        <table class="export-table">
+            <thead>
+                <tr>
+                    <th>تاريخ الحركة</th>
+                    <th>نوع الحركة</th>
+                    <th>قيمة الحركة (₪)</th>
+                    <th>البيان / تفاصيل القيد</th>
+                </tr>
+            </thead>
+            <tbody id="exportDataTableBodyIndiv">
+                <!-- تملأ برمجياً -->
+            </tbody>
+        </table>
+        <div class="export-footer">تم استخراج هذا الكشف آلياً من نظام كاش توب ولا يتطلب توقيع.</div>
+    </div>
+
+    <!-- 6. قالب استخراج كشف الحسابات الشامل للـ PDF (مخفي) -->
+    <div id="exportAllTemplate" class="export-template-container">
+        <div class="export-header">
+            <div class="export-logo-title">
+                <i class="fa-solid fa-vault"></i>
+                <div>
+                    <h2>كاش توب - Cash Top</h2>
+                    <span style="font-size:12px; color:#777;">النظام المالي المحاسبي المتكامل</span>
+                </div>
+            </div>
+            <div class="export-info">
+                <h3>كشف الأرصدة والصناديق الشامل</h3>
+                <p id="exportPrintDateAll">تاريخ الإصدار: </p>
+            </div>
+        </div>
+        
+        <table class="export-table">
+            <thead>
+                <tr>
+                    <th>م</th>
+                    <th>معرف الحساب (اسم المستخدم)</th>
+                    <th>النوع</th>
+                    <th>الرصيد المتوفر (₪)</th>
+                    <th>ملاحظات إضافية</th>
+                </tr>
+            </thead>
+            <tbody id="exportDataTableBodyAll">
+                <!-- تملأ برمجياً -->
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #f1f5f9; font-weight: bold;">
+                    <td colspan="3" style="text-align: left;">إجمالي الخزينة العامة:</td>
+                    <td id="exportTotalFundsAll" style="color: #00a65a; font-size: 16px;">0.00</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="export-footer">تم استخراج هذا الكشف آلياً من نظام كاش توب ولا يتطلب توقيع.</div>
+    </div>
+
+    <!-- حاوية التنبيهات -->
+    <div id="toast-container"></div>
+
+    <script>
+        /* ========================================================== */
+        /*   دوال مساعدة لفتح وإغلاق النوافذ                          */
+        /* ========================================================== */
+        function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+        window.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) { e.target.classList.remove('active'); } });
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = '';
+            if(type === 'success') icon = '<i class="fa-solid fa-circle-check"></i>';
+            else if(type === 'error') icon = '<i class="fa-solid fa-circle-xmark"></i>';
+            else icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            
+            toast.innerHTML = `${icon} ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+
+        /* ========================================================== */
+        /*   تهيئة قاعدة البيانات (نظيفة وجديدة بالكامل - حذف القديم) */
+        /* ========================================================== */
+        let cashtop_funds_db = { accounts: [], accountLogs: [] };
+        let currentDeleteId = null; // متغير لحفظ الـ ID المطلوب حذفه
+
+        function getCurrencyConfig() { return window.CashtopMulti?.getCurrencyConfig?.() || { enabled:false, baseCurrencyId:'ILS', base:{id:'ILS',symbol:'₪',code:'ILS'}, currencies:[{id:'ILS',symbol:'₪',code:'ILS',name:'شيكل'}] }; }
+        function normalizeAccountCurrencies() {
+            const cfg = getCurrencyConfig();
+            (cashtop_funds_db.accounts || []).forEach(account => { if (!account.currencyId) account.currencyId = cfg.baseCurrencyId; });
+        }
+        function accountCurrency(account) { const cfg=getCurrencyConfig(); return window.CashtopMulti?.getCurrency?.(account?.currencyId || cfg.baseCurrencyId) || cfg.base; }
+        function accountMoney(amount, account) { const cur=accountCurrency(account); return `${Number(amount || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:3})} ${cur.symbol || cur.code || ''}`; }
+        function accountBalanceBase(account) { return window.CashtopMulti?.toBase?.(Number(account?.balance || 0), account?.currencyId) ?? Number(account?.balance || 0); }
+        function populateAccountCurrencySelect(selectedId = '') {
+            const cfg = getCurrencyConfig();
+            const group = document.getElementById('accCurrencyGroup');
+            const select = document.getElementById('accCurrency');
+            if (!select || !group) return;
+            group.style.display = cfg.enabled ? 'block' : 'none';
+            select.innerHTML = cfg.currencies.map(cur => `<option value="${String(cur.id)}">${String(cur.name)} (${String(cur.symbol || cur.code)})</option>`).join('');
+            select.value = selectedId && cfg.currencies.some(cur => String(cur.id) === String(selectedId)) ? selectedId : cfg.baseCurrencyId;
+            const label = document.getElementById('accBalanceLabel');
+            if (label) label.textContent = `الرصيد الافتتاحي (${accountCurrency({currencyId:select.value}).symbol || accountCurrency({currencyId:select.value}).code})`;
+            select.onchange = () => { if (label) label.textContent = `الرصيد الافتتاحي (${accountCurrency({currencyId:select.value}).symbol || accountCurrency({currencyId:select.value}).code})`; };
+        }
+
+        window.onload = function() {
+            try { window.Cashtop?.ensureSystemDefaults?.(); } catch (_) {}
+            try {
+                // استخدمنا مفتاح تخزين جديد كلياً "cashtop_funds_db_v4" لمسح أخطائك السابقة والبدء بالكاش فقط
+                if (localStorage.getItem('cashtop_funds_db_v4')) {
+                    cashtop_funds_db = JSON.parse(localStorage.getItem('cashtop_funds_db_v4'));
+                } else { cashtop_funds_db = { accounts: [], accountLogs: [] }; localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(cashtop_funds_db)); }
+            } catch(e) {
+                console.error("خطأ في قراءة البيانات", e);
+            }
+            normalizeAccountCurrencies();
+            localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(cashtop_funds_db));
+            initLayout();
+        };
+
+        // مزامنة حية
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'cashtop_funds_db_v4' && e.newValue) {
+                cashtop_funds_db = JSON.parse(e.newValue);
+                normalizeAccountCurrencies();
+                initLayout();
+            }
+        });
+
+        function initLayout() {
+            renderTable();
+            renderSelects();
+            calculateStats();
+        }
+
+        /* ========================================================== */
+        /*   حساب الإحصائيات العلوية                                  */
+        /* ========================================================== */
+        function calculateStats() {
+            const accounts = cashtop_funds_db.accounts || [];
+            const cashTotal = accounts.filter(a => a.type === 'كاش').reduce((sum, a) => sum + accountBalanceBase(a), 0);
+            const bankTotal = accounts.filter(a => a.type === 'بنكي').reduce((sum, a) => sum + accountBalanceBase(a), 0);
+            const totalVal = accounts.reduce((sum, a) => sum + accountBalanceBase(a), 0);
+            const baseSymbol = getCurrencyConfig().base.symbol || getCurrencyConfig().base.code || '';
+            document.getElementById('statCashMain').innerText = `${cashTotal.toLocaleString('en-US',{minimumFractionDigits:2})} ${baseSymbol}`;
+            document.getElementById('statBankMain').innerText = `${bankTotal.toLocaleString('en-US',{minimumFractionDigits:2})} ${baseSymbol}`;
+            document.getElementById('statAccountsCount').innerText = accounts.length;
+            document.getElementById('statTotalFunds').innerText = `${totalVal.toLocaleString('en-US',{minimumFractionDigits:2})} ${baseSymbol}`;
+        }
+
+        /* ========================================================== */
+        /*   بناء جدول عرض الحسابات الأساسي وتلوين الأنواع            */
+        /* ========================================================== */
+        function renderTable() {
+            const tbody = document.getElementById('accountsTableBody');
+            const records = Array.isArray(cashtop_funds_db.accounts) ? cashtop_funds_db.accounts : [];
+            const createRow = item => {
+                let typeBadge = '';
+                if(item.type === 'كاش') typeBadge = `<span class="badge-type-cash"><i class="fa-solid fa-money-bill-wave"></i> كاش</span>`;
+                else if(item.type === 'بنكي') typeBadge = `<span class="badge-type-bank"><i class="fa-solid fa-building-columns"></i> بنكي</span>`;
+                else if(item.type === 'محفظة') typeBadge = `<span class="badge-type-wallet" style="background-color:#fef3c7;color:#b45309;padding:4px 10px;border-radius:4px;font-weight:600;border:1px solid #fde68a;"><i class="fa-solid fa-wallet"></i> محفظة</span>`;
+                else typeBadge = `<span class="badge-type-other" style="background-color:#f1f5f9;color:#475569;padding:4px 10px;border-radius:4px;font-weight:600;border:1px solid #cbd5e1;"><i class="fa-solid fa-layer-group"></i> ${item.type}</span>`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="badge-account-name">${item.name}</span></td><td>${typeBadge}</td>
+                    <td><span class="badge-balance-val">${accountMoney(item.balance, item)}</span></td>
+                    <td style="white-space:normal;font-size:12px;color:#666;">${item.notes || '-'}</td>
+                    <td><div class="actions-wrapper">
+                        <button class="action-btn btn-log" title="معاينة الحركات" onclick="viewAccountLogs(${item.id}, '${String(item.name || '').replace(/'/g, "\\'")}')"><i class="fa-solid fa-clock-history"></i></button>
+                        <button class="action-btn btn-pdf" title="تحميل كشف PDF فردي" onclick="exportAccountPDF(${item.id})"><i class="fa-solid fa-file-pdf"></i></button>
+                        <button class="action-btn btn-excel" title="تصدير السجل إلى Excel" onclick="exportAccountExcel(${item.id})"><i class="fa-solid fa-file-excel"></i></button>
+                        <button class="action-btn btn-edit" title="تعديل الحساب" onclick="editAccount(${item.id})"><i class="fa-solid fa-pen-to-square"></i></button>
+                        ${(item.isDefaultCash === true || item.locked === true) ? '<span title="صندوق الكاش افتراضي ولا يمكن حذفه" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;color:#16a34a;"><i class="fa-solid fa-lock"></i></span>' : `<button class="action-btn btn-delete" title="حذف الحساب نهائياً" onclick="confirmDeleteAccount(${item.id})"><i class="fa-solid fa-trash-can"></i></button>`}
+                    </div></td>`;
+                return tr;
+            };
+            if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(tbody, records, createRow, { chunkSize: 90, eagerLimit: 180, colspan: 5, emptyHtml: `<tr><td colspan="5" style="color:#999;padding:20px;">لا توجد حسابات مسجلة...</td></tr>` });
+            else { tbody.innerHTML=''; if (!records.length) tbody.innerHTML=`<tr><td colspan="5" style="color:#999;padding:20px;">لا توجد حسابات مسجلة...</td></tr>`; else records.forEach(item=>tbody.appendChild(createRow(item))); }
+        }
+
+        /* ========================================================== */
+        /*   معاينة الحركات السريعة (Log)                             */
+        /* ========================================================== */
+        function viewAccountLogs(accountId, accountName) {
+            const logAccount = cashtop_funds_db.accounts.find(a => String(a.id) === String(accountId));
+            document.getElementById('logAccountTitle').innerText = `${accountName} — ${accountCurrency(logAccount).name || accountCurrency(logAccount).code}`;
+            const logTbody = document.getElementById('logTableBody');
+            logTbody.innerHTML = "";
+
+            let logs = (cashtop_funds_db.accountLogs || []).filter(l => l.accountId === accountId).reverse();
+
+            if(logs.length === 0) {
+                logTbody.innerHTML = `<tr><td colspan="4" style="color:#aaa; padding:20px;">لا توجد حركات مسجلة على هذا الحساب.</td></tr>`;
+            } else {
+                logs.forEach(l => {
+                    let typeBadge = l.type === "إيداع" 
+                        ? `<span class="badge-deposit">إيداع <i class="fa-solid fa-arrow-turn-down"></i></span>`
+                        : `<span class="badge-withdraw">سحب <i class="fa-solid fa-arrow-turn-up"></i></span>`;
+                    
+                    logTbody.innerHTML += `
+                        <tr>
+                            <td style="font-size:12px;" dir="ltr">${l.date}</td>
+                            <td>${typeBadge}</td>
+                            <td style="font-weight:700;">${accountMoney(l.amount, logAccount)}</td>
+                            <td style="white-space:normal; font-size:12px;">${l.notes}</td>
+                        </tr>
+                    `;
+                });
+            }
+            openModal('logModal');
+        }
+
+        /* ========================================================== */
+        /*   تحديث قوائم التحويل المنسدلة                             */
+        /* ========================================================== */
+        function renderSelects() {
+            const fromSelect = document.getElementById('transferFromSelect');
+            const toSelect = document.getElementById('transferToSelect');
+            fromSelect.innerHTML = `<option value="">اختر الحساب المراد التحويل منه...</option>`;
+            toSelect.innerHTML = `<option value="">اختر الحساب المراد التحويل إليه...</option>`;
+
+            if(!cashtop_funds_db.accounts) return;
+            cashtop_funds_db.accounts.forEach(a => {
+                let optHtml = `<option value="${a.id}">${a.name} [${a.type}] — ${accountMoney(a.balance, a)}</option>`;
+                fromSelect.innerHTML += optHtml;
+                toSelect.innerHTML += optHtml;
+            });
+        }
+
+        /* ========================================================== */
+        /*   إظهار / إخفاء حقل كتابة نوع الحساب (أخرى)                */
+        /* ========================================================== */
+        function toggleOtherType() {
+            const selectVal = document.getElementById('accType').value;
+            const otherInput = document.getElementById('accTypeOther');
+            if (selectVal === 'أخرى') {
+                otherInput.style.display = 'block';
+                otherInput.required = true;
+            } else {
+                otherInput.style.display = 'none';
+                otherInput.required = false;
+                otherInput.value = '';
+            }
+        }
+
+        /* ========================================================== */
+        /*   إضافة وتعديل حساب (بمنطق سليم يمنع التكرار)              */
+        /* ========================================================== */
+        function openAddAccountModal() {
+            document.getElementById('accountForm').reset();
+            document.getElementById('editAccountId').value = '';
+            document.getElementById('accName').disabled = false;
+            document.getElementById('accType').disabled = false;
+            document.getElementById('accBalance').disabled = false;
+            populateAccountCurrencySelect(getCurrencyConfig().baseCurrencyId);
+            document.getElementById('accCurrency').disabled = false;
+            toggleOtherType();
+            document.getElementById('accountModalTitle').innerHTML = '<i class="fa-solid fa-wallet"></i> إضافة صندوق مالي جديد';
+            openModal('accountModal');
+            setTimeout(()=> document.getElementById('accName').focus(), 100);
+        }
+
+        function editAccount(id) {
+            let acc = cashtop_funds_db.accounts.find(a => a.id === id);
+            if (acc) {
+                document.getElementById('editAccountId').value = acc.id.toString();
+                const isDefaultCash = acc.isDefaultCash === true || acc.locked === true;
+                document.getElementById('accName').value = isDefaultCash ? 'صندوق الكاش' : acc.name;
+                document.getElementById('accName').disabled = isDefaultCash;
+                
+                let select = document.getElementById('accType');
+                let otherInp = document.getElementById('accTypeOther');
+                
+                if(['كاش', 'بنكي', 'محفظة'].includes(acc.type)) {
+                    select.value = acc.type;
+                    otherInp.style.display = 'none';
+                    otherInp.required = false;
+                } else {
+                    select.value = 'أخرى';
+                    otherInp.style.display = 'block';
+                    otherInp.value = acc.type;
+                    otherInp.required = true;
+                }
+
+                if (isDefaultCash) { select.value = 'كاش'; select.disabled = true; } else { select.disabled = false; }
+                document.getElementById('accBalance').value = acc.balance;
+                document.getElementById('accBalance').disabled = true; // منع التلاعب بالرصيد أثناء التعديل
+                populateAccountCurrencySelect(acc.currencyId || getCurrencyConfig().baseCurrencyId);
+                document.getElementById('accCurrency').disabled = Math.abs(Number(acc.balance || 0)) > 0;
+                document.getElementById('accNotes').value = acc.notes || '';
+                
+                document.getElementById('accountModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> تعديل بيانات الحساب المالي';
+                openModal('accountModal');
+            }
+        }
+
+        function saveAccount(e) {
+            e.preventDefault();
+            const editIdStr = document.getElementById('editAccountId').value;
+            const isEditMode = editIdStr !== '';
+            const editingAccount = isEditMode ? cashtop_funds_db.accounts.find(a => String(a.id) === String(editIdStr)) : null;
+            const editingDefaultCash = editingAccount && (editingAccount.isDefaultCash === true || editingAccount.locked === true);
+            
+            const usernameToSave = editingDefaultCash ? 'صندوق الكاش' : document.getElementById('accName').value.trim();
+            
+            let finalType = editingDefaultCash ? 'كاش' : document.getElementById('accType').value;
+            if(finalType === 'أخرى') {
+                finalType = document.getElementById('accTypeOther').value.trim();
+                if(!finalType) { showToast('يرجى كتابة نوع الحساب بدقة!', 'error'); return; }
+            }
+            
+            const notes = document.getElementById('accNotes').value.trim();
+
+            if (!usernameToSave) { showToast('يرجى إدخال معرف الحساب', 'error'); return; }
+
+            // التحقق من تكرار اسم المستخدم
+            let isDuplicate = cashtop_funds_db.accounts.some(acc => {
+                let nameMatch = (acc.name.trim().toLowerCase() === usernameToSave.toLowerCase());
+                if (isEditMode) return nameMatch && (acc.id.toString() !== editIdStr);
+                else return nameMatch;
+            });
+
+            if (isDuplicate) {
+                showToast('خطأ: هذا المعرف (الاسم) مستخدم لحساب أو صندوق آخر مسبقاً!', 'error');
+                return;
+            }
+
+            if (isEditMode) {
+                let acc = cashtop_funds_db.accounts.find(a => a.id.toString() === editIdStr);
+                if (acc) {
+                    acc.name = usernameToSave;
+                    acc.type = finalType;
+                    if (!document.getElementById('accCurrency').disabled) acc.currencyId = document.getElementById('accCurrency').value || getCurrencyConfig().baseCurrencyId;
+                    acc.notes = notes;
+                    showToast('تم تعديل بيانات الحساب بنجاح.', 'success');
+                }
+            } else {
+                const balance = parseFloat(document.getElementById('accBalance').value) || 0;
+                const newId = Date.now();
+                const currencyId = getCurrencyConfig().enabled ? (document.getElementById('accCurrency').value || getCurrencyConfig().baseCurrencyId) : getCurrencyConfig().baseCurrencyId;
+                cashtop_funds_db.accounts.push({ id: newId, name: usernameToSave, type: finalType, balance: balance, currencyId, notes: notes });
+                cashtop_funds_db.accountLogs.push({ accountId: newId, date: new Date().toLocaleString('en-GB'), type: "إيداع", amount: balance, baseAmount: window.CashtopMulti?.toBase?.(balance, currencyId) ?? balance, currencyId, notes: "رصيد افتتاحي عند الإنشاء" });
+                showToast('تم إنشاء الصندوق وحفظه بنجاح!', 'success');
+            }
+
+            localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(cashtop_funds_db));
+            closeModal('accountModal');
+            initLayout();
+        }
+
+        /* ========================================================== */
+        /*   نافذة تأكيد الحذف الخاصة وإجراء الحذف                    */
+        /* ========================================================== */
+        function confirmDeleteAccount(id) {
+            let acc = cashtop_funds_db.accounts.find(a => String(a.id) === String(id));
+            if (acc) {
+                if (acc.isDefaultCash === true || acc.locked === true) { showToast('صندوق الكاش افتراضي ولا يمكن حذفه.', 'error'); return; }
+                currentDeleteId = acc.id;
+                document.getElementById('deleteAccNameText').innerText = acc.name;
+                openModal('deleteModal');
+            }
+        }
+
+        function executeDelete() {
+            if (currentDeleteId !== null) {
+                const target = cashtop_funds_db.accounts.find(a => String(a.id) === String(currentDeleteId));
+                if (target && (target.isDefaultCash === true || target.locked === true)) { closeModal('deleteModal'); currentDeleteId = null; showToast('لا يمكن حذف صندوق الكاش الافتراضي.', 'error'); return; }
+                cashtop_funds_db.accounts = cashtop_funds_db.accounts.filter(a => String(a.id) !== String(currentDeleteId));
+                cashtop_funds_db.accountLogs = cashtop_funds_db.accountLogs.filter(l => String(l.accountId) !== String(currentDeleteId));
+                localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(cashtop_funds_db));
+                initLayout();
+                closeModal('deleteModal');
+                showToast('تم حذف الحساب وتصفية قيوده بنجاح.', 'success');
+                currentDeleteId = null;
+            }
+        }
+
+        /* ========================================================== */
+        /*   نظام التحويلات المالية                                   */
+        /* ========================================================== */
+        function handleTransfer(e) {
+            e.preventDefault();
+            const fromId = parseInt(document.getElementById('transferFromSelect').value);
+            const toId = parseInt(document.getElementById('transferToSelect').value);
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+            const notes = document.getElementById('transferNotes').value.trim();
+            const logDate = new Date().toLocaleString('en-GB');
+
+            if (!fromId || !toId) { showToast('يرجى تحديد الحسابات بشكل صحيح', 'error'); return; }
+            if (fromId === toId) { showToast('لا يمكن التحويل لنفس الحساب المختار!', 'error'); return; }
+            if (amount <= 0) { showToast('المبلغ يجب أن يكون أكبر من صفر', 'error'); return; }
+
+            let fromAcc = cashtop_funds_db.accounts.find(a => a.id === fromId);
+            let toAcc = cashtop_funds_db.accounts.find(a => a.id === toId);
+
+            if (fromAcc.balance < amount) {
+                showToast(`عجز مالي: الرصيد في [${fromAcc.name}] لا يغطي مبلغ التحويل!`, 'warning');
+                return;
+            }
+            const fromCurrencyId = fromAcc.currencyId || getCurrencyConfig().baseCurrencyId;
+            const toCurrencyId = toAcc.currencyId || getCurrencyConfig().baseCurrencyId;
+            const baseAmount = window.CashtopMulti?.toBase?.(amount, fromCurrencyId) ?? amount;
+            const creditedAmount = window.CashtopMulti?.fromBase?.(baseAmount, toCurrencyId) ?? amount;
+            fromAcc.balance -= amount;
+            toAcc.balance += creditedAmount;
+
+            cashtop_funds_db.accountLogs.push({ accountId: fromId, date: logDate, type: "سحب", amount, baseAmount, currencyId: fromCurrencyId, exchangeToCurrencyId: toCurrencyId, notes: `تحويل صادر إلى حساب [${toAcc.name}] | ${notes}` });
+            cashtop_funds_db.accountLogs.push({ accountId: toId, date: logDate, type: "إيداع", amount: creditedAmount, baseAmount, currencyId: toCurrencyId, exchangeFromCurrencyId: fromCurrencyId, notes: `تحويل وارد من حساب [${fromAcc.name}] | ${notes}` });
+
+            localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(cashtop_funds_db));
+            document.getElementById('transferForm').reset();
+            closeModal('transferModal');
+            initLayout();
+            showToast(`تم التحويل: ${accountMoney(amount, fromAcc)} ← ${accountMoney(creditedAmount, toAcc)} وتم ترحيل فرق العملة حسب سعر الصرف.`, 'success');
+        }
+
+        /* ========================================================== */
+        /*   تصدير كشف حساب (فردي) PDF و Excel                        */
+        /* ========================================================== */
+        function prepareIndividualExportData(id) {
+            let acc = cashtop_funds_db.accounts.find(a => a.id === id);
+            let logs = (cashtop_funds_db.accountLogs || []).filter(l => l.accountId === id);
+
+            document.getElementById('exportAccNameIndiv').innerText = acc.name;
+            document.getElementById('exportAccTypeIndiv').innerText = acc.type;
+            document.getElementById('exportAccBalanceIndiv').innerText = parseFloat(acc.balance).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' ₪';
+            document.getElementById('exportPrintDateIndiv').innerText = `تاريخ الإصدار: ${new Date().toLocaleString('en-GB')}`;
+
+            const tbody = document.getElementById('exportDataTableBodyIndiv');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="color:#aaa; padding:15px;">لا توجد حركات مسجلة لهذا الحساب.</td></tr>`;
+            } else {
+                logs.forEach(l => {
+                    let isDeposit = l.type === 'إيداع';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td dir="ltr">${l.date}</td>
+                            <td style="color:${isDeposit ? '#00a65a' : '#dd4b39'}; font-weight:bold;">${l.type}</td>
+                            <td style="font-weight:bold;">${parseFloat(l.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td style="text-align:right;">${l.notes}</td>
+                        </tr>
+                    `;
+                });
+            }
+            return acc;
+        }
+
+        async function exportAccountPDF(id) {
+            const acc = prepareIndividualExportData(id);
+            if (!acc) return;
+            const area = document.getElementById("exportIndividualTemplate");
+            area.style.top = '0';
+            area.style.zIndex = '-1';
+            showToast("جاري إنشاء كشف حساب جدولي...", "success");
+            try {
+                await CashtopExport.exportElementTablesToPDF(area, `كشف_حساب_${acc.name}.pdf`, {
+                    title: `كشف حساب: ${acc.name}`,
+                    subtitle: `نوع الحساب: ${acc.type} — الرصيد الحالي: ${parseFloat(acc.balance || 0).toFixed(2)} ₪`,
+                    orientation: 'landscape'
+                });
+                showToast("تم تحميل كشف الحساب (PDF) بنجاح.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("حدث خطأ أثناء التصدير.", "error");
+            } finally {
+                area.style.top = '-9999px';
+            }
+        }
+
+        function exportAccountExcel(id) {
+            let acc = cashtop_funds_db.accounts.find(a => a.id === id);
+            let logs = (cashtop_funds_db.accountLogs || []).filter(l => l.accountId === id);
+            
+            let ws_data = [
+                ["نظام كاش توب - كشف حساب تفصيلي"],
+                ["معرف الحساب:", acc.name, "نوع الحساب:", acc.type],
+                ["الرصيد النهائي (₪):", acc.balance, "تاريخ الاستخراج:", new Date().toLocaleString('en-GB')],
+                [],
+                ["التاريخ", "نوع الحركة", "قيمة الحركة (₪)", "البيان / تفاصيل القيد"]
+            ];
+
+            logs.forEach(l => {
+                ws_data.push([l.date, l.type, l.amount, l.notes]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "كشف الحساب");
+            XLSX.writeFile(wb, `كشف_حساب_${acc.name.replace(/\s+/g, '_')}.xlsx`);
+            showToast("تم التصدير إلى (Excel) بنجاح.", "success");
+        }
+
+        /* ========================================================== */
+        /*   تصدير شامل لكل الحسابات (العام) PDF و Excel              */
+        /* ========================================================== */
+        function prepareGlobalExportData() {
+            document.getElementById('exportPrintDateAll').innerText = `تاريخ الإصدار: ${new Date().toLocaleString('en-GB')}`;
+            const tbody = document.getElementById('exportDataTableBodyAll');
+            tbody.innerHTML = '';
+
+            let accounts = cashtop_funds_db.accounts || [];
+            let total = 0;
+            let counter = 1;
+
+            if (accounts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="color:#aaa; padding:15px;">لا توجد حسابات مسجلة في النظام.</td></tr>`;
+            } else {
+                accounts.forEach(acc => {
+                    total += parseFloat(acc.balance);
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${counter++}</td>
+                            <td style="font-weight:bold;">${acc.name}</td>
+                            <td>${acc.type}</td>
+                            <td style="font-weight:bold; color:#00a65a;">${parseFloat(acc.balance).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td style="text-align:right;">${acc.notes || '-'}</td>
+                        </tr>
+                    `;
+                });
+            }
+            document.getElementById('exportTotalFundsAll').innerText = total.toLocaleString('en-US', {minimumFractionDigits: 2}) + ' ₪';
+        }
+
+        async function exportAllAccountsPDF() {
+            prepareGlobalExportData();
+            const area = document.getElementById("exportAllTemplate");
+            area.style.top = '0';
+            area.style.zIndex = '-1';
+            showToast("جاري إنشاء الكشف الشامل كجدول PDF...", "success");
+            try {
+                await CashtopExport.exportElementTablesToPDF(area, `كشف_الحسابات_الشامل_${Date.now()}.pdf`, {
+                    title: 'كشف الصناديق والأرصدة الشامل',
+                    orientation: 'landscape'
+                });
+                showToast("تم تحميل الكشف الشامل (PDF) بنجاح.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("حدث خطأ أثناء التصدير.", "error");
+            } finally {
+                area.style.top = '-9999px';
+            }
+        }
+
+        function exportAllAccountsExcel() {
+            let accounts = cashtop_funds_db.accounts || [];
+            let total = 0;
+
+            let ws_data = [
+                ["نظام كاش توب - كشف الصناديق والأرصدة الشامل"],
+                ["تاريخ الاستخراج:", new Date().toLocaleString('en-GB')],
+                [],
+                ["م", "معرف الحساب (اسم المستخدم)", "نوع الحساب", "الرصيد المتوفر (₪)", "ملاحظات"]
+            ];
+
+            accounts.forEach((acc, index) => {
+                total += parseFloat(acc.balance);
+                ws_data.push([index + 1, acc.name, acc.type, parseFloat(acc.balance), acc.notes || '']);
+            });
+
+            ws_data.push([]);
+            ws_data.push(["", "", "إجمالي الخزينة العامة:", total, ""]);
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "إجمالي الحسابات");
+            XLSX.writeFile(wb, `كشف_الحسابات_الشامل_${Date.now()}.xlsx`);
+            showToast("تم تصدير الإجمالي إلى (Excel) بنجاح.", "success");
+        }
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"accounts.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>إدارة شركات كاش توب 2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="icon" href="icon-192.png"><meta name="theme-color" content="#312e81">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:Cairo,sans-serif;background:#f4f6f9;color:#1e293b}button,input,select{font:inherit}.hidden{display:none!important}
+    .auth-view{min-height:100vh;display:grid;place-items:center;padding:18px;background:linear-gradient(145deg,#eef2ff,#f8fafc)}.auth-card{width:min(430px,100%);background:#fff;border-radius:14px;border-top:5px solid #605ca8;padding:24px;box-shadow:0 20px 50px rgba(30,41,59,.14)}.brand{text-align:center}.brand img{width:82px;height:82px;border-radius:17px}.brand h1{font-size:20px;margin:8px 0 2px}.brand p{font-size:11px;color:#64748b}.status{display:none;padding:10px;border-radius:7px;margin:14px 0;font-size:11px;font-weight:800}.status.show{display:block}.status.error{background:#fff0ef;color:#b42318}.status.success{background:#ecfdf3;color:#067647}.status.info{background:#eff8ff;color:#175cd3}.status.warning{background:#fff7e6;color:#b26b00}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.field label{font-size:10px;font-weight:800;color:#475569}.field input,.field select{height:43px;border:1px solid #d7dce4;border-radius:8px;padding:8px 10px;outline:none;background:#fff}.field input:focus,.field select:focus{border-color:#605ca8;box-shadow:0 0 0 3px rgba(96,92,168,.12)}
+    .btn{border:0;border-radius:8px;padding:10px 14px;font-weight:800;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn-primary{background:#605ca8;color:#fff}.btn-success{background:#00a65a;color:#fff}.btn-danger{background:#dd4b39;color:#fff}.btn-warning{background:#f39c12;color:#fff}.btn-light{background:#f8fafc;color:#475569;border:1px solid #d7dce4}.btn-block{width:100%}
+    .app{min-height:100vh}.topbar{height:66px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:8px 18px;position:sticky;top:0;z-index:10}.topbar-brand{display:flex;align-items:center;gap:10px}.topbar-brand img{width:44px;height:44px;border-radius:10px}.topbar-brand strong{display:block;font-size:15px;color:#312e81}.topbar-brand small{font-size:9px;color:#64748b}.content{max-width:1500px;margin:auto;padding:18px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.stat{background:#fff;border-radius:10px;padding:15px;border-top:4px solid #605ca8;box-shadow:0 2px 8px rgba(15,23,42,.05)}.stat span{font-size:10px;color:#64748b;font-weight:800}.stat strong{display:block;font-size:24px;margin-top:4px}.stat.active{border-color:#00a65a}.stat.plus{border-color:#f39c12}.stat.pro{border-color:#00c0ef}
+    .layout{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:16px;align-items:start}.card{background:#fff;border-radius:10px;padding:17px;border-top:4px solid #605ca8;box-shadow:0 2px 8px rgba(15,23,42,.05)}.card-title{font-size:14px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}.row-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.table-wrap{overflow:auto;border:1px solid #edf0f4;border-radius:8px}.table{width:100%;border-collapse:collapse;min-width:1080px;font-size:10px;text-align:center}.table th{background:#f8fafc;padding:10px;border-bottom:2px solid #e2e8f0}.table td{padding:9px;border-bottom:1px solid #edf0f4}.badge{display:inline-flex;padding:3px 8px;border-radius:999px;font-weight:800}.badge.active{background:#ecfdf3;color:#067647}.badge.stopped{background:#fff4ed;color:#b54708}.badge.deleted,.badge.expired{background:#fef3f2;color:#b42318}.badge.plus{background:#fff7e6;color:#b26b00}.badge.pro{background:#eef4ff;color:#3538cd}.actions{display:flex;justify-content:center;gap:5px}.actions button{width:30px;height:30px;padding:0}.note{margin-top:10px;padding:9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;color:#64748b;font-size:9px;line-height:1.8}.top-actions{display:flex;gap:7px;align-items:center}.icon-btn{width:40px;height:40px;padding:0;font-size:16px}.admin-panel{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 16px}.database-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.database-table{min-width:900px}.database-state{font-size:10px;font-weight:800}.database-state.ok{color:#067647}.database-state.off{color:#b54708}.admin-panel .card{border-top-color:#0ea5e9}.backup-size{font-size:18px;font-weight:800;color:#312e81}.progress-box{display:none;margin-top:10px}.progress-box.show{display:block}.progress-track{height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden}.progress-bar{height:100%;width:0;background:#00a65a;transition:width .18s ease}.progress-label{margin-top:5px;font-size:10px;font-weight:800;color:#475569}.modal{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:10000;display:none;place-items:center;padding:16px}.modal.show{display:grid}.modal-card{width:min(480px,100%);background:#fff;border-radius:14px;padding:20px;box-shadow:0 24px 70px rgba(15,23,42,.28)}.modal-title{font-size:17px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    @media(max-width:900px){.admin-panel{grid-template-columns:1fr}.database-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.content{padding:10px}.topbar{padding:7px 10px}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
+    @media(max-width:700px){body{overflow-x:hidden}.topbar-brand small{display:none}.topbar{height:auto;min-height:60px}.table-wrap{overflow:visible;border:0}.table{display:block;min-width:0}.table thead{display:none}.table tbody,.table tr,.table td{display:block;width:100%}.table tr{background:#fff;border:1px solid #e2e8f0;border-right:4px solid #605ca8;border-radius:10px;padding:7px 10px;margin-bottom:10px;box-shadow:0 2px 7px rgba(15,23,42,.04)}.table td{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border-bottom:1px dashed #e2e8f0;padding:9px 2px;white-space:normal;overflow-wrap:anywhere}.table td:last-child{border-bottom:0}.table td::before{content:attr(data-label);font-weight:800;color:#475569;text-align:right;flex:0 0 90px}.actions{justify-content:flex-start;flex-wrap:wrap}.key-cell{display:flex;align-items:center;gap:6px;direction:ltr}.stats{gap:8px}.stat strong{font-size:20px}}
+  
+    /* Revision 38: allow vertical swipe to continue from table to page at table edges. */
+    .table-wrap{overscroll-behavior-x:contain;overscroll-behavior-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+</style>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<section class="auth-view" id="authView"><form class="auth-card" id="authForm">
+  <div class="brand"><img src="cashtop-logo.png" alt="كاش توب"><h1>الإدارة العامة للشركات</h1><p id="authSubtitle">دخول المشرف العام</p></div>
+  <div class="status" id="authStatus"></div>
+  <div class="field"><label>اسم المشرف العام</label><input id="superUsername" autocomplete="username" required></div>
+  <div class="field"><label>كلمة المرور</label><input id="superPassword" type="password" autocomplete="current-password" minlength="6" required></div>
+  <div class="field hidden" id="confirmField"><label>تأكيد كلمة المرور</label><input id="superPasswordConfirm" type="password" minlength="6"></div>
+  <button class="btn btn-primary btn-block" id="authButton" type="submit"><i class="fa-solid fa-shield-halved"></i> دخول الإدارة</button>
+  <a href="صفحة تسجيل الدخول.html" style="display:block;text-align:center;margin-top:12px;font-size:10px;color:#605ca8;text-decoration:none">العودة لدخول الشركات</a>
+</form></section>
+<section class="app hidden" id="appView">
+<header class="topbar"><div class="topbar-brand"><img src="cashtop-logo.png"><div><strong>إدارة الشركات والمفاتيح</strong><small id="syncMode">Firestore + تخزين محلي</small></div></div><div class="top-actions"><a class="btn btn-light icon-btn" href="admin-notifications.html" title="إرسال الإشعارات"><i class="fa-solid fa-bell"></i></a><button class="btn btn-light icon-btn" id="adminSettingsBtn" title="إعدادات الإدارة"><i class="fa-solid fa-gear"></i></button><button class="btn btn-danger" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> خروج</button></div></header>
+<main class="content">
+  <section class="admin-panel">
+    <div class="card"><div class="card-title"><i class="fa-solid fa-server"></i> قواعد بيانات Firestore للشركات</div>
+      <form id="databaseForm" autocomplete="off">
+        <input type="hidden" id="editingDatabaseId">
+        <div class="database-grid">
+          <div class="field"><label>اسم القاعدة داخل الأدمن</label><input id="databaseName" required placeholder="مثال: قاعدة شركات الأردن"></div>
+          <div class="field"><label>Database ID</label><input id="databaseId" value="(default)" placeholder="(default)"></div>
+          <div class="field"><label>apiKey</label><input id="databaseApiKey" dir="ltr" required></div>
+          <div class="field"><label>authDomain</label><input id="databaseAuthDomain" dir="ltr" required></div>
+          <div class="field"><label>projectId</label><input id="databaseProjectId" dir="ltr" required></div>
+          <div class="field"><label>storageBucket</label><input id="databaseStorageBucket" dir="ltr"></div>
+          <div class="field"><label>messagingSenderId</label><input id="databaseMessagingSenderId" dir="ltr"></div>
+          <div class="field"><label>appId</label><input id="databaseAppId" dir="ltr" required></div>
+          <div class="field"><label>measurementId</label><input id="databaseMeasurementId" dir="ltr"></div>
+          <div class="field"><label>حالة القاعدة</label><select id="databaseEnabled"><option value="true">مفعلة</option><option value="false">موقوفة</option></select></div>
+        </div>
+        <div class="status" id="databaseStatus"></div>
+        <div class="row-actions"><button class="btn btn-primary" id="saveDatabaseBtn" type="submit"><i class="fa-solid fa-floppy-disk"></i> حفظ قاعدة البيانات</button><button class="btn btn-light hidden" type="button" id="cancelDatabaseEdit"><i class="fa-solid fa-plus"></i> قاعدة جديدة</button></div>
+      </form>
+      <div class="note">أدخل حقول <code>firebaseConfig</code> كما تظهر في إعدادات تطبيق الويب داخل Firebase. يتم اختبار الاتصال أولاً. الحقول لا تُمسح تلقائياً عند الخطأ أو النجاح، وتُحفظ محلياً وتُستعاد بعد إعادة فتح الصفحة. لمسحها يدوياً اضغط «قاعدة جديدة».</div>
+      <div class="table-wrap" style="margin-top:12px"><table class="table database-table"><thead><tr><th>الاسم</th><th>Project ID</th><th>Database ID</th><th>الحالة</th><th>عدد المفاتيح</th><th>الإجراءات</th></tr></thead><tbody id="databasesBody"></tbody></table></div>
+    </div>
+    <div class="card"><div class="card-title"><i class="fa-solid fa-database"></i> النسخ الاحتياطي الشامل لجميع القواعد والشركات</div>
+      <div class="note">يتم استخراج بيانات لوحة الإدارة وجميع مسارات الشركات في ملف JSON مستقل عن قاعدة البيانات الحالية، ويمكن استعادته حتى بعد نقل المشروع إلى قاعدة بيانات جديدة.</div>
+      <div class="row-actions"><button class="btn btn-primary" type="button" id="prepareBackupBtn"><i class="fa-solid fa-magnifying-glass-chart"></i> استخراج البيانات وحساب الحجم</button><button class="btn btn-success" type="button" id="downloadBackupBtn" disabled><i class="fa-solid fa-download"></i> تحميل النسخة</button></div>
+      <div style="margin-top:10px"><span style="font-size:10px;color:#64748b">حجم النسخة المجهزة:</span> <span class="backup-size" id="backupSize">—</span></div>
+      <div class="row-actions"><input id="restoreBackupFile" type="file" accept="application/json,.json" style="max-width:280px"><button class="btn btn-warning" type="button" id="restoreBackupBtn"><i class="fa-solid fa-upload"></i> استيراد جميع البيانات</button></div>
+      <div class="progress-box" id="restoreProgress"><div class="progress-track"><div class="progress-bar" id="restoreProgressBar"></div></div><div class="progress-label" id="restoreProgressLabel">0%</div></div>
+    </div>
+  </section>
+  <section class="stats"><div class="stat"><span>إجمالي الشركات</span><strong id="statAll">0</strong></div><div class="stat active"><span>المفاتيح النشطة</span><strong id="statActive">0</strong></div><div class="stat plus"><span>خطة Plus</span><strong id="statPlus">0</strong></div><div class="stat pro"><span>خطة Pro</span><strong id="statPro">0</strong></div></section>
+  <section class="layout">
+    <form class="card" id="companyForm"><div class="card-title"><i class="fa-solid fa-building-circle-check"></i><span id="formTitle">إنشاء شركة ومفتاح جديد</span></div>
+      <input type="hidden" id="editingKey">
+      <div class="form-grid">
+        <div class="field full"><label>قاعدة بيانات الشركة</label><select id="targetDatabaseId" required><option value="">اختر قاعدة البيانات</option></select></div>
+        <div class="field full"><label>اسم الشركة</label><input id="companyName" required placeholder="اسم المنشأة"></div>
+        <div class="field full"><label>مفتاح الشركة الفريد</label><div style="display:flex;gap:6px"><input id="companyKey" required placeholder="CT-XXXX-XXXX"><button class="btn btn-light" type="button" id="generateKey"><i class="fa-solid fa-wand-magic-sparkles"></i></button></div></div>
+        <div class="field"><label>اسم مستخدم مدير الشركة</label><input id="managerUsername" required autocomplete="off"></div>
+        <div class="field"><label>كلمة مرور مدير الشركة</label><input id="managerPassword" type="password" minlength="4" required autocomplete="new-password"></div>
+        <div class="field"><label>خطة الاشتراك</label><select id="plan"><option value="plus">Plus</option><option value="pro">Pro</option></select></div>
+        <div class="field"><label>حالة المفتاح</label><select id="status"><option value="active">نشط</option><option value="stopped">موقوف</option></select></div>
+        <div class="field full"><label>صلاحية استيراد النسخ الاحتياطية</label><select id="backupImportEnabled"><option value="false">مقفل افتراضياً</option><option value="true">مفتوح لهذا المفتاح</option></select></div>
+        <div class="note full" id="planDetails"></div>
+        <div class="field"><label>وحدة المدة</label><select id="durationUnit"><option value="minute">دقيقة</option><option value="hour">ساعة</option><option value="day">يوم</option><option value="month" selected>شهر</option><option value="year">سنة</option><option value="unlimited">غير محدود</option></select></div>
+        <div class="field"><label>عدد الوحدات</label><input id="durationQuantity" type="number" min="1" value="1"></div>
+        <div class="note full" id="expiryPreview"></div>
+      </div>
+      <div class="row-actions"><button class="btn btn-success" type="submit"><i class="fa-solid fa-floppy-disk"></i> حفظ ومزامنة</button><button class="btn btn-light hidden" id="cancelEdit" type="button">إلغاء التعديل</button></div>
+      <div class="note">كل مفتاح ينشئ معرف شركة مستقل ومسار Firebase مستقل. إيقاف المفتاح أو حذف مدير/موظف يصل إلى الأجهزة المفتوحة ويخرج الحساب تلقائياً.</div>
+    </form>
+    <div class="card"><div class="card-title"><i class="fa-solid fa-key"></i> الشركات والمفاتيح</div><div class="table-wrap"><table class="table"><thead><tr><th>الشركة</th><th>قاعدة البيانات</th><th>المفتاح</th><th>الخطة</th><th>الحالة</th><th>المدير</th><th>استيراد النسخ</th><th>البدء</th><th>الانتهاء</th><th>الإجراءات</th></tr></thead><tbody id="companiesBody"></tbody></table></div></div>
+  </section>
+</main></section>
+<div class="modal" id="adminSettingsModal"><div class="modal-card"><div class="modal-title"><i class="fa-solid fa-gear"></i> إعدادات المشرف العام</div>
+  <form id="changeAdminPasswordForm">
+    <div class="field"><label>كلمة المرور الحالية</label><input id="currentAdminPassword" type="password" required></div>
+    <div class="field"><label>كلمة المرور الجديدة</label><input id="newAdminPassword" type="password" minlength="6" required></div>
+    <div class="field"><label>تأكيد كلمة المرور الجديدة</label><input id="confirmNewAdminPassword" type="password" minlength="6" required></div>
+    <div class="row-actions"><button class="btn btn-primary" type="submit"><i class="fa-solid fa-key"></i> تغيير كلمة المرور</button><button class="btn btn-light" type="button" id="closeAdminSettings">إغلاق</button></div>
+  </form>
+</div></div>
+<script src="firebase-config.js?v=62"></script><script src="multi-database.js?v=62"></script><script src="admin.js?v=62"></script>
+<script src="transient-notifications.js?v=58"></script></body></html>

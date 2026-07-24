@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // قاعدة الإدارة الرئيسية: سجل القواعد، توجيه المفاتيح، وبيانات المشرف فقط.
+    function signedIn() { return request.auth != null; }
+
+    match /cashtopDatabases/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /cashtopDatabaseRoutes/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /cashtopRoot/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    // يمنع تخزين بيانات الشركات التشغيلية في القاعدة الرئيسية.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

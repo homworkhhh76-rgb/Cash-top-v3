@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة الفروع - كاش توب 2</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+        window.addEventListener('load', () => {
+            renderManagerPermissionControls();
+            document.getElementById('managerBranchSelect')?.addEventListener('change', loadSelectedManager);
+        });
+</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        .session-banner { background: #111827; color: white; padding: 12px 20px; border-radius: 6px; display: none; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .session-banner button { background: #dd4b39; color: white; border: none; padding: 6px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .session-banner button:hover { background: #c23321; }
+
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .main-card { border-radius: 6px; color: white; padding: 20px; position: relative; min-height: 100px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .card-branches { background-color: #00c0ef; }
+        .card-active { background-color: #00a65a; }
+        .card-inactive { background-color: #dd4b39; }
+        .card-managers { background-color: #605ca8; }
+
+        .card-header-title { font-size: 15px; font-weight: bold; text-align: left; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .card-header-title i { opacity: 0.3; font-size: 28px; }
+        .card-stat { font-size: 26px; font-weight: bold; border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 10px; margin-top: 5px;}
+
+        .table-container { background-color: white; border-radius: 6px; border-top: 4px solid #00c0ef; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        .table-title { font-size: 16px; font-weight: bold; color: #444; }
+
+        .header-buttons { display: flex; gap: 10px; flex-wrap: wrap;}
+        .btn-action-main { border: none; padding: 10px 18px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; color: white; }
+        .btn-green { background-color: #00a65a; } .btn-green:hover { background-color: #008d4c; }
+        .btn-purple { background-color: #605ca8; } .btn-purple:hover { background-color: #4b4885; }
+        .btn-blue { background-color: #3b82f6; } .btn-blue:hover { background-color: #2563eb; }
+        .btn-orange { background-color: #f39c12; } .btn-orange:hover { background-color: #d68910; }
+
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px; border-bottom: 2px solid #ddd; background: #f9f9f9;}
+        .data-table td { padding: 12px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; }
+
+        .badge-active { background-color: #e6f7ed; color: #00a65a; padding: 4px 10px; border-radius: 4px; font-weight: bold; }
+        .badge-frozen { background-color: #fdeaea; color: #dd4b39; padding: 4px 10px; border-radius: 4px; font-weight: bold; }
+        .badge-permission { background-color: #e0f2fe; color: #0284c7; padding: 2px 6px; border-radius: 4px; font-size: 10px; display: block; margin-top: 4px;}
+
+        .actions-wrapper { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .action-btn-clean { background: none; border: none; cursor: pointer; font-size: 16px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;}
+        .btn-clean-login { color: #00c0ef; } .btn-clean-login:hover { color: #0093b7; transform: scale(1.1); }
+        .btn-clean-edit { color: #f39c12; } .btn-clean-edit:hover { color: #d68910; transform: scale(1.1); }
+        .btn-clean-freeze { color: #605ca8; } .btn-clean-freeze:hover { color: #4b4885; transform: scale(1.1); }
+        .btn-clean-delete { color: #dd4b39; } .btn-clean-delete:hover { color: #c23321; transform: scale(1.1); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 10px; overflow-y: auto;}
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-box { background: white; width: 100%; max-width: 500px; border-radius: 6px; border-top: 4px solid #605ca8; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: translateY(-20px); transition: transform 0.3s ease; padding: 25px; margin: auto; }
+        #branchModal .modal-box { border-top-color: #00a65a; }
+        #editBranchModal .modal-box { border-top-color: #f39c12; }
+        #deleteBranchModal .modal-box { border-top-color: #dd4b39; max-width: 400px; text-align: center; }
+        #transferModal .modal-box { border-top-color: #3b82f6; max-width: 850px; }
+        #transferHistoryModal .modal-box { border-top-color: #f39c12; max-width: 850px; }
+        
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #aaa; transition: 0.2s; }
+        .modal-close:hover { color: #dd4b39; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px; width: 100%; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; }
+        
+        .form-group label { position: absolute; top: -10px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 12px; font-weight: bold; color: #666; z-index: 2; pointer-events: none; }
+        .form-control { width: 100%; padding: 10px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; outline: none; background-color: #fff; transition: 0.3s;}
+        .form-control:focus { border-color: #00a65a; box-shadow: 0 0 0 2px rgba(0,166,90,0.1); }
+        .form-control:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+
+        .toggle-wrapper { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; background: #fafbfc; }
+        .toggle-label-text { font-size: 13px; font-weight: bold; color: #666; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* الأزرار جنب بعض باستخدام Grid */
+        .modal-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 15px; width: 100%; }
+        .modal-footer button { padding: 10px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; border: none; width: 100%; }
+        
+        .btn-submit-modal { background-color: #00a65a; color: white; } .btn-submit-modal:hover { background-color: #008d4c; }
+        .btn-cancel-modal { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; } .btn-cancel-modal:hover { background-color: #e2e8f0; }
+        .btn-danger-modal { background-color: #dd4b39; color: white; } .btn-danger-modal:hover { background-color: #c23321; }
+
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content:center; gap: 6px; font-weight:bold; transition: 0.2s; padding:10px; border-radius: 4px;}
+        .btn-export.pdf:hover { color: #dd4b39; border-color: #dd4b39; background-color: #fdeaea;}
+        .btn-export.excel:hover { color: #00a65a; border-color: #00a65a; background-color: #e6f7ed;}
+
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.15);}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+
+        .suggestions-box { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap:4px; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: #f8fafc; color: #0284c7; }
+
+        .table-responsive-box { width: 100%; overflow-x: auto; border: 1px solid #f4f4f4; border-radius: 6px; }
+        .staged-table { width: 100%; text-align: right; font-size: 12px; border-collapse: collapse; margin-top: 15px; min-width: 500px; }
+        .staged-table th { background: #f1f5f9; padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: center; font-weight: bold; color:#444;}
+        .staged-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; vertical-align: middle;}
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .main-card { min-height: 90px; padding: 15px; }
+            .card-header-title { font-size: 13px; }
+            .card-stat { font-size: 20px; }
+            
+            .header-buttons { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+            .btn-action-main { width: 100%; font-size: 11px; padding: 10px 5px;}
+
+            .form-row { grid-template-columns: 1fr !important; gap: 18px; margin-bottom: 18px; }
+            .modal-box { padding: 20px 15px; width: 100%; }
+            .data-table { min-width: 750px; }
+        }
+    
+        .manager-permissions-box{border:1px solid #dbe3ee;border-radius:7px;background:#f8fafc;padding:12px;margin:4px 0 15px}.manager-permissions-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:#3730a3}.manager-permissions-head div{display:flex;gap:5px}.manager-permissions-head button{border:1px solid #cbd5e1;background:#fff;border-radius:5px;padding:5px 8px;font:700 10px Cairo;cursor:pointer}.manager-permissions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.manager-permission-group{grid-column:1/-1;background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden}.manager-permission-title{background:#eef2ff;padding:7px 9px;font-size:10px;font-weight:800;color:#3730a3}.manager-permission-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:8px}.manager-permission-item{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid #edf0f4;border-radius:5px;padding:6px 7px;font-size:9px;font-weight:700;color:#475569}.manager-permission-item input{accent-color:#605ca8}@media(max-width:600px){.manager-permissions-grid,.manager-permission-items{grid-template-columns:1fr}.manager-permissions-head{align-items:flex-start;flex-direction:column}}
+</style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        
+        <div class="session-banner" id="sessionBanner">
+            <div><i class="fa-solid fa-user-shield" style="color:#00a65a; margin-left:8px;"></i> الفرع الحالي: <strong id="sessionBranchName"></strong></div>
+        </div>
+
+        <div class="top-cards-grid">
+            <div class="main-card card-branches">
+                <div class="card-header-title"><span>إجمالي الفروع</span><i class="fa-solid fa-code-branch"></i></div>
+                <div class="card-stat" id="statTotal">0</div>
+            </div>
+            <div class="main-card card-active">
+                <div class="card-header-title"><span>الفروع النشطة</span><i class="fa-solid fa-circle-check"></i></div>
+                <div class="card-stat" id="statActive">0</div>
+            </div>
+            <div class="main-card card-inactive">
+                <div class="card-header-title"><span>فروع مجمدة</span><i class="fa-solid fa-snowflake"></i></div>
+                <div class="card-stat" id="statFrozen">0</div>
+            </div>
+            <div class="main-card card-managers">
+                <div class="card-header-title"><span>المدراء المعينين</span><i class="fa-solid fa-user-tie"></i></div>
+                <div class="card-stat" id="statManagers">0</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <div class="table-title">سجل الفروع والهيكلية الإدارية</div>
+                <div class="header-buttons">
+                    <button class="btn-action-main btn-orange" id="btnTransferHistory" onclick="openTransferHistoryModal()"><i class="fa-solid fa-clock-rotate-left"></i> سجل النقل</button>
+                    <button class="btn-action-main btn-blue" id="btnOpenTransfer" onclick="openTransferModal()"><i class="fa-solid fa-truck-ramp-box"></i> نقل المنتجات</button>
+                    <button class="btn-action-main btn-purple" id="btnOpenManager" onclick="openManagerModal()"><i class="fa-solid fa-user-plus"></i> تعيين مدير</button>
+                    <button class="btn-action-main btn-green" id="btnOpenBranch" onclick="openModal('branchModal')"><i class="fa-solid fa-plus"></i> تأسيس فرع</button>
+                </div>
+            </div>
+
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>كود الفرع</th>
+                            <th>اسم الفرع</th>
+                            <th>الموقع / العنوان</th>
+                            <th>المدير المسؤول والصلاحيات</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="branchTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 1: إضافة فرع -->
+    <div class="modal-overlay" id="branchModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-store" style="color:#00a65a;"></i> تأسيس فرع جديد</div>
+                <button class="modal-close" onclick="closeModal('branchModal')">&times;</button>
+            </div>
+            <form id="branchForm" onsubmit="saveBranch(event)">
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" id="branchName" class="form-control" required autocomplete="off">
+                        <label>اسم الفرع (مثال: فرع الرمال)</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" id="branchAddress" class="form-control" required autocomplete="off">
+                        <label>العنوان الجغرافي</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel-modal" onclick="closeModal('branchModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit-modal">تأكيد وإنشاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 2: تعيين مدير فرع -->
+    <div class="modal-overlay" id="managerModal">
+        <div class="modal-box" style="border-top-color: #605ca8;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-user-shield" style="color:#605ca8;"></i> تعيين مدير فرع والصلاحيات</div>
+                <button class="modal-close" onclick="closeModal('managerModal')">&times;</button>
+            </div>
+            <form id="managerForm" onsubmit="saveManager(event)">
+                <div class="form-row full">
+                    <div class="form-group">
+                        <select class="form-control" id="managerBranchSelect" required></select>
+                        <label>الفرع المستهدف</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" id="managerName" class="form-control" required autocomplete="off">
+                        <label>اسم المدير</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" id="managerUsername" class="form-control" required autocomplete="username">
+                        <label>اسم المستخدم للدخول</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="password" id="managerPassword" class="form-control" required autocomplete="new-password" minlength="4">
+                        <label>كلمة المرور</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="toggle-wrapper">
+                        <span class="toggle-label-text"><i class="fa-solid fa-truck-fast" style="color:#3b82f6;"></i> إعطاء هذا المدير صلاحية النقل المخزني</span>
+                        <label class="switch">
+                            <input type="checkbox" id="managerAllowTransfer" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <select class="form-control" id="managerActiveSelect">
+                            <option value="true">حساب المدير نشط</option>
+                            <option value="false">حساب المدير موقوف</option>
+                        </select>
+                        <label>حالة دخول مدير الفرع</label>
+                    </div>
+                </div>
+                <div class="manager-permissions-box">
+                    <div class="manager-permissions-head"><strong><i class="fa-solid fa-user-lock"></i> صلاحيات مدير الفرع</strong><div><button type="button" onclick="setAllManagerPermissions(true)">تحديد الكل</button><button type="button" onclick="setAllManagerPermissions(false)">إلغاء الكل</button></div></div>
+                    <div id="managerPermissionsContainer" class="manager-permissions-grid"></div>
+                </div>
+                <div class="modal-footer" style="flex-wrap:wrap;">
+                    <button type="button" class="btn-cancel-modal" onclick="closeModal('managerModal')">إلغاء</button>
+                    <button type="button" class="btn-cancel-modal" id="removeManagerBtn" onclick="removeBranchManager()" style="color:#c23321;border-color:#f3b8b2;display:none;"><i class="fa-solid fa-user-slash"></i> حذف المدير</button>
+                    <button type="submit" class="btn-submit-modal" style="background-color: #605ca8;">حفظ التعيين والصلاحيات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 3: النقل بين الفروع فقط -->
+    <div class="modal-overlay" id="transferModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-code-branch" style="color:#3b82f6;"></i> نقل منتجات بين الفروع</div>
+                <button class="modal-close" onclick="closeModal('transferModal')">&times;</button>
+            </div>
+            
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:15px;border-radius:4px;margin-bottom:15px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <select class="form-control" id="transSourceBranch" required onchange="handleSourceBranchChange()"></select>
+                        <label>1. الفرع المُصدِّر</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="transSourceLocation" required onchange="handleSourceLocationChange()"></select>
+                        <label>2. المخزن / المحل المنقول منه</label>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:0;">
+                    <div class="form-group">
+                        <select class="form-control" id="transDestBranch" required onchange="handleDestinationBranchChange()"></select>
+                        <label>3. الفرع المُستلِم</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="transDestLocation" required></select>
+                        <label>4. المخزن / المحل المنقول إليه</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row full">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="transferSearchInput" placeholder="اختر الفرع والمخزن المصدر أولاً، ثم ابحث بالاسم أو الباركود..." oninput="searchTransferProducts()" autocomplete="off">
+                    <label>5. المنتجات المتوفرة فعلياً في موقع المصدر المختار</label>
+                    <div id="transferSuggestions" class="suggestions-box"></div>
+                </div>
+            </div>
+
+            <div class="table-responsive-box" style="max-height: 220px; overflow-y: auto;">
+                <table class="staged-table">
+                    <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 5;">
+                        <tr>
+                            <th>المنتج</th>
+                            <th>نظام النقل والكمية</th>
+                            <th>المتوفر بالمصدر</th>
+                            <th>حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transferCartBody">
+                        <tr><td colspan="4" style="color:#999; padding: 15px;">عربة النقل فارغة. ابحث لإضافة المنتجات...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('transferModal')">إلغاء</button>
+                <button type="button" class="btn-submit-modal" style="background-color: #3b82f6;" onclick="processTransfer()"><i class="fa-solid fa-truck-fast"></i> تنفيذ النقل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 4: اختيار المقاسات للمنتجات المتفرعة -->
+    <div class="modal-overlay" id="transferVariantModal">
+        <div class="modal-box" style="max-width: 500px; border-top-color: #f39c12;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-shirt" style="color:#f39c12;"></i> اختيار المقاس أو اللون المراد نقله</div>
+                <button class="modal-close" onclick="closeModal('transferVariantModal')">&times;</button>
+            </div>
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead><tr><th>المقاس</th><th>اللون</th><th>المتوفر بالمصدر</th></tr></thead>
+                    <tbody id="transferVariantBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-modal" style="grid-column: span 2;" onclick="closeModal('transferVariantModal')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 5: تعديل معلومات الفرع -->
+    <div class="modal-overlay" id="editBranchModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-pen-to-square" style="color:#f39c12;"></i> تعديل معلومات الفرع</div>
+                <button class="modal-close" onclick="closeModal('editBranchModal')">&times;</button>
+            </div>
+            <form id="editBranchForm" onsubmit="saveEditedBranch(event)">
+                <input type="hidden" id="editBranchId">
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" id="editBranchName" class="form-control" required autocomplete="off">
+                        <label>اسم الفرع</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" id="editBranchAddress" class="form-control" required autocomplete="off">
+                        <label>العنوان الجغرافي</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel-modal" onclick="closeModal('editBranchModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit-modal" style="background-color: #f39c12;">تحديث البيانات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 6: تأكيد الحذف للفرع -->
+    <div class="modal-overlay" id="deleteBranchModal">
+        <div class="modal-box">
+            <div style="font-size: 50px; color: #dd4b39; margin-bottom: 15px;"><i class="fa-regular fa-circle-xmark"></i></div>
+            <h3 style="margin-bottom: 10px; color: #333;">تأكيد حذف الفرع</h3>
+            <p style="color: #666; font-size: 14px; margin-bottom: 25px;">هل أنت متأكد من حذف هذا الفرع نهائياً؟ لن يتم حذف أي مخزن لأن المخازن مستقلة عن الفروع.</p>
+            <input type="hidden" id="deleteBranchIdTarget">
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('deleteBranchModal')">تراجع</button>
+                <button type="button" class="btn-danger-modal" onclick="confirmDeleteBranch()"><i class="fa-solid fa-trash-can"></i> نعم، احذف الفرع</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 7: سجل حركات النقل (أزرار التصدير جنب بعض) -->
+    <div class="modal-overlay" id="transferHistoryModal">
+        <div class="modal-box" style="max-width: 850px;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-clock-rotate-left" style="color: #f39c12;"></i> سجل حركات النقل والمناقلات بين الفروع</div>
+                <button class="modal-close" onclick="closeModal('transferHistoryModal')">&times;</button>
+            </div>
+            
+            <div class="table-responsive-box" style="max-height: 350px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead style="position: sticky; top: 0; background: #f9f9f9; z-index: 2;">
+                        <tr>
+                            <th>التاريخ والوقت</th>
+                            <th>المصدر (الفرع / المخزن)</th>
+                            <th>الوجهة (الفرع / المخزن)</th>
+                            <th>المنتجات والكميات المنقولة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transferHistoryBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- أزرار الإغلاق والتصدير بتصميم Grid مخصص لهذه النافذة -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px; border-top: 1px solid #f4f4f4; padding-top: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+                    <button type="button" class="btn-export excel" onclick="exportHistoryExcel()"><i class="fa-solid fa-file-excel"></i> تصدير إكسل</button>
+                    <button type="button" class="btn-export pdf" onclick="exportHistoryPdf()"><i class="fa-solid fa-file-pdf"></i> استخراج PDF</button>
+                </div>
+                <button type="button" class="btn-cancel-modal" style="width: 100%; padding: 10px; font-weight:bold; border-radius:4px; border:1px solid #ddd; background:#f4f4f4; cursor:pointer;" onclick="closeModal('transferHistoryModal')">إغلاق السجل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- حاويات التصدير للـ PDF -->
+    <div id="pdfHistoryContainer" style="position: absolute; left: -9999px; top: -9999px; width: 800px; background: white; padding: 25px; direction: rtl; font-family: 'Cairo', sans-serif;">
+        <h2 style="text-align: center; color: #333; margin-bottom: 10px; border-bottom: 2px solid #f39c12; padding-bottom: 10px;">سجل حركات النقل بين الفروع والمخازن - كاش توب</h2>
+        <p id="pdfHistoryDate" style="text-align: left; font-size: 13px; color: #666; font-weight: bold; margin-bottom: 20px;"></p>
+        <table id="pdfHistoryTable" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 13px;">
+        </table>
+    </div>
+
+    <script>
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        let branchesData = [];
+        let storesData = [];
+        let productsData = [];
+        let transferProductsData = []; // النسخة الكاملة للشركة لاستخدام النقل العابر للفروع
+        let transferStoresData = [];   // كل مخازن الشركة مع branchId الحقيقي
+        let branchTransferHistoryData = []; // قاعدة بيانات مخصصة لنقل الفروع
+        let transferCart = [];
+        
+        let sessionUser = JSON.parse(localStorage.getItem('cashtop_session')) || { role: 'admin', branchId: null };
+
+        function readArrayDataset(key) {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+                return Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? Object.values(parsed) : []);
+            } catch (_) { return []; }
+        }
+
+        function readFullArrayDataset(key) {
+            try {
+                const raw = window.Cashtop?.getRawCompanyDataset?.(key);
+                const parsed = JSON.parse(raw == null ? (localStorage.getItem(key) || '[]') : raw);
+                return Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? Object.values(parsed) : []);
+            } catch (_) { return []; }
+        }
+
+        function saveFullCompanyDataset(key, value) {
+            if (window.Cashtop?.setRawCompanyDataset) {
+                const result = window.Cashtop.setRawCompanyDataset(key, value);
+                Promise.resolve(window.Cashtop.syncNow?.({ manual: false })).catch(() => {});
+                return result;
+            }
+            localStorage.setItem(key, JSON.stringify(value));
+            return { changed: true };
+        }
+
+        function isCompanyAdmin() {
+            return ['admin', 'owner', 'company-admin'].includes(String(sessionUser.role || '').toLowerCase());
+        }
+
+        function currentBranchRecordId() {
+            return String(sessionUser.branchRecordId || (String(sessionUser.branchId || '') !== 'MAIN' ? sessionUser.branchId : '') || '');
+        }
+
+        function initSystem() {
+            try { window.Cashtop?.ensureSystemDefaults?.(); } catch (_) {}
+            sessionUser = JSON.parse(localStorage.getItem('cashtop_session')) || sessionUser || { role: 'admin', branchId: 'MAIN', branchName: 'الفرع الرئيسي' };
+            branchesData = readArrayDataset('cashtop_branches');
+            // حذف الاسم التالف المعروف فقط. لا نحذف أسماء صحيحة مثل
+            // «الفرع الرئيسي» أو «فرع البلد» لأنها قد تكون أسماء أدخلها المستخدم.
+            const cleanedBranches = branchesData.filter(branch => !['اسك. اابحر', 'اسك. البحر'].includes(String(branch.name || '').trim()));
+            if (cleanedBranches.length !== branchesData.length) {
+                branchesData = cleanedBranches;
+                localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+            }
+
+            // أول فرع ينشئه المستخدم هو الفرع الرئيسي المرتبط برصيد المتجر العام.
+            if (branchesData.length && !branchesData.some(branch => branch.isMain === true)) {
+                branchesData[0].isMain = true;
+                localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+            }
+            productsData = readArrayDataset('cashtop_products');
+            branchTransferHistoryData = readArrayDataset('cashtop_branch_transfer_history');
+
+            // ترحيل أرصدة الفروع القديمة فقط، من دون تحويل الفروع إلى مخازن.
+            let migrated = false;
+            productsData.forEach(product => {
+                if (!product.branchStocks || typeof product.branchStocks !== 'object') product.branchStocks = {};
+                if (!product.storeStocks || typeof product.storeStocks !== 'object') product.storeStocks = {};
+                branchesData.forEach(branch => {
+                    const legacyKey = `shop_${branch.id}`;
+                    if (product.branchStocks[branch.id] == null && product.storeStocks[legacyKey] != null) {
+                        product.branchStocks[branch.id] = Number(product.storeStocks[legacyKey] || 0);
+                        migrated = true;
+                    }
+                });
+                (product.variants || []).forEach(variant => {
+                    if (!variant.branchStocks || typeof variant.branchStocks !== 'object') variant.branchStocks = {};
+                    if (!variant.storeStocks || typeof variant.storeStocks !== 'object') variant.storeStocks = {};
+                    branchesData.forEach(branch => {
+                        const legacyKey = `shop_${branch.id}`;
+                        if (variant.branchStocks[branch.id] == null && variant.storeStocks[legacyKey] != null) {
+                            variant.branchStocks[branch.id] = Number(variant.storeStocks[legacyKey] || 0);
+                            migrated = true;
+                        }
+                    });
+                });
+            });
+            if (migrated) localStorage.setItem('cashtop_products', JSON.stringify(productsData));
+
+            applySessionUI();
+            updateDashboard();
+        }
+
+        function applySessionUI() {
+            const btnTransfer = document.getElementById('btnOpenTransfer');
+            const btnBranch = document.getElementById('btnOpenBranch');
+            const btnManager = document.getElementById('btnOpenManager');
+            const sessionBanner = document.getElementById('sessionBanner');
+            const btnHistory = document.getElementById('btnTransferHistory');
+
+            if (isCompanyAdmin()) {
+                btnTransfer.style.display = 'flex';
+                btnBranch.style.display = 'flex';
+                btnManager.style.display = 'flex';
+                btnHistory.style.display = 'flex';
+                sessionBanner.style.display = 'none';
+                return;
+            }
+
+            const branch = branchesData.find(item => String(item.id) === String(currentBranchRecordId()));
+            sessionBanner.style.display = 'flex';
+            document.getElementById('sessionBranchName').innerText = branch ? branch.name : (sessionUser.branchName || 'فرع غير معروف');
+            btnBranch.style.display = 'none';
+            btnManager.style.display = 'none';
+            btnHistory.style.display = 'flex';
+            btnTransfer.style.display = window.Cashtop?.can?.('inventory.transfer', sessionUser) ? 'flex' : 'none';
+        }
+
+        function updateDashboard() {
+            const total = branchesData.length;
+            const active = branchesData.filter(branch => branch.status === 'نشط').length;
+            const frozen = branchesData.filter(branch => branch.status === 'مجمد').length;
+            const managersCount = branchesData.filter(branch => branch.managerUsername && branch.managerPassword).length;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statActive').innerText = active;
+            document.getElementById('statFrozen').innerText = frozen;
+            document.getElementById('statManagers').innerText = managersCount;
+
+            const tbody = document.getElementById('branchTableBody');
+            tbody.innerHTML = '';
+            const managerSelect = document.getElementById('managerBranchSelect');
+            managerSelect.innerHTML = '<option value="" disabled selected>اختر الفرع المستهدف...</option>';
+
+            if (!branchesData.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:22px;color:#64748b;font-weight:bold;">لا توجد فروع. ستظهر هنا الفروع التي تضيفها أنت فقط.</td></tr>';
+            }
+
+            branchesData.forEach(item => {
+                const statusBadge = item.status === 'نشط' ? '<span class="badge-active">نشط</span>' : '<span class="badge-frozen">مجمد</span>';
+                const transferPerm = item.allowTransfer ? '<span class="badge-permission"><i class="fa-solid fa-check"></i> يملك صلاحية النقل</span>' : '';
+                const isLockedMain = item.isMain === true || item.isDefault === true || item.locked === true;
+                const adminActions = isCompanyAdmin() ? `
+                    <button class="action-btn-clean btn-clean-edit" title="${isLockedMain ? 'تعديل عنوان الفرع الرئيسي' : 'تعديل'}" onclick="openEditBranchModal('${item.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                    ${isLockedMain ? '<span title="الفرع الرئيسي ثابت ولا يمكن تجميده أو حذفه" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;color:#16a34a;"><i class="fa-solid fa-lock"></i></span>' : `
+                    <button class="action-btn-clean btn-clean-freeze" title="${item.status === 'نشط' ? 'تجميد' : 'تنشيط'}" onclick="toggleBranchStatus('${item.id}')"><i class="fa-solid ${item.status === 'نشط' ? 'fa-snowflake' : 'fa-sun'}"></i></button>
+                    <button class="action-btn-clean btn-clean-delete" title="حذف" onclick="openDeleteBranchModal('${item.id}')"><i class="fa-solid fa-trash-can"></i></button>`}` : '';
+                const managerInfo = item.manager
+                    ? `<div style="font-weight:bold;color:#333;">${item.manager}</div><small style="color:#64748b;">${item.managerUsername || 'لم يُحدد اسم دخول'}</small>`
+                    : '<span style="color:#aaa;font-style:italic;">غير معين</span>';
+
+                tbody.innerHTML += `<tr>
+                    <td style="font-family:monospace;font-weight:bold;color:#605ca8;">${item.id}</td>
+                    <td style="font-weight:bold;">${item.name}${isLockedMain ? ' <span style="font-size:10px;background:#dcfce7;color:#166534;padding:3px 7px;border-radius:999px;margin-right:5px;white-space:nowrap;"><i class="fa-solid fa-lock"></i> افتراضي</span>' : ''}</td>
+                    <td>${item.address || '-'}</td>
+                    <td>${managerInfo}${transferPerm}</td>
+                    <td>${statusBadge}</td>
+                    <td><div class="actions-wrapper">${adminActions}</div></td>
+                </tr>`;
+                managerSelect.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+            });
+        }
+
+        // ==========================================
+        // إدارة الفروع (إضافة، تعديل، حذف)
+        // ==========================================
+        function saveBranch(e) {
+            e.preventDefault();
+            const usedNumbers = branchesData.map(branch => Number(String(branch.id || '').replace(/\D/g, '')) || 0);
+            const nextIndex = Math.max(0, ...usedNumbers) + 1;
+            const generatedId = `BR-${String(nextIndex).padStart(2, '0')}`;
+            const bName = document.getElementById('branchName').value.trim();
+            if (!bName) return showToast('أدخل اسم الفرع', 'error');
+
+            branchesData.push({
+                id: generatedId,
+                name: bName,
+                address: document.getElementById('branchAddress').value.trim(),
+                manager: '', managerUsername: '', managerPassword: '', managerActive: false,
+                status: 'نشط', allowTransfer: false,
+                isMain: branchesData.length === 0
+            });
+            localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+            document.getElementById('branchForm').reset();
+            closeModal('branchModal');
+            applySessionUI();
+            updateDashboard();
+            showToast('تم إنشاء الفرع فقط. المخازن تدار بشكل مستقل من صفحة المخازن.', 'success');
+        }
+
+        function openEditBranchModal(id) {
+            let branch = branchesData.find(b => b.id === id);
+            if(branch) {
+                document.getElementById('editBranchId').value = branch.id;
+                const editNameInput = document.getElementById('editBranchName');
+                const isLockedMain = branch.isMain === true || branch.isDefault === true || branch.locked === true;
+                editNameInput.value = isLockedMain ? 'الفرع الرئيسي' : branch.name;
+                editNameInput.disabled = isLockedMain;
+                document.getElementById('editBranchAddress').value = branch.address || '';
+                openModal('editBranchModal');
+            }
+        }
+
+        function saveEditedBranch(e) {
+            e.preventDefault();
+            let id = document.getElementById('editBranchId').value;
+            let branch = branchesData.find(b => b.id === id);
+            if(branch) {
+                const isLockedMain = branch.isMain === true || branch.isDefault === true || branch.locked === true;
+                branch.name = isLockedMain ? 'الفرع الرئيسي' : document.getElementById('editBranchName').value.trim();
+                branch.status = isLockedMain ? 'نشط' : branch.status;
+                branch.address = document.getElementById('editBranchAddress').value.trim();
+                localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+                closeModal('editBranchModal');
+                initSystem();
+                showToast('تم تحديث بيانات الفرع بنجاح', 'success');
+            }
+        }
+
+        function openDeleteBranchModal(id) {
+            const branch = branchesData.find(item => String(item.id) === String(id));
+            if (branch && (branch.isMain === true || branch.isDefault === true || branch.locked === true)) {
+                showToast('الفرع الرئيسي افتراضي وثابت ولا يمكن حذفه.', 'error');
+                return;
+            }
+            document.getElementById('deleteBranchIdTarget').value = id;
+            openModal('deleteBranchModal');
+        }
+
+        function confirmDeleteBranch() {
+            const id = document.getElementById('deleteBranchIdTarget').value;
+            const targetBranch = branchesData.find(branch => String(branch.id) === String(id));
+            if (targetBranch && (targetBranch.isMain === true || targetBranch.isDefault === true || targetBranch.locked === true)) {
+                closeModal('deleteBranchModal');
+                showToast('لا يمكن حذف الفرع الرئيسي.', 'error');
+                return;
+            }
+            const removedWasMain = targetBranch?.isMain === true;
+            branchesData = branchesData.filter(branch => String(branch.id) !== String(id));
+            const promotedMainId = removedWasMain && branchesData.length ? branchesData[0].id : null;
+            if (promotedMainId) branchesData[0].isMain = true;
+            productsData.forEach(product => {
+                // عند ترقية فرع آخر إلى رئيسي تُدمج كميته مع الرصيد الرئيسي قبل حذف رصيده الفرعي.
+                if (promotedMainId && product.hasVariants && Array.isArray(product.variants)) {
+                    product.variants.forEach(variant => {
+                        const promotedQty = Number(variant.branchStocks?.[promotedMainId] || 0);
+                        if (promotedQty) {
+                            variant.qty = Number(variant.qty || 0) + promotedQty;
+                            product.stockPieces = Number(product.stockPieces || 0) + promotedQty;
+                        }
+                        if (variant.branchStocks) delete variant.branchStocks[promotedMainId];
+                    });
+                } else if (promotedMainId) {
+                    const promotedQty = Number(product.branchStocks?.[promotedMainId] || 0);
+                    if (promotedQty) product.stockPieces = Number(product.stockPieces || 0) + promotedQty;
+                    if (product.branchStocks) delete product.branchStocks[promotedMainId];
+                }
+                if (product.branchStocks) delete product.branchStocks[id];
+                (product.variants || []).forEach(variant => { if (variant.branchStocks) delete variant.branchStocks[id]; });
+            });
+            localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+            localStorage.setItem('cashtop_products', JSON.stringify(productsData));
+            closeModal('deleteBranchModal');
+            initSystem();
+            showToast('تم حذف الفرع فقط، وبقيت المخازن دون تغيير.', 'success');
+        }
+
+        const managerPermissionGroups = window.Cashtop?.PERMISSION_GROUPS || [];
+        function renderManagerPermissionControls() {
+            const container = document.getElementById('managerPermissionsContainer');
+            if (!container || container.dataset.ready === 'true') return;
+            container.innerHTML = managerPermissionGroups.map(group => `<section class="manager-permission-group"><div class="manager-permission-title">${group.title}</div><div class="manager-permission-items">${group.permissions.map(([key,label]) => `<label class="manager-permission-item"><span>${label}</span><input type="checkbox" class="manager-permission-checkbox" data-permission="${key}"></label>`).join('')}</div></section>`).join('');
+            container.dataset.ready = 'true';
+        }
+        function defaultManagerPermissions() {
+            const allowedPrefixes = ['dashboard.','pos.','sales.','purchases.','purchaseReturns.','products.','inventory.','warehouses.','units.','shortages.','barcode.','customers.','customerGroups.','suppliers.','accounts.','finance.','expenses.','vouchers.','journal.','reports.','manufacturing.','notifications.'];
+            const result = {};
+            managerPermissionGroups.forEach(group => group.permissions.forEach(([key]) => { result[key] = allowedPrefixes.some(prefix => key.startsWith(prefix)); }));
+            result['branches.view'] = true;
+            return result;
+        }
+        function setManagerPermissionValues(permissions) {
+            renderManagerPermissionControls();
+            const normalized = window.Cashtop?.normalizePermissions?.(permissions) || permissions || {};
+            document.querySelectorAll('.manager-permission-checkbox').forEach(input => { input.checked = normalized[input.dataset.permission] === true; });
+        }
+        function collectManagerPermissions() {
+            const permissions = {};
+            document.querySelectorAll('.manager-permission-checkbox').forEach(input => { permissions[input.dataset.permission] = input.checked; });
+            return permissions;
+        }
+        function setAllManagerPermissions(checked) { document.querySelectorAll('.manager-permission-checkbox').forEach(input => { input.checked = checked; }); }
+        function loadSelectedManager() {
+            const branchId = document.getElementById('managerBranchSelect').value;
+            const branch = branchesData.find(item => String(item.id) === String(branchId));
+            if (!branch) return;
+            document.getElementById('managerName').value = branch.manager || '';
+            document.getElementById('managerUsername').value = branch.managerUsername || '';
+            document.getElementById('managerPassword').value = branch.managerPassword || '';
+            const managerPerms = window.Cashtop?.normalizePermissions?.(branch.managerPermissions || {}) || branch.managerPermissions || {};
+            document.getElementById('managerAllowTransfer').checked = branch.allowTransfer === true || managerPerms['inventory.transfer'] === true;
+            document.getElementById('managerActiveSelect').value = branch.managerActive === false ? 'false' : 'true';
+            setManagerPermissionValues({ ...(branch.managerPermissions || defaultManagerPermissions()), 'inventory.transfer': branch.allowTransfer === true || managerPerms['inventory.transfer'] === true });
+            document.getElementById('removeManagerBtn').style.display = branch.managerUsername ? 'inline-flex' : 'none';
+        }
+        function openManagerModal() {
+            updateDashboard();
+            renderManagerPermissionControls();
+            const select = document.getElementById('managerBranchSelect');
+            if (select && !select.value && branchesData.length) select.value = branchesData[0].id;
+            loadSelectedManager();
+            openModal('managerModal');
+        }
+        function removeBranchManager() {
+            const branchId = document.getElementById('managerBranchSelect').value;
+            const branch = branchesData.find(item => String(item.id) === String(branchId));
+            if (!branch || !branch.managerUsername) return;
+            if (!confirm(`حذف مدير فرع ${branch.name} وإيقاف دخوله فوراً؟`)) return;
+            branch.managerActive = false;
+            branch.managerAuthVersion = Date.now();
+            branch.manager = ''; branch.managerUsername = ''; branch.managerPassword = ''; branch.managerPermissions = {};
+            localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+            closeModal('managerModal'); updateDashboard();
+            showToast('تم حذف مدير الفرع وسيتم إخراجه من أي جهاز مفتوح فور وصول المزامنة.', 'success');
+        }
+
+        function saveManager(e) {
+            e.preventDefault();
+            const branchId = document.getElementById('managerBranchSelect').value;
+            const managerName = document.getElementById('managerName').value.trim();
+            const username = document.getElementById('managerUsername').value.trim();
+            const password = document.getElementById('managerPassword').value;
+            const allowTransfer = document.getElementById('managerAllowTransfer').checked;
+            const managerActive = document.getElementById('managerActiveSelect').value === 'true';
+            const managerPermissions = collectManagerPermissions();
+            managerPermissions['inventory.transfer'] = allowTransfer;
+            const branch = branchesData.find(item => String(item.id) === String(branchId));
+            if (!branch || !managerName || !username || !password) return showToast('أكمل بيانات مدير الفرع', 'error');
+
+            const usernameTakenByBranch = branchesData.some(item => String(item.id) !== String(branchId) && String(item.managerUsername || '').toLowerCase() === username.toLowerCase());
+            const employees = readArrayDataset('cashtop_employees');
+            const usernameTakenByEmployee = employees.some(item => String(item.username || '').toLowerCase() === username.toLowerCase());
+            const companyAccess = JSON.parse(localStorage.getItem('cashtop_company_access')) || {};
+            const usernameTakenByCompany = String(companyAccess.manager?.username || '').toLowerCase() === username.toLowerCase();
+            if (usernameTakenByBranch || usernameTakenByEmployee || usernameTakenByCompany) return showToast('اسم المستخدم مستخدم مسبقاً', 'error');
+
+            branch.manager = managerName;
+            branch.managerUsername = username;
+            branch.managerPassword = password;
+            branch.managerUserId = branch.managerUserId || `BRM_${branch.id}`;
+            branch.managerActive = managerActive;
+            branch.allowTransfer = allowTransfer;
+            branch.managerPermissions = managerPermissions;
+            branch.managerAuthVersion = Date.now();
+            branch.updatedAt = new Date().toISOString();
+            localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+            window.dispatchEvent(new CustomEvent('cashtop:sync-now', { detail: { key: 'cashtop_branches' } }));
+            document.getElementById('managerForm').reset();
+            closeModal('managerModal');
+            applySessionUI();
+            updateDashboard();
+            showToast(`تم إنشاء دخول مدير فرع ${branch.name} بنفس مفتاح الشركة.`, 'success');
+        }
+
+        function toggleBranchStatus(id) {
+            let branch = branchesData.find(b => b.id === id);
+            if(branch) {
+                if (branch.isMain === true || branch.isDefault === true || branch.locked === true) {
+                    branch.status = 'نشط';
+                    localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+                    showToast('الفرع الرئيسي يجب أن يبقى نشطاً ولا يمكن تجميده.', 'error');
+                    return;
+                }
+                branch.status = (branch.status === "نشط") ? "مجمد" : "نشط";
+                branch.managerAuthVersion = Date.now();
+                branch.updatedAt = new Date().toISOString();
+                localStorage.setItem('cashtop_branches', JSON.stringify(branchesData));
+                initSystem();
+            }
+        }
+
+        // ==========================================
+        // النقل العابر للفروع والمخازن
+        // المدير العام: من أي فرع/مخزن إلى أي فرع/مخزن.
+        // مدير الفرع/الموظف: المصدر مقيد بفرعه فقط، والوجهة أي فرع آخر.
+        // ==========================================
+
+        function isMainBranch(branchId) {
+            const branch = branchesData.find(item => String(item.id) === String(branchId));
+            return branch?.isMain === true || (!branchesData.some(item => item.isMain === true) && String(branchesData[0]?.id || '') === String(branchId));
+        }
+
+        function branchDataId(branchRecordId) {
+            return isMainBranch(branchRecordId) ? 'MAIN' : String(branchRecordId || '');
+        }
+
+        function canTransferInventory() {
+            return isCompanyAdmin() || window.Cashtop?.can?.('inventory.transfer', sessionUser) === true;
+        }
+
+        function storeBranchId(store) {
+            const value = store?.dataBranchId || store?.branchId;
+            return value == null || value === '' ? 'MAIN' : String(value);
+        }
+
+        function getStoresForBranch(branchRecordId) {
+            const dataId = branchDataId(branchRecordId);
+            return transferStoresData.filter(store => store && storeBranchId(store) === dataId && String(store.id || '') !== 'shop' && !String(store.id || '').startsWith('shop_'));
+        }
+
+        function getBranchName(branchId) {
+            return branchesData.find(branch => String(branch.id) === String(branchId))?.name || String(branchId || 'فرع غير معروف');
+        }
+
+        function getLocationName(branchId, locationId) {
+            if (String(locationId) === 'shop') return `المحل الرئيسي - ${getBranchName(branchId)}`;
+            const store = transferStoresData.find(item => String(item.id) === String(locationId));
+            return store ? `${store.name} - ${getBranchName(branchId)}` : `مخزن غير معروف - ${getBranchName(branchId)}`;
+        }
+
+        function populateLocationSelect(selectId, branchId, placeholder) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '';
+            const placeholderOption = new Option(placeholder, '');
+            placeholderOption.disabled = true;
+            placeholderOption.selected = true;
+            select.add(placeholderOption);
+            if (!branchId) return;
+            select.add(new Option(`المحل الرئيسي — ${getBranchName(branchId)}`, 'shop'));
+            getStoresForBranch(branchId).forEach(store => select.add(new Option(`مخزن: ${store.name}`, String(store.id))));
+        }
+
+        function locationBelongsToBranch(branchId, locationId) {
+            if (String(locationId) === 'shop') return true;
+            return getStoresForBranch(branchId).some(store => String(store.id) === String(locationId));
+        }
+
+        function getExactBranchQty(product, branchId, variantIndex = null) {
+            if (!branchId || !product) return 0;
+            const dataId = branchDataId(branchId);
+            if (product.hasVariants && variantIndex !== null) {
+                const variant = product.variants?.[variantIndex];
+                if (!variant) return 0;
+                if (dataId === 'MAIN') return Math.max(0, Number(variant.qty || 0));
+                return Math.max(0, Number(variant.branchStocks?.[dataId] || 0));
+            }
+            if (dataId === 'MAIN') return Math.max(0, Number(product.stockPieces || 0));
+            return Math.max(0, Number(product.branchStocks?.[dataId] || 0));
+        }
+
+        function getLocationQty(product, branchId, locationId, variantIndex = null) {
+            if (String(locationId) === 'shop') return getExactBranchQty(product, branchId, variantIndex);
+            if (product.hasVariants && variantIndex !== null) {
+                return Math.max(0, Number(product.variants?.[variantIndex]?.storeStocks?.[locationId] || 0));
+            }
+            return Math.max(0, Number(product.storeStocks?.[locationId] || 0));
+        }
+
+        function changeBranchQty(product, branchId, pieces, variantIndex = null) {
+            const delta = Number(pieces || 0);
+            const dataId = branchDataId(branchId);
+            if (product.hasVariants && variantIndex !== null) {
+                const variant = product.variants?.[variantIndex];
+                if (!variant) return;
+                if (dataId === 'MAIN') {
+                    variant.qty = Math.max(0, Number(variant.qty || 0) + delta);
+                    product.stockPieces = Math.max(0, Number(product.stockPieces || 0) + delta);
+                } else {
+                    variant.branchStocks = variant.branchStocks && typeof variant.branchStocks === 'object' ? variant.branchStocks : {};
+                    product.branchStocks = product.branchStocks && typeof product.branchStocks === 'object' ? product.branchStocks : {};
+                    variant.branchStocks[dataId] = Math.max(0, Number(variant.branchStocks[dataId] || 0) + delta);
+                    product.branchStocks[dataId] = Math.max(0, Number(product.branchStocks[dataId] || 0) + delta);
+                }
+                return;
+            }
+            if (dataId === 'MAIN') {
+                product.stockPieces = Math.max(0, Number(product.stockPieces || 0) + delta);
+            } else {
+                product.branchStocks = product.branchStocks && typeof product.branchStocks === 'object' ? product.branchStocks : {};
+                product.branchStocks[dataId] = Math.max(0, Number(product.branchStocks[dataId] || 0) + delta);
+            }
+        }
+
+        function changeLocationQty(product, branchId, locationId, pieces, variantIndex = null) {
+            const delta = Number(pieces || 0);
+            if (String(locationId) === 'shop') {
+                changeBranchQty(product, branchId, delta, variantIndex);
+                return;
+            }
+            if (product.hasVariants && variantIndex !== null) {
+                const variant = product.variants?.[variantIndex];
+                if (!variant) return;
+                variant.storeStocks = variant.storeStocks && typeof variant.storeStocks === 'object' ? variant.storeStocks : {};
+                variant.storeStocks[locationId] = Math.max(0, Number(variant.storeStocks[locationId] || 0) + delta);
+            } else {
+                product.storeStocks = product.storeStocks && typeof product.storeStocks === 'object' ? product.storeStocks : {};
+                product.storeStocks[locationId] = Math.max(0, Number(product.storeStocks[locationId] || 0) + delta);
+            }
+        }
+
+        function markProductAvailableForBranch(product, branchId) {
+            const dataId = branchDataId(branchId);
+            product.branchCatalog = product.branchCatalog && typeof product.branchCatalog === 'object' ? product.branchCatalog : {};
+            product.branchCatalog[dataId] = true;
+            if (!product.ownerBranchId) product.ownerBranchId = dataId;
+        }
+
+        function refreshTransferDatasets() {
+            transferProductsData = readFullArrayDataset('cashtop_products');
+            transferStoresData = readFullArrayDataset('cashtop_stores');
+        }
+
+        function openTransferModal() {
+            sessionUser = window.Cashtop?.getSession?.() || sessionUser;
+            if (!canTransferInventory()) return showToast('لا تملك صلاحية نقل المخزون بين الفروع.', 'error');
+            refreshTransferDatasets();
+            transferCart = [];
+            renderTransferCart();
+            document.getElementById('transferSearchInput').value = '';
+            document.getElementById('transferSuggestions').style.display = 'none';
+
+            const sourceSelect = document.getElementById('transSourceBranch');
+            const destinationSelect = document.getElementById('transDestBranch');
+            sourceSelect.innerHTML = '<option value="" disabled selected>اختر الفرع المُصدِّر...</option>';
+            destinationSelect.innerHTML = '<option value="" disabled selected>اختر الفرع المُستلِم...</option>';
+
+            const activeBranches = branchesData.filter(branch => branch.status === 'نشط');
+            activeBranches.forEach(branch => {
+                const label = `${branch.name}${isMainBranch(branch.id) ? ' — الفرع الرئيسي' : ''}`;
+                sourceSelect.add(new Option(label, String(branch.id)));
+                destinationSelect.add(new Option(label, String(branch.id)));
+            });
+
+            sourceSelect.disabled = false;
+            if (!isCompanyAdmin()) {
+                const ownBranch = currentBranchRecordId();
+                if (!ownBranch || !activeBranches.some(branch => String(branch.id) === String(ownBranch))) {
+                    return showToast('تعذر تحديد فرع الموظف/المدير الحالي.', 'error');
+                }
+                sourceSelect.value = String(ownBranch);
+                sourceSelect.disabled = true;
+            }
+
+            handleSourceBranchChange();
+            openModal('transferModal');
+        }
+
+        function handleSourceBranchChange() {
+            transferCart = [];
+            renderTransferCart();
+            const input = document.getElementById('transferSearchInput');
+            input.value = '';
+            document.getElementById('transferSuggestions').style.display = 'none';
+            const sourceId = document.getElementById('transSourceBranch').value;
+            populateLocationSelect('transSourceLocation', sourceId, 'اختر المحل أو المخزن المصدر...');
+
+            const destinationSelect = document.getElementById('transDestBranch');
+            [...destinationSelect.options].forEach(option => {
+                option.disabled = Boolean(option.value && String(option.value) === String(sourceId));
+            });
+            if (String(destinationSelect.value) === String(sourceId)) destinationSelect.value = '';
+            handleDestinationBranchChange();
+        }
+
+        function handleSourceLocationChange() {
+            transferCart = [];
+            renderTransferCart();
+            document.getElementById('transferSearchInput').value = '';
+            document.getElementById('transferSuggestions').style.display = 'none';
+            setTimeout(() => document.getElementById('transferSearchInput').focus(), 40);
+        }
+
+        function handleDestinationBranchChange() {
+            const destinationId = document.getElementById('transDestBranch').value;
+            populateLocationSelect('transDestLocation', destinationId, 'اختر المحل أو المخزن المستلم...');
+        }
+
+        function searchTransferProducts() {
+            const value = document.getElementById('transferSearchInput').value.trim().toLowerCase();
+            const box = document.getElementById('transferSuggestions');
+            const sourceBranchId = document.getElementById('transSourceBranch').value;
+            const sourceLocationId = document.getElementById('transSourceLocation').value;
+            if (!sourceBranchId || !sourceLocationId) {
+                showToast('اختر الفرع والمخزن/المحل المصدر أولاً', 'error');
+                document.getElementById('transferSearchInput').value = '';
+                box.style.display = 'none';
+                return;
+            }
+            if (!value) { box.style.display = 'none'; return; }
+
+            // نقرأ النسخة الكاملة كل مرة لضمان ظهور منتج أضيف في فرع آخر مباشرة.
+            transferProductsData = readFullArrayDataset('cashtop_products');
+            const matched = [];
+            transferProductsData.forEach(product => {
+                const name = String(product.name || '').toLowerCase();
+                const barcode = String(product.barcode || '').toLowerCase();
+                const unitBarcode = String(product.unitBarcode || '').toLowerCase();
+                const variantBarcodeMatch = Array.isArray(product.variants) && product.variants.some(v => String(v?.barcode || '').toLowerCase().includes(value));
+                if (!name.includes(value) && !barcode.includes(value) && !unitBarcode.includes(value) && !variantBarcodeMatch) return;
+                if (product.hasVariants && Array.isArray(product.variants)) {
+                    const available = product.variants.some((variant, index) => getLocationQty(product, sourceBranchId, sourceLocationId, index) > 0);
+                    if (available) matched.push({ product, available: true });
+                } else {
+                    const qty = getLocationQty(product, sourceBranchId, sourceLocationId);
+                    if (qty > 0) matched.push({ product, available: true, qty });
+                }
+            });
+
+            box.innerHTML = '';
+            if (!matched.length) {
+                box.innerHTML = '<div style="padding:10px;color:#999;text-align:center;">لا توجد منتجات متوفرة في موقع المصدر المختار</div>';
+                box.style.display = 'block';
+                return;
+            }
+
+            matched.forEach(match => {
+                const product = match.product;
+                const row = document.createElement('div');
+                row.className = 'suggestion-item';
+                const statusText = product.hasVariants
+                    ? 'اضغط لاختيار المقاسات/الألوان المتوفرة في هذا الموقع'
+                    : `المتوفر هنا: ${match.qty || 0} ${product.pieceName || 'قطعة'}`;
+                row.innerHTML = `<span style="font-weight:bold;color:#333;">${product.name}${product.hasVariants ? ' <span class="badge-variant">متعدد المقاسات</span>' : ''}</span><br><span style="font-size:11px;color:#00a65a;font-weight:bold;">${statusText}</span>`;
+                row.onmousedown = event => {
+                    event.preventDefault();
+                    if (product.hasVariants) openTransferVariantModal(product.id, sourceBranchId, sourceLocationId);
+                    else addProdToTransferCart(product, match.qty);
+                    document.getElementById('transferSearchInput').value = '';
+                    box.style.display = 'none';
+                };
+                box.appendChild(row);
+            });
+            box.style.display = 'block';
+        }
+
+        function addProdToTransferCart(prod, availQty) {
+            const existing = transferCart.find(item => String(item.id) === String(prod.id) && !item.isVariant);
+            if (!existing) {
+                const unitChain = window.CashtopMulti?.normalizeProductChain?.(prod) || [{ id:'piece', name:prod.pieceName||'قطعة', factorToBase:1 }];
+                transferCart.push({
+                    id: prod.id, name: prod.name, stockInSource: Number(availQty || 0),
+                    piecesPerUnit: Math.max(1, Number(prod.piecesPerUnit || 1)), unitName: prod.unitName || unitChain[unitChain.length-1]?.name || 'وحدة', pieceName: unitChain[0]?.name || prod.pieceName || 'قطعة',
+                    unitChain, addType: prod.addType || 'piece', transferUnit: unitChain[unitChain.length-1]?.id || 'piece', transferQty: 1, isVariant: false
+                });
+                renderTransferCart();
+            } else showToast('المنتج موجود مسبقاً بالقائمة', 'warning');
+        }
+
+        function openTransferVariantModal(productId, sourceBranchId, sourceLocationId) {
+            const prod = transferProductsData.find(p => String(p.id) === String(productId));
+            if (!prod || !Array.isArray(prod.variants)) return;
+            const tbody = document.getElementById('transferVariantBody');
+            tbody.innerHTML = '';
+            let count = 0;
+            prod.variants.forEach((variant, vIndex) => {
+                const availQty = getLocationQty(prod, sourceBranchId, sourceLocationId, vIndex);
+                if (availQty <= 0) return;
+                count += 1;
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = `<td><span style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-weight:bold;">${variant.size || '---'}</span></td><td>${variant.color || '---'}</td><td style="color:#00a65a;font-weight:bold;">${availQty}</td>`;
+                tr.onmouseenter = () => { tr.style.background = '#f0f8ff'; };
+                tr.onmouseleave = () => { tr.style.background = 'transparent'; };
+                tr.onclick = () => { addVariantToTransfer(prod.id, vIndex, availQty); closeModal('transferVariantModal'); };
+                tbody.appendChild(tr);
+            });
+            if (!count) return showToast('لا توجد مقاسات متوفرة في موقع المصدر المختار', 'error');
+            openModal('transferVariantModal');
+        }
+
+        function addVariantToTransfer(prodId, vIndex, availQty) {
+            const prod = transferProductsData.find(p => String(p.id) === String(prodId));
+            const variant = prod?.variants?.[vIndex];
+            if (!prod || !variant) return;
+            const existing = transferCart.find(item => String(item.id) === String(prod.id) && item.isVariant && item.vIndex === vIndex);
+            if (!existing) {
+                transferCart.push({
+                    id: prod.id,
+                    name: `${prod.name} (مقاس: ${variant.size || '-'} - لون: ${variant.color || '-'})`,
+                    stockInSource: Number(availQty || 0),
+                    piecesPerUnit: 1,
+                    unitName: 'وحدة',
+                    pieceName: 'قطعة',
+                    addType: 'piece',
+                    transferUnit: 'piece',
+                    transferQty: 1,
+                    isVariant: true,
+                    vIndex
+                });
+                renderTransferCart();
+            } else showToast('المقاس موجود مسبقاً بالجدول', 'warning');
+        }
+
+        function renderTransferCart() {
+            const tbody = document.getElementById('transferCartBody');
+            tbody.innerHTML = '';
+            const cartHasItems = transferCart.length > 0;
+            const sourceBranch = document.getElementById('transSourceBranch');
+            const sourceLocation = document.getElementById('transSourceLocation');
+            if (sourceBranch) sourceBranch.disabled = cartHasItems || !isCompanyAdmin();
+            if (sourceLocation) sourceLocation.disabled = cartHasItems;
+
+            if (!cartHasItems) {
+                tbody.innerHTML = '<tr><td colspan="4" style="color:#999;padding:15px;font-weight:bold;">عربة النقل فارغة. اختر موقع المصدر وابحث عن المنتجات المتوفرة فيه...</td></tr>';
+                return;
+            }
+
+            transferCart.forEach((item, index) => {
+                let unitAndQtyHtml = '';
+                if (!item.isVariant) {
+                    const chain = Array.isArray(item.unitChain) && item.unitChain.length ? item.unitChain : [{id:'piece',name:item.pieceName||'قطعة',factorToBase:1}];
+                    const selected = chain.find(level => String(level.id) === String(item.transferUnit)) || chain[0];
+                    const factor = Math.max(0.000001, Number(selected.factorToBase || 1));
+                    const currentMax = Number(item.stockInSource || 0) / factor;
+                    const options = chain.map(level => `<option value="${level.id}" ${String(item.transferUnit)===String(level.id)?'selected':''}>${level.name} (×${Number(level.factorToBase||1)} ${chain[0].name})</option>`).join('');
+                    unitAndQtyHtml = `
+                        <div style="display:flex;flex-direction:column;gap:5px;align-items:center;">
+                            <select class="form-control" style="padding:4px 8px;font-size:11px;height:28px;width:150px;border-color:#3b82f6;" onchange="updateTransferUnit(${index}, this.value)">${options}</select>
+                            <input type="number" step="any" class="form-control" value="${item.transferQty}" min="0.000001" max="${Math.max(0, currentMax)}" onchange="updateTransferQty(${index}, this.value)" style="width:140px;padding:4px;text-align:center;height:28px;font-weight:bold;" placeholder="أدخل الكمية">
+                        </div>`;
+                } else {
+                    unitAndQtyHtml = `
+                        <div style="display:flex;flex-direction:column;gap:5px;align-items:center;">
+                            <span style="background:#f1f5f9;padding:4px 8px;border-radius:4px;margin-bottom:5px;display:inline-block;">بالـ ${item.pieceName}</span>
+                            <input type="number" class="form-control" value="${item.transferQty}" min="1" max="${item.stockInSource}" onchange="updateTransferQty(${index}, this.value)" style="width:100px;padding:4px;text-align:center;height:28px;font-weight:bold;">
+                        </div>`;
+                }
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:bold;font-size:13px;color:#222;">${item.name}</td>
+                        <td style="vertical-align:middle;">${unitAndQtyHtml}</td>
+                        <td style="color:#00a65a;font-weight:bold;font-size:14px;vertical-align:middle;">${item.stockInSource} <span style="font-size:10px;color:#888;">${item.pieceName}</span></td>
+                        <td style="vertical-align:middle;"><button type="button" class="action-btn-clean btn-clean-delete" onclick="removeTransferItem(${index})"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>`;
+            });
+        }
+
+        function updateTransferUnit(index, val) {
+            if (!transferCart[index]) return;
+            transferCart[index].transferUnit = val;
+            transferCart[index].transferQty = 1;
+            renderTransferCart();
+        }
+        function updateTransferQty(index, val) { if (transferCart[index]) transferCart[index].transferQty = Math.max(0.000001, Number(val) || 1); }
+        function removeTransferItem(index) { transferCart.splice(index, 1); renderTransferCart(); }
+
+        function processTransfer() {
+            sessionUser = window.Cashtop?.getSession?.() || sessionUser;
+            if (!canTransferInventory()) return showToast('لا تملك صلاحية تنفيذ النقل.', 'error');
+
+            const sourceBranchId = document.getElementById('transSourceBranch').value;
+            const sourceLocationId = document.getElementById('transSourceLocation').value;
+            const destinationBranchId = document.getElementById('transDestBranch').value;
+            const destinationLocationId = document.getElementById('transDestLocation').value;
+            if (!sourceBranchId || !sourceLocationId || !destinationBranchId || !destinationLocationId) return showToast('اختر الفرع والمخزن/المحل للمصدر والوجهة', 'error');
+            if (String(sourceBranchId) === String(destinationBranchId)) return showToast('النقل بين الفروع يجب أن يكون إلى فرع آخر. للنقل داخل نفس الفرع استخدم صفحة المخازن.', 'error');
+            if (!isCompanyAdmin() && String(sourceBranchId) !== String(currentBranchRecordId())) return showToast('الموظف أو مدير الفرع يستطيع النقل من فرعه فقط.', 'error');
+            if (!locationBelongsToBranch(sourceBranchId, sourceLocationId) || !locationBelongsToBranch(destinationBranchId, destinationLocationId)) return showToast('المخزن المحدد لا يتبع الفرع المختار.', 'error');
+            if (!transferCart.length) return showToast('عربة النقل فارغة', 'error');
+
+            // إعادة القراءة قبل التنفيذ تمنع الخصم من رصيد قديم إذا تغير المخزون من جهاز آخر.
+            const fullProducts = readFullArrayDataset('cashtop_products');
+            const prepared = [];
+            for (const item of transferCart) {
+                const product = fullProducts.find(productItem => String(productItem.id) === String(item.id));
+                if (!product) return showToast(`تعذر العثور على المنتج [${item.name}]`, 'error');
+                const qty = Math.max(0.000001, Number(item.transferQty || 0));
+                const chain = Array.isArray(item.unitChain) && item.unitChain.length ? item.unitChain : (window.CashtopMulti?.normalizeProductChain?.(product) || [{id:'piece',name:item.pieceName||'قطعة',factorToBase:1}]);
+                const selectedLevel = chain.find(level => String(level.id) === String(item.transferUnit)) || chain[0];
+                const pieces = qty * Math.max(0.000001, Number(selectedLevel.factorToBase || 1));
+                const availableNow = getLocationQty(product, sourceBranchId, sourceLocationId, item.isVariant ? item.vIndex : null);
+                if (!Number.isFinite(pieces) || pieces <= 0) return showToast(`أدخل كمية صحيحة للصنف [${item.name}]`, 'error');
+                if (pieces > availableNow + 1e-9) return showToast(`الكمية المطلوبة للصنف [${item.name}] تتجاوز المتوفر حالياً في المصدر (${availableNow})`, 'error');
+                prepared.push({ item, product, pieces });
+            }
+
+            try {
+                prepared.forEach(({ item, product, pieces }) => {
+                    const variantIndex = item.isVariant ? item.vIndex : null;
+                    changeLocationQty(product, sourceBranchId, sourceLocationId, -pieces, variantIndex);
+                    changeLocationQty(product, destinationBranchId, destinationLocationId, pieces, variantIndex);
+                    markProductAvailableForBranch(product, destinationBranchId);
+                    product.updatedAt = new Date().toISOString();
+                });
+
+                saveFullCompanyDataset('cashtop_products', fullProducts);
+                transferProductsData = fullProducts;
+
+                const historyRecord = {
+                    id: `TR_BR_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                    date: new Date().toLocaleString('ar-EG'),
+                    createdAt: new Date().toISOString(),
+                    sourceBranchId,
+                    sourceLocationId,
+                    destinationBranchId,
+                    destinationLocationId,
+                    sourceBranchName: getBranchName(sourceBranchId),
+                    destinationBranchName: getBranchName(destinationBranchId),
+                    sourceLocationName: getLocationName(sourceBranchId, sourceLocationId),
+                    destinationLocationName: getLocationName(destinationBranchId, destinationLocationId),
+                    fromStore: getLocationName(sourceBranchId, sourceLocationId),
+                    toStore: getLocationName(destinationBranchId, destinationLocationId),
+                    items: transferCart.map(item => {
+                        const chain = Array.isArray(item.unitChain) && item.unitChain.length ? item.unitChain : [{id:'piece',name:item.pieceName||'قطعة',factorToBase:1}];
+                        const unit = chain.find(level => String(level.id) === String(item.transferUnit))?.name || item.pieceName;
+                        return `${item.name} | الكمية: ${item.transferQty} ${unit}`;
+                    }),
+                    user: sessionUser.username || sessionUser.displayName || '',
+                    userId: sessionUser.uid || '',
+                    role: sessionUser.role || ''
+                };
+                branchTransferHistoryData.unshift(historyRecord);
+                localStorage.setItem('cashtop_branch_transfer_history', JSON.stringify(branchTransferHistoryData));
+                showToast('تم خصم الكمية من موقع المصدر وإضافتها إلى موقع الوجهة وتسجيل حركة النقل بنجاح', 'success');
+                closeModal('transferModal');
+                initSystem();
+            } catch (error) {
+                console.error('cross-branch transfer:', error);
+                showToast(error?.message || 'تعذر تنفيذ النقل ولم يتم اعتماد الحركة.', 'error');
+            }
+        }
+
+        // ==========================================
+        // سجل النقل بين الفروع
+        // ==========================================
+        function openTransferHistoryModal() {
+            renderTransferHistoryTable();
+            openModal('transferHistoryModal');
+        }
+
+        function renderTransferHistoryTable() {
+            const tbody = document.getElementById('transferHistoryBody');
+            let displayData = branchTransferHistoryData;
+            if (!isCompanyAdmin()) {
+                displayData = branchTransferHistoryData.filter(record =>
+                    String(record.sourceBranchId || '') === String(currentBranchRecordId() || '') ||
+                    String(record.destinationBranchId || '') === String(currentBranchRecordId() || '') ||
+                    record.fromStore === sessionUser.branchName || record.toStore === sessionUser.branchName
+                );
+            }
+            const createRow = record => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td style="direction:ltr;font-weight:bold;color:#555;">${record.date}</td><td style="color:#dd4b39;font-weight:bold;">${record.fromStore}</td><td style="color:#00a65a;font-weight:bold;">${record.toStore}</td><td style="text-align:right;font-size:12px;line-height:1.6;">${(record.items||[]).join('<br>')}</td>`;
+                return tr;
+            };
+            if(window.Cashtop?.renderVirtualRows)window.Cashtop.renderVirtualRows(tbody,displayData,createRow,{chunkSize:80,eagerLimit:160,colspan:4,emptyHtml:`<tr><td colspan="4" style="color:#999;padding:15px;">لا توجد حركات نقل مسجلة حتى الآن.</td></tr>`});
+            else{tbody.innerHTML='';if(!displayData.length)tbody.innerHTML=`<tr><td colspan="4" style="color:#999;padding:15px;">لا توجد حركات نقل مسجلة حتى الآن.</td></tr>`;else displayData.forEach(record=>tbody.appendChild(createRow(record)))}
+        }
+
+        function exportHistoryExcel() {
+            let displayData = branchTransferHistoryData;
+            if (!isCompanyAdmin()) {
+                displayData = branchTransferHistoryData.filter(record =>
+                    String(record.sourceBranchId || '') === String(currentBranchRecordId() || '') ||
+                    String(record.destinationBranchId || '') === String(currentBranchRecordId() || '') ||
+                    record.fromStore === sessionUser.branchName || record.toStore === sessionUser.branchName
+                );
+            }
+
+            if (displayData.length === 0) { showToast("لا توجد بيانات لتصديرها!", "error"); return; }
+            showToast("جاري تصدير السجل إلى إكسل...", "success");
+            
+            let ws_data = [["التاريخ والوقت", "الفرع المصدر", "الفرع المستلم", "المنتجات والكميات المنقولة"]];
+            displayData.forEach(r => { ws_data.push([r.date, r.fromStore, r.toStore, r.items.join(" | ")]); });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "سجل_نقل_الفروع");
+            XLSX.writeFile(wb, `سجل_حركات_النقل_للفروع_${Date.now()}.xlsx`);
+        }
+
+        async function exportHistoryPdf() {
+            let displayData = branchTransferHistoryData;
+            if (!isCompanyAdmin()) {
+                displayData = branchTransferHistoryData.filter(record =>
+                    String(record.sourceBranchId || '') === String(currentBranchRecordId() || '') ||
+                    String(record.destinationBranchId || '') === String(currentBranchRecordId() || '') ||
+                    record.fromStore === sessionUser.branchName || record.toStore === sessionUser.branchName
+                );
+            }
+            if (displayData.length === 0) { showToast("لا توجد بيانات لتصديرها!", "error"); return; }
+            showToast("جاري إنشاء سجل النقل كجدول PDF...", "success");
+            const rows = displayData.map(r => [r.date || '-', r.fromStore || '-', r.toStore || '-', Array.isArray(r.items) ? r.items.join(' | ') : (r.items || '-')]);
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: 'سجل حركات نقل الفروع',
+                    subtitle: `تاريخ التصدير: ${new Date().toLocaleString('en-GB')}`,
+                    columns: ['التاريخ', 'المصدر', 'الوجهة', 'المنتجات والكميات'],
+                    rows,
+                    filename: `سجل_حركات_نقل_الفروع_${Date.now()}.pdf`,
+                    orientation: 'landscape'
+                });
+            } catch (err) { console.error(err); showToast('تعذر إنشاء ملف PDF.', 'error'); }
+        }
+
+        window.addEventListener('load', initSystem);
+        window.addEventListener('storage', event => {
+            if (event.key === 'cashtop_branches' || event.key?.includes('cashtop_branches')) initSystem();
+        });
+        window.addEventListener('cashtop:remote-applied', event => {
+            if (event.detail?.key === 'cashtop_branches') initSystem();
+        });
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"branches.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>
