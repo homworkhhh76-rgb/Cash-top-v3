@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة العمال والأجور - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبات التصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+
+        /* حماية الشاشة من التمدد العرضي */
+        html, body { background-color: #f4f6f9; color: #333; overflow-x: hidden; width: 100vw; max-width: 100%; }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; padding: 20px;}
+
+        /* الكروت العلوية */
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+
+        .main-card { border-radius: 6px; color: white; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; min-height: 90px; }
+
+        .card-total-workers { background-color: #605ca8; } 
+        .card-monthly-wages { background-color: #00a65a; }     
+        .card-workers-debts { background-color: #dd4b39; }     
+        .card-vault-balance { background-color: #00c0ef; } 
+
+        .card-content-side { display: flex; flex-direction: column; gap: 4px; overflow: hidden; width: 100%;}
+        .card-header-title { font-size: 13px; font-weight: 600; opacity: 0.9; white-space: nowrap; }
+        .card-stat { font-size: 20px; font-weight: 800; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;}
+        .card-icon-side { opacity: 0.25; font-size: 35px; flex-shrink: 0;}
+
+        /* شريط العمليات */
+        .action-bar { background-color: white; padding: 15px 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; width: 100%; border-right: 4px solid #605ca8;}
+
+        .search-box { display: flex; align-items: center; flex: 1; max-width: 450px; position: relative; width: 100%; }
+        .search-control { width: 100%; padding: 10px 38px 10px 12px; font-size: 13px; border: 2px solid #e2e8f0; border-radius: 4px; outline: none; transition: 0.3s;}
+        .search-control:focus { border-color: #605ca8; box-shadow: 0 0 0 2px rgba(96,92,168,0.1); }
+        .search-box i { position: absolute; right: 12px; color: #94a3b8; font-size: 15px; }
+
+        .btn-add-worker { background-color: #00a65a; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; transition: 0.2s;}
+        .btn-add-worker:hover { background-color: #008d4c; transform: translateY(-2px);}
+
+        /* سجل عرض العمال */
+        .table-container { background-color: white; border-radius: 6px; border-top: 4px solid #605ca8; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 100%; overflow: hidden; }
+        
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; gap: 15px; width: 100%; flex-wrap: wrap;}
+        .table-title { font-size: 18px; font-weight: 800; color: #1e293b; white-space: nowrap; }
+
+        .export-group { display: flex; gap: 8px; align-items: center; }
+        .btn-export { border: 1px solid #cbd5e1; background-color: #fff; color: #475569; padding: 8px 16px; border-radius: 4px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 700; transition: 0.3s;}
+        .btn-export:hover { border-color: #605ca8; color: #605ca8; background-color: #f8fafc;}
+
+        .table-responsive-box { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;}
+
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; min-width: 1200px;}
+        .data-table th { font-weight: 800; color: #1e293b; padding: 15px 10px; border-bottom: 2px solid #e2e8f0; background-color: #f8fafc; white-space: nowrap; }
+        .data-table td { padding: 15px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
+
+        .badge-salary-type { background-color: rgba(96, 92, 168, 0.12); color: #605ca8; padding: 5px 10px; border-radius: 4px; font-weight: 800; border: 1px solid rgba(96, 92, 168, 0.2);}
+        .badge-contract { background-color: #f0fdf4; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-right: 5px; border: 1px solid #bbf7d0;}
+
+        /* أزرار الإجراءات */
+        .actions-wrapper { display: flex; justify-content: center; gap: 6px; flex-wrap: nowrap; min-width: max-content;}
+        .action-btn { background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; font-size: 15px; padding: 8px; border-radius: 4px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;}
+        
+        .btn-pay-action { color: #00a65a; } .btn-pay-action:hover { background: #00a65a; color: white; border-color:#00a65a;}
+        .btn-debt-action { color: #dd4b39; } .btn-debt-action:hover { background: #dd4b39; color: white; border-color:#dd4b39;}
+        .btn-history-action { color: #f39c12; } .btn-history-action:hover { background: #f39c12; color: white; border-color:#f39c12;}
+        .btn-edit-act { color: #0284c7; } .btn-edit-act:hover { background: #0284c7; color: white; border-color:#0284c7;}
+        .btn-delete-act { color: #e11d48; } .btn-delete-act:hover { background: #e11d48; color: white; border-color:#e11d48;}
+
+        /* تنسيق النوافذ المنبثقة */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 15px;}
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-box { background: white; width: 100%; max-width: 650px; border-radius: 8px; border-top: 5px solid #00a65a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); padding: 25px; transform: translateY(-20px); transition: 0.3s ease; max-height: 95vh; overflow-y: auto; }
+        
+        #debtModal .modal-box { border-top-color: #dd4b39; }
+        #payModal .modal-box { border-top-color: #00a65a; }
+        #historyModal .modal-box { border-top-color: #f39c12; max-width: 750px;}
+        #deleteModal .modal-box { border-top-color: #e11d48; max-width: 400px; text-align: center;}
+        
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; transition: 0.2s;}
+        .modal-close:hover { color: #e11d48; }
+
+        /* الحقول (اللابتوب: 2 جنب بعض، الجوال: 2 جنب بعض) */
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 15px; margin-bottom: 15px; width: 100%; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; text-align: right;}
+
+        .form-group label { position: absolute; top: -10px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 12px; font-weight: bold; color: #475569; z-index: 2; pointer-events: none; white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis;}
+        .form-control { width: 100%; padding: 12px 14px; font-size: 14px; border: 2px solid #e2e8f0; border-radius: 6px; outline: none; background-color: #f8fafc; transition: 0.3s; height: 45px;}
+        .form-control:focus { border-color: #605ca8; background-color: #fff;}
+        #debtModal .form-control:focus { border-color: #dd4b39; }
+        #payModal .form-control:focus { border-color: #00a65a; }
+
+        /* كارد الصلاحيات والخيارات المتقدمة */
+        .options-section { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 15px;}
+        .options-title { font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;}
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; border-top: 2px solid #f1f5f9; padding-top: 20px; margin-top: 20px; }
+        .btn-submit { background-color: #00a65a; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px;}
+        .btn-submit:hover { background-color: #008d4c; transform: translateY(-2px);}
+        .btn-submit.debt-style { background-color: #dd4b39; } .btn-submit.debt-style:hover { background-color: #b91c1c; }
+        .btn-danger-modal { background-color: #e11d48; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s;}
+        .btn-danger-modal:hover { background-color: #be123c; }
+        .btn-cancel { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s; text-align: center;}
+        .btn-cancel:hover { background-color: #e2e8f0; }
+
+        /* التنبيهات */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 15px 25px; border-radius: 6px; color: white; font-weight: 800; font-size: 14px; opacity: 0; transform: translateY(20px); transition: 0.4s ease; pointer-events: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 10px;}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #10b981; border-right: 5px solid #047857; }
+        .toast.error { background-color: #ef4444; border-right: 5px solid #b91c1c; }
+
+        /* حاوية التصدير PDF المخفية */
+        #pdfExportContainer { position: absolute; left: -9999px; top: -9999px; width: 1000px; background: white; padding: 40px; color: #000; font-family: 'Cairo', sans-serif; direction: rtl; z-index: -9999; }
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; border: 2px solid #cbd5e1; }
+        .pdf-table th, .pdf-table td { border: 1px solid #cbd5e1; padding: 10px; }
+        .pdf-table th { background-color: #f1f5f9; font-weight: 800; color: #0f172a;}
+
+        /* ==================================================== */
+        /*  تعديلات الموبايل (حواف صفرية وحقلين متجاورين)       */
+        /* ==================================================== */
+        @media (max-width: 768px) {
+            body { padding: 5px; }
+            .dashboard-container { padding: 5px; gap: 10px; }
+            
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+            .main-card { min-height: 70px; padding: 10px; }
+            .card-header-title { font-size: 10px; white-space: normal; line-height: 1.2; } 
+            .card-stat { font-size: 15px; } 
+            .card-icon-side { font-size: 24px; }
+
+            .action-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 10px; }
+            .btn-add-worker { justify-content: center; width: 100%; padding: 10px; font-size: 13px;}
+
+            .table-container { padding: 10px; }
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 10px; border-bottom: none; margin-bottom: 5px;}
+            .table-title { text-align: center; font-size: 15px; }
+            
+            .export-group { display: flex; flex-direction: row; overflow-x: auto; gap: 6px; width: 100%; padding-bottom: 5px; scrollbar-width: none; justify-content: space-between;}
+            .export-group::-webkit-scrollbar { display: none; }
+            .btn-export { flex: 1; justify-content: center; padding: 8px 4px; font-size: 11px; flex-shrink: 0; }
+
+            .modal-box { padding: 15px 10px; width: 98%; }
+            .modal-header { padding-bottom: 10px; margin-bottom: 15px; }
+            .modal-title { font-size: 15px; }
+
+            /* الإجبار على حقلين في الجوال مع تقليل المسافات */
+            .form-row { grid-template-columns: repeat(2, 1fr) !important; gap: 15px 8px; margin-bottom: 12px; }
+            .form-row.full { grid-template-columns: 1fr !important; }
+            
+            .form-control { padding: 8px 10px; font-size: 11px; border-radius: 4px; height: 38px;}
+            .form-group label { font-size: 9.5px; top: -7px; right: 5px; padding: 0 4px; }
+
+            .modal-footer { flex-direction: column-reverse; display: flex; gap: 8px; margin-top: 15px; padding-top: 15px;}
+            .modal-footer button { width: 100%; justify-content: center; padding: 10px; font-size: 13px;}
+
+            .data-table { min-width: 1100px; } 
+        }
+    
+        .worker-money-currency{display:none}.worker-money-currency.active{display:flex}.worker-money-currency small{font-size:11px;color:#64748b}
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        
+        <!-- صف الكروت العلوية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-total-workers">
+                <div class="card-content-side">
+                    <span class="card-header-title">إجمالي العمال</span>
+                    <span class="card-stat" id="statWorkers">0 عامل</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-users-gear"></i></div>
+            </div>
+            <div class="main-card card-monthly-wages">
+                <div class="card-content-side">
+                    <span class="card-header-title">أجور مسددة</span>
+                    <span class="card-stat" id="statWages">0.00 ₪</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-money-check-dollar"></i></div>
+            </div>
+            <div class="main-card card-workers-debts">
+                <div class="card-content-side">
+                    <span class="card-header-title">سُلف وذمم مدنية</span>
+                    <span class="card-stat" id="statDebts">0.00 ₪</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            </div>
+            <div class="main-card card-vault-balance">
+                <div class="card-content-side">
+                    <span class="card-header-title">السيولة المتاحة</span>
+                    <span class="card-stat" id="statFunds">0.00 ₪</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-vault"></i></div>
+            </div>
+        </div>
+
+        <!-- شريط العمليات -->
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" class="search-control" placeholder="ابحث باسم العامل أو رقم الجوال..." oninput="renderTable()">
+            </div>
+            <button class="btn-add-worker" onclick="openAddModal()"><i class="fa-solid fa-user-plus"></i> إضافة عامل جديد</button>
+        </div>
+
+        <!-- سجل عرض جدول العمال -->
+        <div class="table-container">
+            <div class="table-header-wrapper">
+                <div class="table-title">سجل جرد الأجور وحسابات العمال</div>
+                <div class="export-group">
+                    <button class="btn-export excel" onclick="exportToExcel()"><i class="fa-solid fa-file-excel" style="color:#00a65a;"></i> اكسل</button>
+                    <button class="btn-export pdf" onclick="exportToPDF()"><i class="fa-solid fa-file-pdf" style="color:#dd4b39;"></i> PDF</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>اسم العامل</th>
+                            <th>رقم الجوال</th>
+                            <th>نوع الراتب</th>
+                            <th>موعد القبض</th>
+                            <th>إجمالي المقبوضات</th>
+                            <th>إجمالي السُلف</th>
+                            <th>ملاحظات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workersTableBody">
+                        <!-- تملأ برمجياً -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة: إضافة/تعديل عامل -->
+    <div class="modal-overlay" id="workerModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="workerModalTitle"><i class="fa-solid fa-user-gear" style="color:#00a65a;"></i> بطاقة تعريف عامل وتعيين الأجور</div>
+                <button class="modal-close" onclick="closeModal('workerModal')">&times;</button>
+            </div>
+            <form id="workerForm" onsubmit="saveWorker(event)">
+                <input type="hidden" id="editWorkerId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="اسم العامل..." required id="wNameInput" autocomplete="off">
+                        <label>اسم العامل الكامل</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="tel" class="form-control" placeholder="05xxxxxxxx" required id="wPhoneInput" autocomplete="off" dir="ltr" style="text-align: right;">
+                        <label>رقم الجوال</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="المدينة / الحي..." required id="wAddressInput" autocomplete="off">
+                        <label>العنوان</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="wVaultSelect" required>
+                            <!-- تعبأ ديناميكيا -->
+                        </select>
+                        <label>الصندوق الافتراضي للصرف</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <select class="form-control" id="wSalaryTypeSelect" required onchange="toggleSalaryType()">
+                            <option value="monthly" selected>راتب شهري</option>
+                            <option value="weekly">راتب أسبوعي</option>
+                            <option value="daily">أجرة يومية</option>
+                            <option value="hourly">أجرة بالساعة</option>
+                            <option value="immediate">محاسبة فورية</option>
+                        </select>
+                        <label>نظام الأجر</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" step="any" min="0" class="form-control" placeholder="0.00" id="wSalaryAmount" inputmode="decimal">
+                        <label id="wSalaryAmountLabel">قيمة الراتب / الأجرة</label>
+                    </div>
+                </div>
+                <div class="form-row full"><div class="form-group"><input type="text" class="form-control" placeholder="ملاحظات حول المهام أو الأجر..." id="wNotes" autocomplete="off"><label>ملاحظات الوظيفة</label></div></div>
+
+                <!-- قسم خيارات الراتب الشهري (نظام العقود والتجديد التلقائي) -->
+                <div class="options-section" id="monthlyOptionsContainer">
+                    <div class="options-title"><i class="fa-solid fa-file-signature"></i> نظام العقد وتاريخ القبض (يتجدد تلقائياً)</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <select class="form-control" id="wContractType" onchange="toggleContractType()">
+                                <option value="open" selected>مفتوح (حتى الإيقاف)</option>
+                                <option value="fixed">عقد محدد بمدة</option>
+                            </select>
+                            <label>نظام العقد</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" class="form-control" id="wPayDayInput" placeholder="يوم: 1 إلى 31" min="1" max="31">
+                            <label>يوم القبض (من كل شهر)</label>
+                        </div>
+                    </div>
+                    <!-- حقل مدة العقد (يظهر فقط إذا كان العقد محدد بمدة) -->
+                    <div class="form-row full" id="contractDurationGroup" style="display:none; margin-bottom: 0;">
+                        <div class="form-group">
+                            <input type="number" class="form-control" id="wContractMonths" placeholder="عدد الأشهر" min="1">
+                            <label>مدة العقد (بالأشهر)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم الراتب اليومي أو النسبة -->
+                <div class="form-row full" id="standardDateRow" style="display:none;">
+                    <div class="form-group">
+                        <input type="date" class="form-control" id="wPayDateInput">
+                        <label id="wPayDateLabel">تاريخ القبض القادم</label>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('workerModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-floppy-disk"></i> حفظ واعتماد العامل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة: صرف دفعة / راتب -->
+    <div class="modal-overlay" id="payModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-money-bill-wave" style="color:#00a65a;"></i> صرف راتب / دفعة مالية لـ <span id="payWorkerName" style="color:#00a65a;"></span></div>
+                <button class="modal-close" onclick="closeModal('payModal')">&times;</button>
+            </div>
+            <form id="payForm" onsubmit="executePayment(event)">
+                <input type="hidden" id="payWorkerId">
+                <div class="form-row worker-money-currency" id="workerPayCurrencyWrap">
+                    <div class="form-group"><select class="form-control" id="workerPayCurrencySelect" onchange="handleWorkerMoneyCurrencyChange('pay')"></select><label>عملة الدفعة</label><small id="workerPayCurrencyHint"></small></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="number" step="0.01" class="form-control" placeholder="0.00" required id="payAmountInput">
+                        <label>المبلغ المدفوع (₪)</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="payVaultSelect" required>
+                            <!-- تعبأ ديناميكيا -->
+                        </select>
+                        <label>الصندوق المسحوب منه</label>
+                    </div>
+                </div>
+                <div class="form-row" id="payHoursRow" style="display:none">
+                    <div class="form-group"><input type="number" step="any" min="0" class="form-control" id="payHoursInput" inputmode="decimal" oninput="recalcHourlyPay()"><label>عدد الساعات</label></div>
+                    <div class="form-group"><input class="form-control" id="payHourlyRateView" readonly><label>أجرة الساعة</label></div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="مثال: راتب شهر يونيو..." id="payNotesInput" required autocomplete="off">
+                        <label>البيان / ملاحظات الصرف</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('payModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-check"></i> تأكيد وخصم الراتب</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة: تسجيل سُلفة / دين -->
+    <div class="modal-overlay" id="debtModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-file-invoice-dollar" style="color:#dd4b39;"></i> تسجيل سُلفة نقدية لـ <span id="debtWorkerName" style="color:#dd4b39;"></span></div>
+                <button class="modal-close" onclick="closeModal('debtModal')">&times;</button>
+            </div>
+            <form id="debtForm" onsubmit="executeDebt(event)">
+                <input type="hidden" id="debtWorkerId">
+                <div class="form-row worker-money-currency" id="workerDebtCurrencyWrap">
+                    <div class="form-group"><select class="form-control" id="workerDebtCurrencySelect" onchange="handleWorkerMoneyCurrencyChange('debt')"></select><label>عملة السُلفة</label><small id="workerDebtCurrencyHint"></small></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="number" step="0.01" class="form-control" placeholder="0.00" required id="debtAmountInput">
+                        <label>قيمة السُلفة (₪)</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="debtVaultSelect" required>
+                            <!-- تعبأ ديناميكيا -->
+                        </select>
+                        <label>الصندوق المسحوب منه</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="سبب السلفة وشروط الخصم..." id="debtNotesInput" required autocomplete="off">
+                        <label>البيان وملاحظات السُلفة</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('debtModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit debt-style"><i class="fa-solid fa-plus"></i> قيد السُلفة وسحب المال</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة: سجل الحركات المفتوحة للعامل -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-clock-rotate-left" style="color:#f39c12;"></i> سجل الحركات المالية لـ <span id="historyWorkerName"></span></div>
+                <button class="modal-close" onclick="closeModal('historyModal')">&times;</button>
+            </div>
+            <div class="table-responsive-box" style="margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                <table class="data-table" style="min-width: 550px;">
+                    <thead style="background: #f8fafc; position: sticky; top: 0;">
+                        <tr>
+                            <th>التاريخ</th>
+                            <th>نوع الحركة</th>
+                            <th>المبلغ (₪)</th>
+                            <th>ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- تعبأ برمجياً -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="border-top:none; margin-top:10px; padding-top:0;">
+                <button type="button" class="btn-cancel" style="width:100%" onclick="closeModal('historyModal')">إغلاق شاشة العرض</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد الحذف (عكس القيود) -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box" style="max-width: 400px;">
+            <div style="font-size: 55px; color: #e11d48; margin-bottom: 15px; text-align:center;"><i class="fa-regular fa-circle-xmark"></i></div>
+            <h3 style="text-align: center; color: #1e293b; margin-bottom: 10px; font-weight:800;">تأكيد حذف العامل</h3>
+            <p style="text-align: center; color: #475569; font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
+                هل أنت متأكد من حذف حساب العامل <strong id="deleteWorkerName" style="color:#e11d48;"></strong>؟<br>
+                سيتم مسح سجلاته، وسيتم إسترداد الرواتب والسلف التي سحبت من الصناديق لعكس القيود.
+            </p>
+            <input type="hidden" id="deleteWorkerId">
+            <div class="modal-footer" style="display:flex; flex-direction:row; justify-content:center; border:none; padding:0;">
+                <button type="button" class="btn-cancel" style="width:150px; text-align:center;" onclick="closeModal('deleteModal')">تراجع</button>
+                <button type="button" class="btn-danger-modal" style="width:auto; display:flex; align-items:center; gap:8px;" onclick="confirmDeleteWorker()"><i class="fa-solid fa-trash-can"></i> حذف وعكس القيود</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- حاوية التصدير PDF المخفية -->
+    <div id="pdfExportContainer">
+        <div style="display:flex; justify-content:space-between; border-bottom:3px solid #605ca8; padding-bottom:15px; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <i class="fa-solid fa-users-gear" style="font-size:40px; color:#605ca8;"></i>
+                <h2 style="margin:0; font-size:24px; color:#1e293b; font-weight:800;">كاش توب - تقرير العمال والأجور</h2>
+            </div>
+            <div style="text-align:left;">
+                <p id="pdfDate" style="margin:0; font-size:14px; font-weight:bold; color:#475569;"></p>
+            </div>
+        </div>
+        <table id="pdfTable" class="pdf-table"></table>
+        <div style="margin-top:30px; text-align:center; font-size:12px; color:#64748b; font-weight:bold;">تم استخراج السجل آلياً للمطابقة الإدارية والمحاسبية.</div>
+    </div>
+
+    <script>
+        // دوال الإشعارات وفتح النوافذ
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            let icon = type === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
+            toast.innerHTML = `${icon} ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { 
+            document.getElementById(id).classList.remove('active'); 
+            if(id === 'workerModal') document.getElementById('workerForm').reset();
+            if(id === 'payModal') document.getElementById('payForm').reset();
+            if(id === 'debtModal') document.getElementById('debtForm').reset();
+        }
+
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
+        });
+
+        // قواعد البيانات
+        let workersDB = [];
+        let fundsDB = { accounts: [], accountLogs: [] };
+
+        window.onload = function() {
+            const currentRole=String(window.Cashtop?.getSession?.()?.role||'').toLowerCase();
+            if(currentRole==='employee'){document.getElementById('ctOriginalPage').innerHTML='<div style="max-width:560px;margin:45px auto;background:#fff;padding:28px;text-align:center;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08)"><i class="fa-solid fa-lock" style="font-size:40px;color:#605ca8"></i><h2>العمال والأجور متاح للمدير فقط</h2><p>هذا القسم لا يظهر لحساب الموظف.</p></div>';return;}
+            try {
+                let localWorkers = localStorage.getItem('cashtop_workers');
+                if(localWorkers) workersDB = JSON.parse(localWorkers);
+                
+                let localFunds = localStorage.getItem('cashtop_funds_db_v4');
+                if(localFunds) fundsDB = JSON.parse(localFunds);
+                else fundsDB = { accounts: [{id: 1, name: "صندوق الكاش الرئيسي", type: "كاش", balance: 5000}], accountLogs: [] };
+            } catch(e) { console.error("Error loading DB", e); }
+
+            initLayout();
+        };
+
+        function initLayout() {
+            populateWorkerMoneyCurrency('pay'); populateWorkerMoneyCurrency('debt');
+            populateVaults();
+            renderTable();
+        }
+
+        function workerCurrencyConfig(){ return window.CashtopMulti?.getCurrencyConfig?.() || {enabled:false,baseCurrencyId:'ILS',base:{id:'ILS',symbol:'₪',code:'ILS',ratePer100Base:100},currencies:[{id:'ILS',name:'شيكل',symbol:'₪',code:'ILS',ratePer100Base:100}]}; }
+        function workerMoneyCurrencyId(kind){ const cfg=workerCurrencyConfig(); return document.getElementById(kind==='debt'?'workerDebtCurrencySelect':'workerPayCurrencySelect')?.value || cfg.baseCurrencyId; }
+        function populateWorkerMoneyCurrency(kind,preferredId=''){ const cfg=workerCurrencyConfig(),select=document.getElementById(kind==='debt'?'workerDebtCurrencySelect':'workerPayCurrencySelect'),wrap=document.getElementById(kind==='debt'?'workerDebtCurrencyWrap':'workerPayCurrencyWrap'),hint=document.getElementById(kind==='debt'?'workerDebtCurrencyHint':'workerPayCurrencyHint');if(!select)return;const previous=preferredId||select.value||cfg.baseCurrencyId;select.innerHTML=cfg.currencies.map(c=>`<option value="${c.id}">${c.name} (${c.symbol||c.code})</option>`).join('');select.value=cfg.currencies.some(c=>String(c.id)===String(previous))?previous:cfg.baseCurrencyId;wrap?.classList.toggle('active',cfg.enabled===true);const cur=window.CashtopMulti?.getCurrency?.(select.value)||cfg.base;if(hint)hint.textContent=String(cur.id)===String(cfg.baseCurrencyId)?'العملة الأساسية':`100 ${cfg.base.symbol||cfg.base.code} = ${Number(cur.ratePer100Base||0)} ${cur.symbol||cur.code}`;}
+        function handleWorkerMoneyCurrencyChange(kind){ populateVaults(kind); if(kind==='pay'){const w=workersDB.find(x=>String(x.id)===String(document.getElementById('payWorkerId')?.value));if(w)suggestWorkerPayAmount(w);} }
+        function populateVaults(kind='all') {
+            const cfg=workerCurrencyConfig(); (fundsDB.accounts||[]).forEach(a=>{if(!a.currencyId)a.currencyId=cfg.baseCurrencyId;});
+            let allOptions = '<option value="">-- اختر الصندوق المالي --</option>';
+            fundsDB.accounts.forEach(a => { const cur=window.CashtopMulti?.getCurrency?.(a.currencyId||cfg.baseCurrencyId)||cfg.base; allOptions += `<option value="${a.id}">${a.name} (متوفر: ${parseFloat(a.balance||0).toFixed(2)} ${cur.symbol||cur.code})</option>`; });
+            document.getElementById('wVaultSelect').innerHTML = allOptions;
+            ['pay','debt'].forEach(k=>{ if(kind!=='all'&&kind!==k)return; const cid=cfg.enabled?workerMoneyCurrencyId(k):cfg.baseCurrencyId; let opts='<option value="">-- اختر الصندوق المالي --</option>'; fundsDB.accounts.forEach(a=>{const cur=window.CashtopMulti?.getCurrency?.(a.currencyId||cfg.baseCurrencyId)||cfg.base;opts+=`<option value="${a.id}">${a.name} (متوفر: ${Number(a.balance||0).toFixed(2)} ${cur.symbol||cur.code})</option>`;}); document.getElementById(k==='pay'?'payVaultSelect':'debtVaultSelect').innerHTML=opts; });
+        }
+
+        // ==========================================
+        // إدارة الحقول الشرطية لنوع الراتب
+        // ==========================================
+        function toggleSalaryType() {
+            const type = document.getElementById('wSalaryTypeSelect').value;
+            const monthlyOptions = document.getElementById('monthlyOptionsContainer');
+            const standardDateRow = document.getElementById('standardDateRow');
+            const amountLabel = document.getElementById('wSalaryAmountLabel');
+            monthlyOptions.style.display = type === 'monthly' ? 'block' : 'none';
+            standardDateRow.style.display = ['weekly','daily'].includes(type) ? 'grid' : 'none';
+            document.getElementById('wPayDayInput').toggleAttribute('required', type === 'monthly');
+            document.getElementById('wPayDateInput').toggleAttribute('required', ['weekly','daily'].includes(type));
+            if(amountLabel) amountLabel.textContent = type === 'hourly' ? 'أجرة الساعة' : type === 'daily' ? 'الأجرة اليومية' : type === 'weekly' ? 'الراتب الأسبوعي' : type === 'monthly' ? 'الراتب الشهري' : 'مبلغ المحاسبة الافتراضي (اختياري)';
+            const dateLabel=document.getElementById('wPayDateLabel'); if(dateLabel)dateLabel.textContent=type==='weekly'?'تاريخ القبض الأسبوعي القادم':'تاريخ القبض اليومي القادم';
+        }
+
+        function toggleContractType() {
+            const cType = document.getElementById('wContractType').value;
+            const durationGroup = document.getElementById('contractDurationGroup');
+            if(cType === 'fixed') {
+                durationGroup.style.display = 'grid'; // full width row
+                document.getElementById('wContractMonths').setAttribute('required', 'true');
+            } else {
+                durationGroup.style.display = 'none';
+                document.getElementById('wContractMonths').removeAttribute('required');
+            }
+        }
+
+        function getWorkerStats(worker) {
+            let totalWages = 0;
+            let totalDebts = 0;
+            if(worker.movements) {
+                worker.movements.forEach(m => {
+                    if(m.type === 'payment') totalWages += parseFloat(m.amount);
+                    if(m.type === 'debt') totalDebts += parseFloat(m.amount);
+                });
+            }
+            return { wages: totalWages, debts: totalDebts };
+        }
+
+        function updateTopStats() {
+            let totalWorkers = workersDB.length;
+            let totalWages = 0;
+            let totalDebts = 0;
+            
+            workersDB.forEach(w => {
+                let s = getWorkerStats(w);
+                totalWages += s.wages;
+                totalDebts += s.debts;
+            });
+
+            let totalFunds = fundsDB.accounts.reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0);
+
+            document.getElementById('statWorkers').innerText = `${totalWorkers} عامل`;
+            document.getElementById('statWages').innerText = totalWages.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('statDebts').innerText = totalDebts.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('statFunds').innerText = totalFunds.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+
+        function getSalaryTypeName(val) {
+            if(val === 'monthly') return 'راتب شهري';
+            if(val === 'weekly') return 'راتب أسبوعي';
+            if(val === 'daily') return 'أجرة يومية';
+            if(val === 'hourly') return 'أجرة بالساعة';
+            if(val === 'immediate') return 'محاسبة فورية';
+            if(val === 'percent') return 'نسبة من الربح (قديم)';
+            return 'غير محدد';
+        }
+
+        async function renderTable() {
+            const tbody = document.getElementById('workersTableBody');
+            const searchQ = String(document.getElementById('searchInput').value || '').trim();
+            const sequence = renderTable._sequence = (renderTable._sequence || 0) + 1;
+            const fallback = () => !searchQ ? workersDB : workersDB.filter(w => String(w?.name || '').toLowerCase().includes(searchQ.toLowerCase()) || String(w?.phone || '').includes(searchQ));
+            let filtered = searchQ && workersDB.length >= 800 && window.Cashtop?.runWorkerTask
+                ? await window.Cashtop.runWorkerTask('filter-records', { records: workersDB, query: searchQ, fields: ['name','phone'] }, fallback)
+                : fallback();
+            if (sequence !== renderTable._sequence) return;
+            filtered = filtered.slice().reverse();
+            const createRow = w => {
+                const stats = getWorkerStats(w);
+                let contractBadge = '';
+                if (w.salaryType === 'monthly') contractBadge = w.contractType === 'fixed'
+                    ? `<br><span class="badge-contract"><i class="fa-solid fa-file-contract"></i> عقد: ${w.contractMonths} شهور</span>`
+                    : `<br><span class="badge-contract"><i class="fa-solid fa-infinity"></i> عقد مفتوح</span>`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${w.name}</strong></td>
+                    <td dir="ltr" style="color:#475569;font-weight:600;">${w.phone || ''}</td>
+                    <td><span class="badge-salary-type">${getSalaryTypeName(w.salaryType)}</span> ${contractBadge}</td>
+                    <td dir="ltr" style="font-weight:bold;color:#1e40af;">${w.payDateDisplay || ''}</td>
+                    <td style="color:#00a65a;font-weight:bold;">${stats.wages.toLocaleString('en-US',{minimumFractionDigits:2})} ₪</td>
+                    <td style="color:#dd4b39;font-weight:bold;">${stats.debts.toLocaleString('en-US',{minimumFractionDigits:2})} ₪</td>
+                    <td style="color:#64748b;font-size:12px;white-space:normal;max-width:150px;">${w.notes || '-'}</td>
+                    <td><div class="actions-wrapper">
+                        <button class="action-btn btn-pay-action" title="صرف دفعة / راتب" onclick="openPayWorker('${w.id}', '${w.name}')"><i class="fa-solid fa-money-bill-wave"></i></button>
+                        <button class="action-btn btn-debt-action" title="تسجيل سُلفة / دين" onclick="openDebtWorker('${w.id}', '${w.name}')"><i class="fa-solid fa-file-invoice-dollar"></i></button>
+                        <button class="action-btn btn-history-action" title="سجل الحركات المفتوحة" onclick="viewHistory('${w.id}', '${w.name}')"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                        <button class="action-btn btn-pdf-act" title="تحميل تقرير PDF" onclick="exportToPDF()"><i class="fa-solid fa-file-pdf"></i></button>
+                        <button class="action-btn btn-excel-act" title="تصدير اكسل" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i></button>
+                        <button class="action-btn btn-edit-act" title="تعديل بيانات العامل" onclick="openEditWorker('${w.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn btn-delete-act" title="حذف وعكس القيود" onclick="openDeleteWorker('${w.id}', '${w.name}')"><i class="fa-solid fa-trash-can"></i></button>
+                    </div></td>`;
+                return tr;
+            };
+            if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(tbody, filtered, createRow, { chunkSize: 90, eagerLimit: 180, colspan: 8, emptyHtml: `<tr><td colspan="8" style="color:#64748b;padding:20px;font-weight:bold;">لا يوجد عمال مطابقين للبحث.</td></tr>` });
+            else { tbody.innerHTML=''; if (!filtered.length) tbody.innerHTML=`<tr><td colspan="8" style="color:#64748b;padding:20px;font-weight:bold;">لا يوجد عمال مطابقين للبحث.</td></tr>`; else filtered.forEach(w=>tbody.appendChild(createRow(w))); }
+            updateTopStats();
+        }
+
+        // ==========================================
+        //  الإضافة والتعديل للعمال
+        // ==========================================
+        function openAddModal() {
+            document.getElementById('workerForm').reset();
+            document.getElementById('editWorkerId').value = '';
+            document.getElementById('workerModalTitle').innerHTML = '<i class="fa-solid fa-user-gear" style="color:#00a65a;"></i> بطاقة تعريف عامل وتعيين الأجور';
+            
+            // تهيئة الحقول الافتراضية
+            document.getElementById('wSalaryTypeSelect').value = 'monthly';
+            document.getElementById('wSalaryAmount').value = '';
+            toggleSalaryType();
+            document.getElementById('wContractType').value = 'open';
+            toggleContractType();
+            document.getElementById('wPayDayInput').value = '1';
+            document.getElementById('wPayDateInput').value = new Date().toISOString().split('T')[0];
+
+            openModal('workerModal');
+        }
+
+        function openEditWorker(id) {
+            let w = workersDB.find(x => x.id === id);
+            if(!w) return;
+            
+            document.getElementById('editWorkerId').value = w.id;
+            document.getElementById('wNameInput').value = w.name;
+            document.getElementById('wPhoneInput').value = w.phone;
+            document.getElementById('wAddressInput').value = w.address || '';
+            document.getElementById('wVaultSelect').value = w.vaultId || '';
+            document.getElementById('wNotes').value = w.notes || '';
+            
+            document.getElementById('wSalaryTypeSelect').value = w.salaryType || 'monthly';
+            document.getElementById('wSalaryAmount').value = w.salaryAmount ?? '';
+            toggleSalaryType();
+
+            if (w.salaryType === 'monthly') {
+                document.getElementById('wContractType').value = w.contractType || 'open';
+                toggleContractType();
+                document.getElementById('wPayDayInput').value = w.payDay || '1';
+                if (w.contractType === 'fixed') {
+                    document.getElementById('wContractMonths').value = w.contractMonths || '';
+                }
+            } else if (w.salaryType === 'weekly' || w.salaryType === 'daily') {
+                document.getElementById('wPayDateInput').value = w.payDateRaw || '';
+            }
+
+            document.getElementById('workerModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:#f39c12;"></i> تعديل بيانات العامل والعقد';
+            openModal('workerModal');
+        }
+
+        function saveWorker(e) {
+            e.preventDefault();
+            
+            const editId = document.getElementById('editWorkerId').value;
+            const name = document.getElementById('wNameInput').value.trim();
+            const phone = document.getElementById('wPhoneInput').value.trim();
+            const address = document.getElementById('wAddressInput').value.trim();
+            const salaryType = document.getElementById('wSalaryTypeSelect').value;
+            const salaryAmount = Math.max(0, Number(document.getElementById('wSalaryAmount').value || 0));
+            const vaultId = document.getElementById('wVaultSelect').value;
+            const notes = document.getElementById('wNotes').value.trim();
+
+            if (!name || !phone || !vaultId) {
+                showToast("يرجى التأكد من استكمال الحقول الأساسية", "error"); return;
+            }
+
+            let payDateDisplay = '';
+            let payDateRaw = '';
+            let contractType = '';
+            let contractMonths = '';
+            let payDay = '';
+
+            // استخراج وتنسيق بيانات الراتب والتاريخ
+            if (salaryType === 'monthly') {
+                contractType = document.getElementById('wContractType').value;
+                payDay = document.getElementById('wPayDayInput').value;
+                
+                if(!payDay || payDay < 1 || payDay > 31) { showToast("يرجى إدخال يوم قبض صحيح (1-31)", "error"); return; }
+                
+                if (contractType === 'fixed') {
+                    contractMonths = document.getElementById('wContractMonths').value;
+                    if(!contractMonths || contractMonths < 1) { showToast("يرجى تحديد مدة العقد بالأشهر", "error"); return; }
+                }
+                
+                payDateDisplay = `يوم ${payDay} من كل شهر`;
+                payDateRaw = ''; // لا يوجد تاريخ ثابت
+            } else if (salaryType === 'weekly' || salaryType === 'daily') {
+                payDateRaw = document.getElementById('wPayDateInput').value;
+                if(!payDateRaw) { showToast("يرجى تحديد تاريخ القبض القادم", "error"); return; }
+                payDateDisplay = payDateRaw;
+            } else {
+                payDateRaw = '';
+                payDateDisplay = salaryType === 'hourly' ? 'حسب الساعات المسجلة' : 'محاسبة فورية عند الطلب';
+            }
+            if (salaryType !== 'immediate' && salaryAmount <= 0) { showToast('يرجى إدخال قيمة الراتب أو الأجرة', 'error'); return; }
+
+            if (editId) {
+                let index = workersDB.findIndex(x => x.id === editId);
+                if (index > -1) {
+                    workersDB[index].name = name;
+                    workersDB[index].phone = phone;
+                    workersDB[index].address = address;
+                    workersDB[index].salaryType = salaryType;
+                    workersDB[index].salaryAmount = salaryAmount;
+                    workersDB[index].vaultId = parseInt(vaultId);
+                    workersDB[index].notes = notes;
+                    workersDB[index].payDateDisplay = payDateDisplay;
+                    workersDB[index].payDateRaw = payDateRaw;
+                    workersDB[index].contractType = contractType;
+                    workersDB[index].contractMonths = contractMonths;
+                    workersDB[index].payDay = payDay;
+                    
+                    showToast("تم تحديث بيانات العامل والعقد بنجاح", "success");
+                }
+            } else {
+                let newWorker = {
+                    id: `W_${Date.now()}`,
+                    name: name,
+                    phone: phone,
+                    address: address,
+                    salaryType: salaryType,
+                    salaryAmount: salaryAmount,
+                    vaultId: parseInt(vaultId),
+                    notes: notes,
+                    payDateDisplay: payDateDisplay,
+                    payDateRaw: payDateRaw,
+                    contractType: contractType,
+                    contractMonths: contractMonths,
+                    payDay: payDay,
+                    movements: []
+                };
+                workersDB.push(newWorker);
+                showToast("تم حفظ بطاقة العامل واعتماد نظام الراتب", "success");
+            }
+
+            localStorage.setItem('cashtop_workers', JSON.stringify(workersDB));
+            closeModal('workerModal');
+            renderTable();
+        }
+
+        // ==========================================
+        //  صرف الرواتب وتسجيل السلف (ربط الصناديق)
+        // ==========================================
+        function recalcHourlyPay() {
+            const w=workersDB.find(x=>String(x.id)===String(document.getElementById('payWorkerId').value)); if(!w||w.salaryType!=='hourly')return;
+            const hours=Math.max(0,Number(document.getElementById('payHoursInput').value||0)); const cfg=workerCurrencyConfig(),cid=cfg.enabled?workerMoneyCurrencyId('pay'):cfg.baseCurrencyId;
+            const baseAmount=hours*Math.max(0,Number(w.salaryAmount||0)); const native=window.CashtopMulti?.fromBase?.(baseAmount,cid)??baseAmount; document.getElementById('payAmountInput').value=native?Number(native.toFixed(6)):'';
+        }
+        function suggestWorkerPayAmount(worker){
+            const row=document.getElementById('payHoursRow'),rateView=document.getElementById('payHourlyRateView'); const hourly=worker?.salaryType==='hourly'; row.style.display=hourly?'grid':'none';
+            if(hourly){document.getElementById('payHoursInput').value='';rateView.value=Number(worker.salaryAmount||0).toFixed(3).replace(/\.?0+$/,'');document.getElementById('payAmountInput').value='';return}
+            const cfg=workerCurrencyConfig(),cid=cfg.enabled?workerMoneyCurrencyId('pay'):cfg.baseCurrencyId,baseAmount=Math.max(0,Number(worker?.salaryAmount||0)); const native=window.CashtopMulti?.fromBase?.(baseAmount,cid)??baseAmount; document.getElementById('payAmountInput').value=baseAmount>0?Number(native.toFixed(6)):'';
+        }
+
+        function openPayWorker(id, name) {
+            let w = workersDB.find(x => x.id === id);
+            if(!w) return;
+            document.getElementById('payForm').reset();
+            document.getElementById('payWorkerId').value = id;
+            document.getElementById('payWorkerName').innerText = name;
+            const defaultVault=fundsDB.accounts.find(a=>String(a.id)===String(w.vaultId)); populateWorkerMoneyCurrency('pay',defaultVault?.currencyId||workerCurrencyConfig().baseCurrencyId); populateVaults('pay');
+            document.getElementById('payVaultSelect').value = w.vaultId || ''; // تحديد الصندوق الافتراضي للعامل
+            suggestWorkerPayAmount(w);
+            openModal('payModal');
+        }
+
+        function executePayment(e) {
+            e.preventDefault();
+            const wId = document.getElementById('payWorkerId').value;
+            const cfg=workerCurrencyConfig(),currencyId=cfg.enabled?workerMoneyCurrencyId('pay'):cfg.baseCurrencyId;
+            const amountNative = parseFloat(document.getElementById('payAmountInput').value);
+            const amount = window.CashtopMulti?.toBase?.(amountNative,currencyId) ?? amountNative;
+            const vaultId = document.getElementById('payVaultSelect').value;
+            const notes = document.getElementById('payNotesInput').value.trim();
+            const logDate = new Date().toISOString().split('T')[0];
+
+            if(isNaN(amountNative) || amountNative <= 0 || !vaultId) { showToast("يرجى إدخال مبلغ صحيح واختيار صندوق", "error"); return; }
+
+            let worker = workersDB.find(x => x.id === wId);
+            let vault = fundsDB.accounts.find(a => String(a.id) === String(vaultId));
+
+            if(!worker || !vault) return;
+            const settlement = window.CashtopMulti?.settleToAccount?.(amountNative, currencyId, vault)
+                || { accountAmount: amountNative, accountCurrencyId: vault.currencyId || currencyId, baseAmount: amount };
+            if(Number(settlement.accountAmount || 0) > Number(vault.balance || 0)) { showToast(`رصيد الصندوق [${vault.name}] غير كافٍ للصرف بعد تحويل العملة!`, "error"); return; }
+
+            // 1. خصم من الصندوق
+            vault.balance -= Number(settlement.accountAmount || 0);
+            fundsDB.accountLogs.push({
+                accountId: vault.id, date: logDate, type: "سحب", amount: Number(settlement.accountAmount || 0), baseAmount: amount, currencyId: settlement.accountCurrencyId,
+                transactionAmount: amountNative, transactionCurrencyId: currencyId,
+                notes: `صرف راتب/دفعة للعامل: ${worker.name}`
+            });
+
+            // 2. تسجيل كـ مقبوضات للعامل
+            if(!worker.movements) worker.movements = [];
+            worker.movements.push({
+                id: `mov_pay_${Date.now()}`,
+                type: 'payment',
+                amount: amount, amountNative, currencyId,
+                accountAmountNative: Number(settlement.accountAmount || 0), accountCurrencyId: settlement.accountCurrencyId,
+                date: logDate,
+                vaultId: vault.id,
+                notes: notes || 'صرف دفعة نقدية'
+            });
+
+            const paidAt = new Date();
+            worker.lastPaidAt = paidAt.toISOString();
+            worker.lastPaidAmount = amount;
+            if (worker.salaryType === 'daily' || worker.salaryType === 'weekly') {
+                const next = new Date(worker.payDateRaw ? `${worker.payDateRaw}T00:00:00` : paidAt);
+                next.setDate(next.getDate() + (worker.salaryType === 'weekly' ? 7 : 1));
+                worker.payDateRaw = next.toISOString().slice(0,10);
+                worker.payDateDisplay = worker.payDateRaw;
+            }
+            const lastMove = worker.movements[worker.movements.length - 1];
+            if (lastMove && worker.salaryType === 'hourly') lastMove.hours = Math.max(0, Number(document.getElementById('payHoursInput').value || 0));
+            localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(fundsDB));
+            localStorage.setItem('cashtop_workers', JSON.stringify(workersDB));
+            
+            showToast("تم صرف الراتب وخصم المبلغ من الصندوق بنجاح", "success");
+            closeModal('payModal');
+            initLayout(); 
+        }
+
+        function openDebtWorker(id, name) {
+            let w = workersDB.find(x => x.id === id);
+            if(!w) return;
+            document.getElementById('debtForm').reset();
+            document.getElementById('debtWorkerId').value = id;
+            document.getElementById('debtWorkerName').innerText = name;
+            const defaultVault=fundsDB.accounts.find(a=>String(a.id)===String(w.vaultId)); populateWorkerMoneyCurrency('debt',defaultVault?.currencyId||workerCurrencyConfig().baseCurrencyId); populateVaults('debt');
+            document.getElementById('debtVaultSelect').value = w.vaultId || ''; 
+            openModal('debtModal');
+        }
+
+        function executeDebt(e) {
+            e.preventDefault();
+            const wId = document.getElementById('debtWorkerId').value;
+            const cfg=workerCurrencyConfig(),currencyId=cfg.enabled?workerMoneyCurrencyId('debt'):cfg.baseCurrencyId;
+            const amountNative = parseFloat(document.getElementById('debtAmountInput').value);
+            const amount = window.CashtopMulti?.toBase?.(amountNative,currencyId) ?? amountNative;
+            const vaultId = document.getElementById('debtVaultSelect').value;
+            const notes = document.getElementById('debtNotesInput').value.trim();
+            const logDate = new Date().toISOString().split('T')[0];
+
+            if(isNaN(amountNative) || amountNative <= 0 || !vaultId || !notes) { showToast("يرجى التأكد من المبلغ والملاحظات واختيار الصندوق", "error"); return; }
+
+            let worker = workersDB.find(x => x.id === wId);
+            let vault = fundsDB.accounts.find(a => String(a.id) === String(vaultId));
+
+            if(!worker || !vault) return;
+            
+            // السلفة النقدية تعني أننا أعطيناه مال من الصندوق
+            const settlement = window.CashtopMulti?.settleToAccount?.(amountNative, currencyId, vault)
+                || { accountAmount: amountNative, accountCurrencyId: vault.currencyId || currencyId, baseAmount: amount };
+            if(Number(settlement.accountAmount || 0) > Number(vault.balance || 0)) { showToast(`رصيد الصندوق [${vault.name}] غير كافٍ لإعطاء السلفة بعد تحويل العملة!`, "error"); return; }
+
+            // 1. خصم من الصندوق
+            vault.balance -= Number(settlement.accountAmount || 0);
+            fundsDB.accountLogs.push({
+                accountId: vault.id, date: logDate, type: "سحب", amount: Number(settlement.accountAmount || 0), baseAmount: amount, currencyId: settlement.accountCurrencyId,
+                transactionAmount: amountNative, transactionCurrencyId: currencyId,
+                notes: `سلفة نقدية للعامل: ${worker.name}`
+            });
+
+            // 2. تسجيل كـ دين (سلفة) على العامل
+            if(!worker.movements) worker.movements = [];
+            worker.movements.push({
+                id: `mov_debt_${Date.now()}`,
+                type: 'debt',
+                amount: amount, amountNative, currencyId,
+                accountAmountNative: Number(settlement.accountAmount || 0), accountCurrencyId: settlement.accountCurrencyId,
+                date: logDate,
+                vaultId: vault.id,
+                notes: notes
+            });
+
+            localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(fundsDB));
+            localStorage.setItem('cashtop_workers', JSON.stringify(workersDB));
+            
+            showToast("تم قيد السلفة وسحب المبلغ من الصندوق بنجاح", "success");
+            closeModal('debtModal');
+            initLayout();
+        }
+
+        // ==========================================
+        //  كشف الحركات
+        // ==========================================
+        function viewHistory(id, name) {
+            let w = workersDB.find(x => x.id === id);
+            if(!w) return;
+
+            document.getElementById('historyWorkerName').innerText = name;
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            if(!w.movements || w.movements.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="padding:20px; color:#666;">لا توجد حركات مسجلة لهذا العامل.</td></tr>`;
+            } else {
+                let sorted = [...w.movements].sort((a,b) => new Date(b.date) - new Date(a.date));
+                sorted.forEach(m => {
+                    let typeHtml = m.type === 'payment' 
+                        ? `<span style="color: #00a65a; font-weight: bold;">صرف راتب</span>` 
+                        : `<span style="color: #dd4b39; font-weight: bold;">سُلفة (دين عليه)</span>`;
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td dir="ltr" style="font-size:12px;">${m.date}</td>
+                            <td>${typeHtml}</td>
+                            <td style="font-weight: bold; color:${m.type === 'payment'? '#00a65a' : '#dd4b39'};">${parseFloat(m.amount).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                            <td style="color:#666; font-size:12px; white-space:normal;">${m.notes || '-'}</td>
+                        </tr>
+                    `;
+                });
+            }
+            openModal('historyModal');
+        }
+
+        // ==========================================
+        //  حذف العامل (عكس القيود المالية للصناديق)
+        // ==========================================
+        function openDeleteWorker(id, name) {
+            document.getElementById('deleteWorkerId').value = id;
+            document.getElementById('deleteWorkerName').innerText = name;
+            openModal('deleteModal');
+        }
+
+        function confirmDeleteWorker() {
+            let id = document.getElementById('deleteWorkerId').value;
+            let index = workersDB.findIndex(x => x.id === id);
+            if(index > -1) {
+                let worker = workersDB[index];
+                
+                // استرداد المبالغ للصناديق لعكس القيود
+                if(worker.movements && worker.movements.length > 0) {
+                    worker.movements.forEach(m => {
+                        let vault = fundsDB.accounts.find(a => a.id == m.vaultId);
+                        if(vault) {
+                            const nativeAmount=Number.isFinite(Number(m.amountNative)) ? Number(m.amountNative) : (window.CashtopMulti?.fromBase?.(parseFloat(m.amount) || 0, m.currencyId || vault.currencyId || workerCurrencyConfig().baseCurrencyId) ?? (parseFloat(m.amount) || 0));
+                            vault.balance += nativeAmount;
+                            fundsDB.accountLogs.push({
+                                accountId: vault.id, date: new Date().toISOString().split('T')[0], type: "إيداع", amount: nativeAmount, baseAmount: parseFloat(m.amount)||0, currencyId:m.currencyId||vault.currencyId||workerCurrencyConfig().baseCurrencyId, 
+                                notes: `عكس قيد: استرداد مبلغ ${m.type==='payment'?'راتب':'سلفة'} إثر حذف العامل ${worker.name}`
+                            });
+                        }
+                    });
+                    localStorage.setItem('cashtop_funds_db_v4', JSON.stringify(fundsDB));
+                }
+
+                workersDB.splice(index, 1);
+                localStorage.setItem('cashtop_workers', JSON.stringify(workersDB));
+                
+                showToast("تم مسح العامل وعكس كافة القيود المرتبطة به للصناديق.", "success");
+                closeModal('deleteModal');
+                initLayout();
+            }
+        }
+
+
+        function refreshWorkerFunds(){try{const fresh=JSON.parse(localStorage.getItem('cashtop_funds_db_v4')||localStorage.getItem('cashtop_funds_db')||'{}');if(fresh&&Array.isArray(fresh.accounts)){fundsDB=fresh;populateVaults();updateTopStats();}}catch(_){}}
+        window.addEventListener('cashtop:data-changed',e=>{if(e.detail?.key==='cashtop_funds_db')refreshWorkerFunds()});
+        window.addEventListener('cashtop:remote-applied',e=>{if(e.detail?.key==='cashtop_funds_db')refreshWorkerFunds()});
+        window.addEventListener('storage',e=>{if(!e.key||String(e.key).includes('cashtop_funds_db'))refreshWorkerFunds()});
+
+        // ==========================================
+        //  التصدير
+        // ==========================================
+        function exportToExcel() {
+            if(workersDB.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            let ws_data = [
+                ["نظام كاش توب - تقرير العمال والأجور"],
+                ["تاريخ الاستخراج:", new Date().toLocaleString('ar-EG')],
+                [],
+                ["اسم العامل", "رقم الجوال", "نوع الراتب", "تاريخ القبض", "المقبوضات", "السُلف", "ملاحظات"]
+            ];
+
+            workersDB.forEach(w => {
+                let stats = getWorkerStats(w);
+                ws_data.push([
+                    w.name, w.phone, getSalaryTypeName(w.salaryType), w.payDateDisplay, 
+                    stats.wages, stats.debts, w.notes || '-'
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "العمال");
+            XLSX.writeFile(wb, `تقرير_العمال_${Date.now()}.xlsx`);
+            showToast("تم التصدير بنجاح", "success");
+        }
+
+        async function exportToPDF() {
+            if(workersDB.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            const rows = workersDB.map((w, i) => {
+                const stats = getWorkerStats(w);
+                return [i + 1, w.name || '-', w.phone || '-', getSalaryTypeName(w.salaryType), w.payDateDisplay || '-', stats.wages.toFixed(2), stats.debts.toFixed(2)];
+            });
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: 'تقرير العمال والأجور',
+                    subtitle: `تاريخ التقرير: ${new Date().toLocaleString('en-GB')}`,
+                    columns: ['#', 'اسم العامل', 'الجوال', 'نوع الراتب', 'تاريخ القبض', 'مقبوضات (₪)', 'سلف (₪)'],
+                    rows, filename: `تقرير_العمال_${Date.now()}.pdf`, orientation: 'landscape'
+                });
+                showToast('تم تنزيل تقرير العمال.', 'success');
+            } catch (err) { console.error(err); showToast('تعذر إنشاء PDF العمال.', 'error'); }
+        }
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"العمال والاجور.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

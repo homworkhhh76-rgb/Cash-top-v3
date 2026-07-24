@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة الموظفين والصلاحيات - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبات التصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+
+        /* تم إزالة 100vw لأنها تسبب مشاكل مع الهوامش */
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; width: 100%; margin: 0;}
+
+        /* حاوية التصميم الرئيسية */
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; padding: 10px;}
+
+        /* ========================================== */
+        /*  شبكة الكروت العلوية                       */
+        /* ========================================== */
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+
+        .main-card { border-radius: 6px; color: white; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; min-height: 90px; }
+
+        .card-total-employees { background-color: #605ca8; } 
+        .card-active-employees { background-color: #00a65a; }     
+        .card-inactive-employees { background-color: #dd4b39; }     
+        .card-permissions-count { background-color: #00c0ef; } 
+
+        .card-content-side { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+        .card-header-title { font-size: 13px; font-weight: 600; opacity: 0.9; white-space: nowrap; }
+        .card-stat { font-size: 22px; font-weight: 800; white-space: nowrap; }
+        .card-icon-side { opacity: 0.25; font-size: 38px; }
+
+        /* شريط العمليات */
+        .action-bar { background-color: white; padding: 15px 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; width: 100%; border-right: 4px solid #605ca8;}
+
+        .search-box { display: flex; align-items: center; flex: 1; max-width: 450px; position: relative; width: 100%; }
+        .search-control { width: 100%; padding: 10px 38px 10px 12px; font-size: 14px; border: 2px solid #e2e8f0; border-radius: 4px; outline: none; transition: 0.3s;}
+        .search-control:focus { border-color: #605ca8; box-shadow: 0 0 0 2px rgba(96,92,168,0.1); }
+        .search-box i { position: absolute; right: 12px; color: #94a3b8; font-size: 15px; }
+
+        .btn-add-employee { background-color: #00a65a; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; transition: 0.2s;}
+        .btn-add-employee:hover { background-color: #008d4c; transform: translateY(-2px);}
+
+        /* سجل عرض الموظفين */
+        .table-container { background-color: white; border-radius: 6px; border-top: 4px solid #605ca8; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 100%; overflow: hidden; }
+        
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; gap: 15px; width: 100%; flex-wrap: wrap;}
+        .table-title { font-size: 18px; font-weight: 800; color: #1e293b; white-space: nowrap; }
+
+        .export-group { display: flex; gap: 8px; align-items: center; }
+        .btn-export { border: 1px solid #cbd5e1; background-color: #fff; color: #475569; padding: 8px 16px; border-radius: 4px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 700; transition: 0.3s;}
+        .btn-export:hover { border-color: #605ca8; color: #605ca8; background-color: #f8fafc;}
+
+        .table-responsive-box { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;}
+
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; min-width: 1200px;}
+        .data-table th { font-weight: 800; color: #1e293b; padding: 15px 10px; border-bottom: 2px solid #e2e8f0; background-color: #f8fafc; white-space: nowrap; }
+        .data-table td { padding: 15px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
+
+        /* شارات الحالة */
+        .badge-active { background-color: #dcfce7; color: #166534; padding: 5px 10px; border-radius: 4px; font-weight: 800; border: 1px solid #86efac;}
+        .badge-inactive { background-color: #fee2e2; color: #b91c1c; padding: 5px 10px; border-radius: 4px; font-weight: 800; border: 1px solid #fca5a5;}
+
+        /* أزرار الإجراءات */
+        .actions-wrapper { display: flex; justify-content: center; gap: 6px; flex-wrap: nowrap; min-width: max-content;}
+        .action-btn { background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; font-size: 15px; padding: 8px; border-radius: 4px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;}
+        
+        .btn-whatsapp { color: #25D366; } .btn-whatsapp:hover { background: #25D366; color: white; border-color:#25D366;}
+        .btn-toggle-status { color: #f39c12; } .btn-toggle-status:hover { background: #f39c12; color: white; border-color:#f39c12;}
+        .btn-edit-act { color: #0284c7; } .btn-edit-act:hover { background: #0284c7; color: white; border-color:#0284c7;}
+        .btn-delete-act { color: #e11d48; } .btn-delete-act:hover { background: #e11d48; color: white; border-color:#e11d48;}
+
+        /* تنسيق النوافذ المنبثقة */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 15px;}
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-box { background: white; width: 100%; max-width: 800px; border-radius: 8px; border-top: 5px solid #00a65a; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); padding: 25px; transform: translateY(-20px); transition: 0.3s ease; max-height: 95vh; overflow-y: auto; }
+        
+        #deleteModal .modal-box { border-top-color: #e11d48; max-width: 400px; text-align: center;}
+        
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; transition: 0.2s;}
+        .modal-close:hover { color: #e11d48; }
+
+        /* الحقول (اللابتوب: 2 جنب بعض) */
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 15px; margin-bottom: 15px; width: 100%; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; text-align: right;}
+
+        .form-group label { position: absolute; top: -10px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 12px; font-weight: bold; color: #475569; z-index: 2; pointer-events: none; white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis;}
+        .form-control { width: 100%; padding: 12px 15px; font-size: 14px; border: 2px solid #e2e8f0; border-radius: 6px; outline: none; background-color: #f8fafc; transition: 0.3s; height: 45px;}
+        .form-control:focus { border-color: #605ca8; background-color: #fff;}
+        
+        /* قسم الصلاحيات */
+        .permissions-section-title { font-size: 15px; font-weight: 800; color: #1e293b; margin: 25px 0 15px 0; padding-bottom: 10px; border-bottom: 2px dashed #e2e8f0; display:flex; align-items:center; gap:8px;}
+        .permissions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 15px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 6px; }
+        
+        .permission-item { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 10px 15px; border: 1px solid #e2e8f0; border-radius: 6px; transition: 0.2s; cursor: pointer;}
+        .permission-item:hover { border-color: #00a65a; box-shadow: 0 2px 5px rgba(0,166,90,0.1); }
+        .permission-item span { font-size: 13px; color: #334155; font-weight: 700; }
+        .permission-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #00a65a; flex-shrink: 0;}
+
+        .permission-group { grid-column: 1 / -1; background:#fff; border:1px solid #dbe3ee; border-radius:7px; overflow:hidden; }
+        .permission-group-title { padding:10px 12px; background:#eef2ff; color:#3730a3; font-size:12px; font-weight:800; border-bottom:1px solid #dbe3ee; }
+        .permission-group-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:10px; }
+        .permissions-toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+        .permissions-toolbar button { border:1px solid #cbd5e1; background:#fff; color:#334155; border-radius:5px; padding:7px 12px; font:700 11px 'Cairo'; cursor:pointer; }
+        .permissions-toolbar button:hover { border-color:#605ca8; color:#605ca8; }
+
+        /* أزرار الحفظ */
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; border-top: 2px solid #f1f5f9; padding-top: 20px; margin-top: 20px; }
+        .btn-submit { background-color: #00a65a; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px;}
+        .btn-submit:hover { background-color: #008d4c; transform: translateY(-2px);}
+        .btn-danger-modal { background-color: #e11d48; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s;}
+        .btn-danger-modal:hover { background-color: #be123c; }
+        .btn-cancel { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px 25px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; transition: 0.3s; text-align: center;}
+        .btn-cancel:hover { background-color: #e2e8f0; }
+
+        /* الإشعارات */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 15px 25px; border-radius: 6px; color: white; font-weight: 800; font-size: 14px; opacity: 0; transform: translateY(20px); transition: 0.4s ease; pointer-events: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 10px;}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #10b981; border-right: 5px solid #047857; }
+        .toast.error { background-color: #ef4444; border-right: 5px solid #b91c1c; }
+
+        /* طباعة PDF مخفية */
+        #pdfExportContainer { position: absolute; left: -9999px; top: -9999px; width: 1000px; background: white; padding: 40px; color: #000; font-family: 'Cairo', sans-serif; direction: rtl; z-index: -9999; }
+        .pdf-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; border: 2px solid #cbd5e1; }
+        .pdf-table th, .pdf-table td { border: 1px solid #cbd5e1; padding: 10px; }
+        .pdf-table th { background-color: #f1f5f9; font-weight: 800; color: #0f172a;}
+
+        /* ==================================================== */
+        /*  تعديلات الموبايل (حواف صفرية وحقلين متجاورين)       */
+        /* ==================================================== */
+        @media (max-width: 768px) {
+            /* تقليل الحواف الخارجية للشاشة للصفر تقريباً للاستفادة من المساحة */
+            body { padding: 5px; }
+            .dashboard-container { padding: 5px; gap: 10px; }
+            
+            /* الكروت العلوية: 2 جنب بعض في الموبايل */
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+            .main-card { min-height: 70px; padding: 10px; }
+            .card-header-title { font-size: 10px; white-space: normal; line-height: 1.2; } 
+            .card-stat { font-size: 15px; } 
+            .card-icon-side { font-size: 24px; }
+
+            .action-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 10px; }
+            .btn-add-employee { justify-content: center; width: 100%; padding: 10px; font-size: 13px;}
+
+            /* تقليل حواف الجدول */
+            .table-container { padding: 10px; }
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 10px; border-bottom: none; margin-bottom: 5px;}
+            .table-title { text-align: center; font-size: 15px; }
+            
+            .export-group { display: flex; flex-direction: row; overflow-x: auto; gap: 6px; width: 100%; padding-bottom: 5px; scrollbar-width: none; justify-content: space-between;}
+            .export-group::-webkit-scrollbar { display: none; }
+            .btn-export { flex: 1; justify-content: center; padding: 8px 4px; font-size: 11px; flex-shrink: 0; }
+
+            /* حماية المودال: كل حقلين جنب بعض في الموبايل بحواف صغيرة */
+            .modal-box { padding: 15px 10px; width: 98%; }
+            .modal-header { padding-bottom: 10px; margin-bottom: 15px; }
+            .modal-title { font-size: 15px; }
+
+            /* الإجبار على حقلين في الجوال مع تقليل المسافات */
+            .form-row { grid-template-columns: repeat(2, 1fr) !important; gap: 15px 8px; margin-bottom: 12px; }
+            .form-row.full { grid-template-columns: 1fr !important; }
+            
+            .form-control { padding: 8px 10px; font-size: 11px; border-radius: 4px; height: 38px;}
+            .form-group label { font-size: 9.5px; top: -7px; right: 5px; padding: 0 4px; }
+            
+            #togglePassword { font-size: 13px; left: 8px; }
+
+            /* شبكة الصلاحيات 2 جنب بعض في الموبايل */
+            .permissions-section-title { font-size: 13px; margin: 15px 0 10px 0; }
+            .permissions-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; padding: 10px; }
+            .permission-item { padding: 5px 6px; gap: 5px;}
+            .permission-item span { font-size: 9.5px; white-space: normal; line-height: 1.3; }
+            .permission-item input[type="checkbox"] { width: 14px; height: 14px; }
+
+            .modal-footer { flex-direction: column-reverse; display: flex; gap: 8px; margin-top: 15px; padding-top: 15px;}
+            .modal-footer button { width: 100%; justify-content: center; padding: 10px; font-size: 13px;}
+
+            .data-table { min-width: 1000px; } 
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        
+        <!-- صف الكروت العلوية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-total-employees">
+                <div class="card-content-side">
+                    <span class="card-header-title">إجمالي الموظفين</span>
+                    <span class="card-stat" id="statTotal">0 موظف</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-user-tie"></i></div>
+            </div>
+            <div class="main-card card-active-employees">
+                <div class="card-content-side">
+                    <span class="card-header-title">الحسابات النشطة</span>
+                    <span class="card-stat" id="statActive">0 حساب</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-user-check"></i></div>
+            </div>
+            <div class="main-card card-inactive-employees">
+                <div class="card-content-side">
+                    <span class="card-header-title">الحسابات المعطلة</span>
+                    <span class="card-stat" id="statInactive">0 حساب</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-user-slash"></i></div>
+            </div>
+            <div class="main-card card-permissions-count">
+                <div class="card-content-side">
+                    <span class="card-header-title">صلاحيات ممنوحة</span>
+                    <span class="card-stat" id="statPerms">0 صلاحية</span>
+                </div>
+                <div class="card-icon-side"><i class="fa-solid fa-shield-halved"></i></div>
+            </div>
+        </div>
+
+        <!-- شريط العمليات -->
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" class="search-control" placeholder="ابحث باسم الموظف، اسم المستخدم، أو رقم الجوال..." oninput="renderTable()">
+            </div>
+            <button class="btn-add-employee" data-ct-permission="employees.manage" onclick="openAddModal()"><i class="fa-solid fa-user-plus"></i> إضافة موظف جديد</button>
+        </div>
+
+        <!-- سجل عرض جدول الموظفين -->
+        <div class="table-container">
+            <div class="table-header-wrapper">
+                <div class="table-title">سجل بيانات وصلاحيات الموظفين</div>
+                <div class="export-group">
+                    <button class="btn-export excel" onclick="exportToExcel()"><i class="fa-solid fa-file-excel" style="color:#00a65a;"></i> اكسل</button>
+                    <button class="btn-export pdf" onclick="exportToPDF()"><i class="fa-solid fa-file-pdf" style="color:#dd4b39;"></i> PDF</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>الاسم الكامل</th>
+                            <th>رقم الجوال</th>
+                            <th>العنوان</th>
+                            <th>اسم الدخول (يوزر)</th>
+                            <th>الحالة</th>
+                            <th>الراتب</th>
+                            <th>ملاحظات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTableBody">
+                        <!-- تملأ برمجياً -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة المنبثقة: إضافة / تعديل موظف -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle"><i class="fa-solid fa-user-shield" style="color:#00a65a;"></i> بيانات وحساب الموظف</div>
+                <button class="modal-close" onclick="closeModal('employeeModal')">&times;</button>
+            </div>
+            <form id="employeeForm" onsubmit="saveEmployee(event)">
+                <input type="hidden" id="editEmpId">
+                
+                <!-- الصف الأول: اسم الموظف ورقم الجوال -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="الاسم الكامل..." required id="eNameInput" autocomplete="off">
+                        <label>اسم الموظف</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="tel" class="form-control" placeholder="05XXXXXXXX" required id="ePhoneInput" autocomplete="off" dir="ltr" style="text-align: right;">
+                        <label>رقم الجوال</label>
+                    </div>
+                </div>
+
+                <!-- الصف الثاني: العنوان واسم المستخدم -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="المدينة، الحي..." required id="eAddressInput" autocomplete="off">
+                        <label>العنوان</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="اسم الدخول بالإنجليزية..." required id="eUsernameInput" autocomplete="off" dir="ltr" style="text-align: left; font-weight:bold; color:#1e40af;">
+                        <label>اسم المستخدم</label>
+                    </div>
+                </div>
+
+                <!-- الصف الثالث: كلمة المرور والحالة -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div style="display:flex; align-items:center; position:relative; width:100%;">
+                            <input type="password" class="form-control" placeholder="كلمة المرور..." required id="ePasswordInput" autocomplete="new-password" dir="ltr" style="text-align: left;">
+                            <i class="fa-solid fa-eye" id="togglePassword" style="position:absolute; cursor:pointer; color:#94a3b8;" onclick="togglePasswordVisibility()"></i>
+                        </div>
+                        <label>كلمة المرور</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="eStatusSelect" required>
+                            <option value="active">نشط (يسمح بالدخول)</option>
+                            <option value="inactive">معطل (ممنوع من الدخول)</option>
+                        </select>
+                        <label>حالة الحساب</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <select class="form-control" id="eBranchSelect">
+                            <option value="">الرصيد الرئيسي / بدون فرع محدد</option>
+                        </select>
+                        <label>الفرع المرتبط بالموظف</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="بنود العقد أو ملاحظات إدارية..." id="eNotesInput" autocomplete="off">
+                        <label>الملاحظات</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="number" min="0" step="0.001" class="form-control" id="eSalaryInput" value="0" required>
+                        <label>الراتب الشهري</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" min="1" max="31" step="1" class="form-control" id="eSalaryDayInput" value="1" required>
+                        <label>يوم استحقاق الراتب</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <select class="form-control" id="eSalaryAccountSelect"><option value="">اختر حساب صرف الراتب</option></select>
+                        <label>الصندوق / الحساب الذي يُخصم منه الراتب</label>
+                    </div>
+                </div>
+
+                <!-- شاشات وأقسام الصلاحيات التفصيلية -->
+                <div data-ct-permission="permissions.manage">
+                <div class="permissions-section-title"><i class="fa-solid fa-user-lock" style="color:#605ca8;"></i> إدارة وتعيين صلاحيات الوصول الدقيقة للنظام</div>
+                <div class="permissions-toolbar">
+                    <button type="button" onclick="setAllPermissions(true)"><i class="fa-solid fa-check-double"></i> تحديد جميع الصلاحيات</button>
+                    <button type="button" onclick="setAllPermissions(false)"><i class="fa-solid fa-eraser"></i> إلغاء تحديد الكل</button>
+                </div>
+                <div class="permissions-grid" id="permissionsContainer"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('employeeModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit"><i class="fa-solid fa-floppy-disk"></i> حفظ واعتماد الحساب</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد الحذف -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box" style="max-width: 400px;">
+            <div style="font-size: 55px; color: #e11d48; margin-bottom: 15px; text-align:center;"><i class="fa-regular fa-circle-xmark"></i></div>
+            <h3 style="text-align: center; color: #1e293b; margin-bottom: 10px; font-weight:800;">تأكيد حذف الموظف</h3>
+            <p style="text-align: center; color: #475569; font-size: 14px; margin-bottom: 25px; line-height: 1.6;">
+                هل أنت متأكد من حذف حساب الموظف <strong id="deleteEmpName" style="color:#e11d48;"></strong>؟<br>
+                سيتم مسح بيانات تسجيل الدخول ولن يتمكن من دخول النظام نهائياً.
+            </p>
+            <input type="hidden" id="deleteEmpId">
+            <div class="modal-footer" style="display:flex; flex-direction:row; justify-content:center; border:none; padding:0;">
+                <button type="button" class="btn-cancel" style="width:150px; text-align:center;" onclick="closeModal('deleteModal')">تراجع</button>
+                <button type="button" class="btn-danger-modal" style="width:auto; display:flex; align-items:center; gap:8px;" onclick="confirmDelete()"><i class="fa-solid fa-trash-can"></i> نعم، قم بالحذف</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- حاوية مخفية لتصدير الـ PDF -->
+    <div id="pdfExportContainer">
+        <div style="display:flex; justify-content:space-between; border-bottom:3px solid #605ca8; padding-bottom:15px; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <i class="fa-solid fa-users" style="font-size:40px; color:#605ca8;"></i>
+                <h2 style="margin:0; font-size:24px; color:#1e293b; font-weight:800;">كاش توب - سجل الموظفين والصلاحيات</h2>
+            </div>
+            <div style="text-align:left;">
+                <p id="pdfDate" style="margin:0; font-size:14px; font-weight:bold; color:#475569;"></p>
+            </div>
+        </div>
+        <table class="pdf-table" id="pdfTable"></table>
+        <div style="margin-top:30px; text-align:center; font-size:12px; color:#64748b; font-weight:bold;">تم استخراج السجل آلياً للتدقيق الإداري.</div>
+    </div>
+
+    <script>
+        // دوال أساسية وإشعارات
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            let icon = type === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
+            toast.innerHTML = `${icon} ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // قاعدة بيانات الموظفين
+        let employeesDB = [];
+        const permissionGroups = window.Cashtop?.PERMISSION_GROUPS || [];
+
+        function readArrayDataset(key) {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+                return Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? Object.values(parsed) : []);
+            } catch (_) { return []; }
+        }
+
+        function renderPermissionControls() {
+            const container = document.getElementById('permissionsContainer');
+            if (!container || container.dataset.ready === 'true') return;
+            container.innerHTML = permissionGroups.map(group => `
+                <section class="permission-group">
+                    <div class="permission-group-title">${group.title}</div>
+                    <div class="permission-group-grid">
+                        ${group.permissions.map(([key, label]) => `
+                            <label class="permission-item">
+                                <span>${label}</span>
+                                <input type="checkbox" class="permission-checkbox" data-permission="${key}">
+                            </label>`).join('')}
+                    </div>
+                </section>`).join('');
+            container.dataset.ready = 'true';
+        }
+
+        function normalizedPermissions(permissions) {
+            return window.Cashtop?.normalizePermissions?.(permissions) || permissions || {};
+        }
+
+        function setPermissionValues(permissions) {
+            renderPermissionControls();
+            const normalized = normalizedPermissions(permissions);
+            document.querySelectorAll('.permission-checkbox').forEach(input => {
+                input.checked = normalized[input.dataset.permission] === true;
+            });
+        }
+
+        function collectPermissions() {
+            const permissions = {};
+            document.querySelectorAll('.permission-checkbox').forEach(input => {
+                permissions[input.dataset.permission] = input.checked;
+            });
+            return permissions;
+        }
+
+        function setAllPermissions(checked) {
+            document.querySelectorAll('.permission-checkbox').forEach(input => { input.checked = checked; });
+        }
+
+        function reloadEmployeesFromStorage() {
+            employeesDB = readArrayDataset('cashtop_employees');
+            renderPermissionControls();
+            renderTable();
+        }
+
+        window.onload = function() {
+            employeesDB = readArrayDataset('cashtop_employees');
+            if (!localStorage.getItem('cashtop_employees')) localStorage.setItem('cashtop_employees', JSON.stringify(employeesDB));
+            renderPermissionControls();
+            renderTable();
+        };
+        window.addEventListener('storage', event => {
+            const key = String(event.key || '').replace(/^.*::(cashtop_[^:]+)$/, '$1');
+            if (['cashtop_employees','cashtop_branches','cashtop_funds_db'].includes(key)) reloadEmployeesFromStorage();
+        });
+        window.addEventListener('cashtop:remote-applied', event => {
+            if (['cashtop_employees','cashtop_branches','cashtop_funds_db'].includes(event.detail?.key)) reloadEmployeesFromStorage();
+        });
+
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('ePasswordInput');
+            const icon = document.getElementById('togglePassword');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                passInput.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function updateStats() {
+            let active = 0;
+            let inactive = 0;
+            let permsCount = 0;
+
+            employeesDB.forEach(emp => {
+                if(emp.status === 'active') active++;
+                else inactive++;
+                
+                const normalized = normalizedPermissions(emp.permissions);
+                Object.values(normalized).forEach(value => { if (value === true) permsCount++; });
+            });
+
+            document.getElementById('statTotal').innerText = `${employeesDB.length} موظف`;
+            document.getElementById('statActive').innerText = `${active} حساب`;
+            document.getElementById('statInactive').innerText = `${inactive} حساب`;
+            document.getElementById('statPerms').innerText = `${permsCount} صلاحية`;
+        }
+
+        async function renderTable() {
+            const tbody = document.getElementById('employeesTableBody');
+            const searchQ = String(document.getElementById('searchInput').value || '').trim();
+            const sequence = renderTable._sequence = (renderTable._sequence || 0) + 1;
+            const fallback = () => !searchQ ? employeesDB : employeesDB.filter(e => {
+                const q = searchQ.toLowerCase();
+                return String(e?.name || '').toLowerCase().includes(q) || String(e?.username || '').toLowerCase().includes(q) || String(e?.phone || '').includes(searchQ);
+            });
+            const filtered = searchQ && employeesDB.length >= 800 && window.Cashtop?.runWorkerTask
+                ? await window.Cashtop.runWorkerTask('filter-records', { records: employeesDB, query: searchQ, fields: ['name','username','phone'] }, fallback)
+                : fallback();
+            if (sequence !== renderTable._sequence) return;
+            const createRow = emp => {
+                const statusBadge = emp.status === 'active' ? `<span class="badge-active">نشط</span>` : `<span class="badge-inactive">معطل</span>`;
+                const whatsappLink = `https://wa.me/${String(emp.phone || '').replace(/\D/g, '')}`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${emp.name}</strong>${emp.branchName ? `<br><small style="color:#605ca8;font-weight:bold;"><i class="fa-solid fa-code-branch"></i> ${emp.branchName}</small>` : ''}</td>
+                    <td dir="ltr" style="color:#475569;font-weight:600;">${emp.phone || ''}</td>
+                    <td>${emp.address || '-'}</td>
+                    <td style="color:#1e40af;font-weight:bold;font-family:sans-serif;">${emp.username || ''}</td>
+                    <td>${statusBadge}</td>
+                    <td><b>${Number(emp.salary || 0).toFixed(3).replace(/\.?0+$/, '')} ₪</b>${emp.salaryAccountName ? `<br><small style="color:#64748b">${emp.salaryAccountName} — يوم ${emp.salaryDay || 1}</small>` : ''}</td>
+                    <td style="color:#64748b;font-size:12px;white-space:normal;max-width:150px;">${emp.notes || '-'}</td>
+                    <td><div class="actions-wrapper">
+                        <button class="action-btn btn-whatsapp" title="مراسلة واتساب" onclick="window.open('${whatsappLink}', '_blank')"><i class="fa-brands fa-whatsapp"></i></button>
+                        <button class="action-btn btn-toggle-status" data-ct-permission="employees.manage" title="تفعيل/تعطيل الحساب" onclick="toggleEmployeeStatus('${emp.id}')"><i class="fa-solid fa-power-off"></i></button>
+                        <button class="action-btn btn-edit-act" data-ct-permission="employees.manage" title="تعديل البيانات والصلاحيات" onclick="openEditModal('${emp.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn btn-delete-act" data-ct-permission="employees.manage" title="حذف نهائي" onclick="openDeleteModal('${emp.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                    </div></td>`;
+                return tr;
+            };
+            if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(tbody, filtered, createRow, { chunkSize: 90, eagerLimit: 180, colspan: 8, emptyHtml: `<tr><td colspan="8" style="color:#64748b;padding:20px;font-weight:bold;">لا يوجد موظفين مسجلين مطابقين للبحث.</td></tr>` });
+            else { tbody.innerHTML=''; if (!filtered.length) tbody.innerHTML=`<tr><td colspan="8" style="color:#64748b;padding:20px;font-weight:bold;">لا يوجد موظفين مسجلين مطابقين للبحث.</td></tr>`; else filtered.forEach(emp=>tbody.appendChild(createRow(emp))); }
+            updateStats();
+        }
+
+        // ==========================================
+        //  الإضافة والتعديل
+        // ==========================================
+        function populateEmployeeBranchSelect(selectedBranchId = '') {
+            const select = document.getElementById('eBranchSelect');
+            if (!select) return;
+            const branches = readArrayDataset('cashtop_branches');
+            select.innerHTML = '<option value="">الرصيد الرئيسي / بدون فرع محدد</option>' + branches
+                .filter(branch => branch.status !== 'مجمد')
+                .map(branch => `<option value="${branch.id}">${branch.name}</option>`).join('');
+            select.value = selectedBranchId || '';
+        }
+
+        function readFundsDatabase() {
+            try {
+                const value = JSON.parse(localStorage.getItem('cashtop_funds_db') || localStorage.getItem('cashtop_funds_db_v4') || '{}');
+                return value && typeof value === 'object' ? value : { accounts: [], accountLogs: [] };
+            } catch (_) { return { accounts: [], accountLogs: [] }; }
+        }
+
+        function populateSalaryAccountSelect(selectedAccountId = '') {
+            const select = document.getElementById('eSalaryAccountSelect');
+            if (!select) return;
+            const funds = readFundsDatabase();
+            const cfg = window.CashtopMulti?.getCurrencyConfig?.() || { baseCurrencyId: 'base', base: { symbol: '₪' } };
+            select.innerHTML = '<option value="">اختر حساب صرف الراتب</option>' + (funds.accounts || []).map(account => {
+                const currency = window.CashtopMulti?.getCurrency?.(account.currencyId || cfg.baseCurrencyId, cfg) || cfg.base;
+                return `<option value="${account.id}">${account.name} — الرصيد ${Number(account.balance || 0).toFixed(3).replace(/\.?0+$/, '')} ${currency.symbol || currency.code || ''}</option>`;
+            }).join('');
+            select.value = selectedAccountId || '';
+        }
+
+        function openAddModal() {
+            if (!window.Cashtop?.can?.('employees.manage')) { showToast('لا تملك صلاحية إدارة الموظفين', 'error'); return; }
+            document.getElementById('employeeForm').reset();
+            document.getElementById('editEmpId').value = '';
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-user-shield" style="color:#00a65a;"></i> إنشاء حساب موظف جديد';
+            populateEmployeeBranchSelect('');
+            populateSalaryAccountSelect('');
+            document.getElementById('eSalaryInput').value = '0';
+            document.getElementById('eSalaryDayInput').value = '1';
+            
+            // تهيئة كلمة المرور مخفية
+            document.getElementById('ePasswordInput').type = 'password';
+            document.getElementById('togglePassword').classList.replace('fa-eye-slash', 'fa-eye');
+            // الموظف الجديد يبدأ دون أي صلاحية مختارة.
+            setPermissionValues({});
+            openModal('employeeModal');
+        }
+
+        function openEditModal(id) {
+            if (!window.Cashtop?.can?.('employees.manage')) { showToast('لا تملك صلاحية إدارة الموظفين', 'error'); return; }
+            let emp = employeesDB.find(x => x.id === id);
+            if(!emp) return;
+            
+            document.getElementById('editEmpId').value = emp.id;
+            document.getElementById('eNameInput').value = emp.name;
+            document.getElementById('ePhoneInput').value = emp.phone;
+            document.getElementById('eAddressInput').value = emp.address || '';
+            document.getElementById('eUsernameInput').value = emp.username;
+            document.getElementById('ePasswordInput').value = emp.password;
+            document.getElementById('eNotesInput').value = emp.notes || '';
+            document.getElementById('eStatusSelect').value = emp.status;
+            populateEmployeeBranchSelect(emp.branchId || '');
+            populateSalaryAccountSelect(emp.salaryAccountId || '');
+            document.getElementById('eSalaryInput').value = Number(emp.salary || 0);
+            document.getElementById('eSalaryDayInput').value = Number(emp.salaryDay || 1);
+
+            setPermissionValues(emp.permissions || {});
+
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:#f39c12;"></i> تعديل بيانات وصلاحيات الموظف';
+            document.getElementById('ePasswordInput').type = 'password';
+            document.getElementById('togglePassword').classList.replace('fa-eye-slash', 'fa-eye');
+
+            openModal('employeeModal');
+        }
+
+        function saveEmployee(e) {
+            e.preventDefault();
+            if (!window.Cashtop?.can?.('employees.manage')) { showToast('لا تملك صلاحية إدارة الموظفين', 'error'); return; }
+            
+            const editId = document.getElementById('editEmpId').value;
+            const name = document.getElementById('eNameInput').value.trim();
+            const phone = document.getElementById('ePhoneInput').value.trim();
+            const address = document.getElementById('eAddressInput').value.trim();
+            const username = document.getElementById('eUsernameInput').value.trim();
+            const password = document.getElementById('ePasswordInput').value;
+            const status = document.getElementById('eStatusSelect').value;
+            const notes = document.getElementById('eNotesInput').value.trim();
+            const branchId = document.getElementById('eBranchSelect')?.value || null;
+            const branchesList = readArrayDataset('cashtop_branches');
+            const branchName = branchesList.find(branch => String(branch.id) === String(branchId))?.name || '';
+            const salary = Math.max(0, Number(document.getElementById('eSalaryInput').value || 0));
+            const salaryDay = Math.min(31, Math.max(1, Number(document.getElementById('eSalaryDayInput').value || 1)));
+            const salaryAccountId = document.getElementById('eSalaryAccountSelect')?.value || '';
+            const salaryAccountName = readFundsDatabase().accounts?.find(account => String(account.id) === String(salaryAccountId))?.name || '';
+            if (salary > 0 && !salaryAccountId) { showToast('اختر الحساب الذي سيُخصم منه الراتب', 'error'); return; }
+
+            if (!name || !username || !password) {
+                showToast("يرجى التأكد من اسم الموظف وبيانات الدخول", "error"); return;
+            }
+
+            // التأكد من عدم تكرار اسم المستخدم
+            const normalizedUsername = username.toLowerCase();
+            const isDup = employeesDB.some(emp => String(emp.username || '').toLowerCase() === normalizedUsername && emp.id !== editId);
+            const branches = readArrayDataset('cashtop_branches');
+            const usedByBranchManager = branches.some(branch => String(branch.managerUsername || '').toLowerCase() === normalizedUsername);
+            const companyAccess = JSON.parse(localStorage.getItem('cashtop_company_access')) || {};
+            const usedByCompanyManager = String(companyAccess.manager?.username || '').toLowerCase() === normalizedUsername;
+            if (isDup || usedByBranchManager || usedByCompanyManager) {
+                showToast("اسم المستخدم هذا محجوز مسبقاً، اختر اسماً آخر", "error"); return;
+            }
+
+            const existingEmployee = editId ? employeesDB.find(emp => emp.id === editId) : null;
+            const perms = window.Cashtop?.can?.('permissions.manage')
+                ? collectPermissions()
+                : (existingEmployee?.permissions || {});
+
+            if (editId) {
+                let empIndex = employeesDB.findIndex(x => x.id === editId);
+                if (empIndex > -1) {
+                    employeesDB[empIndex].name = name;
+                    employeesDB[empIndex].phone = phone;
+                    employeesDB[empIndex].address = address;
+                    employeesDB[empIndex].username = username;
+                    employeesDB[empIndex].password = password;
+                    employeesDB[empIndex].status = status;
+                    employeesDB[empIndex].notes = notes;
+                    employeesDB[empIndex].branchId = branchId;
+                    employeesDB[empIndex].branchName = branchName;
+                    employeesDB[empIndex].salary = salary;
+                    employeesDB[empIndex].salaryDay = salaryDay;
+                    employeesDB[empIndex].salaryAccountId = salaryAccountId;
+                    employeesDB[empIndex].salaryAccountName = salaryAccountName;
+                    employeesDB[empIndex].permissions = perms;
+                    employeesDB[empIndex].authVersion = Date.now();
+                    employeesDB[empIndex].updatedAt = new Date().toISOString();
+                    showToast("تم تحديث بيانات الموظف وصلاحياته بنجاح", "success");
+                }
+            } else {
+                let newEmp = {
+                    id: `EMP_${Date.now()}`,
+                    name: name,
+                    phone: phone,
+                    address: address,
+                    username: username,
+                    password: password,
+                    status: status,
+                    notes: notes,
+                    branchId: branchId,
+                    branchName: branchName,
+                    salary: salary, salaryDay: salaryDay, salaryAccountId: salaryAccountId, salaryAccountName: salaryAccountName,
+                    salaryStartDate: new Date().toISOString().slice(0, 10),
+                    permissions: perms,
+                    authVersion: Date.now(), updatedAt: new Date().toISOString()
+                };
+                employeesDB.push(newEmp);
+                showToast("تم إنشاء حساب الموظف بنجاح", "success");
+            }
+
+            localStorage.setItem('cashtop_employees', JSON.stringify(employeesDB));
+            window.dispatchEvent(new CustomEvent('cashtop:sync-now', { detail: { key: 'cashtop_employees' } }));
+            closeModal('employeeModal');
+            renderTable();
+        }
+
+        // ==========================================
+        //  إيقاف / تشغيل والحذف
+        // ==========================================
+        function toggleEmployeeStatus(id) {
+            if(id === 'EMP_ADMIN') {
+                showToast("لا يمكن تعطيل حساب المدير الافتراضي!", "error"); return;
+            }
+            let emp = employeesDB.find(x => x.id === id);
+            if(emp) {
+                emp.status = emp.status === 'active' ? 'inactive' : 'active';
+                emp.authVersion = Date.now();
+                emp.updatedAt = new Date().toISOString();
+                localStorage.setItem('cashtop_employees', JSON.stringify(employeesDB));
+                renderTable();
+                showToast(emp.status === 'active' ? 'تم تفعيل الحساب' : 'تم تعطيل الحساب', "success");
+            }
+        }
+
+        function openDeleteModal(id) {
+            if(id === 'EMP_ADMIN') {
+                showToast("غير مسموح بحذف حساب الإدارة الأساسي!", "error"); return;
+            }
+            let emp = employeesDB.find(x => x.id === id);
+            if(!emp) return;
+            
+            document.getElementById('deleteEmpId').value = emp.id;
+            document.getElementById('deleteEmpName').innerText = emp.name;
+            openModal('deleteModal');
+        }
+
+        function confirmDelete() {
+            let id = document.getElementById('deleteEmpId').value;
+            let index = employeesDB.findIndex(x => x.id === id);
+            if(index > -1) {
+                employeesDB.splice(index, 1);
+                localStorage.setItem('cashtop_employees', JSON.stringify(employeesDB));
+                showToast("تم مسح الموظف وبيانات الدخول نهائياً.", "success");
+                closeModal('deleteModal');
+                renderTable();
+            }
+        }
+
+        /* ========================================================== */
+        /*   التصدير PDF و Excel                                      */
+        /* ========================================================== */
+        function exportToExcel() {
+            if (employeesDB.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            showToast("جاري التصدير لإكسل...", "success");
+
+            let ws_data = [
+                ["نظام كاش توب - سجل الموظفين والصلاحيات"],
+                ["تاريخ الاستخراج:", new Date().toLocaleString('ar-EG')],
+                [],
+                ["اسم الموظف", "رقم الجوال", "العنوان", "اسم المستخدم", "حالة الحساب", "ملاحظات"]
+            ];
+
+            employeesDB.forEach(emp => {
+                ws_data.push([
+                    emp.name, emp.phone, emp.address || '-', emp.username, 
+                    (emp.status==='active'?'نشط':'معطل'), emp.notes || '-'
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "الموظفين");
+            XLSX.writeFile(wb, `سجل_الموظفين_${Date.now()}.xlsx`);
+        }
+
+        async function exportToPDF() {
+            if (employeesDB.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            const rows = employeesDB.map((emp, i) => [i + 1, emp.name || '-', emp.phone || '-', emp.username || '-', emp.status === 'active' ? 'نشط' : 'معطل', emp.notes || '-']);
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: 'سجل الموظفين',
+                    columns: ['#', 'اسم الموظف', 'رقم الجوال', 'اسم المستخدم', 'حالة الحساب', 'ملاحظات إدارية'],
+                    rows,
+                    filename: `سجل_الموظفين_${Date.now()}.pdf`, orientation: 'landscape'
+                });
+            } catch (err) { console.error(err); showToast('تعذر إنشاء PDF الموظفين.', 'error'); }
+        }
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"الموظفين.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

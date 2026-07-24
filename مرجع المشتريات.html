@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>مرتجع المشتريات - كاش توب 2</title>
+    <!-- استيراد خط القاهرة -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- مكتبة الأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- مكتبات التصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        /* شبكة الكروت العلوية */
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+        .main-card { border-radius: 6px; color: white; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; min-height: 80px; transition: 0.3s; }
+        
+        .card-returns-total { background-color: #605ca8; }   
+        .card-due-returns { background-color: #f39c12; }    
+        .card-received-cash { background-color: #00a65a; }   
+        .card-active-suppliers { background-color: #00c0ef; }   
+
+        .card-content-side { display: flex; flex-direction: column; gap: 4px; white-space: nowrap; }
+        .card-header-title { font-size: 13px; font-weight: 600; opacity: 0.9; }
+        .card-stat { font-size: 18px; font-weight: 700; }
+        .card-icon-side { opacity: 0.25; font-size: 24px; }
+
+        /* منطقة العمل (النموذج والملخص) */
+        .invoice-work-grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; width: 100%; align-items: start; }
+        .invoice-main-panel { display: flex; flex-direction: column; gap: 15px; }
+
+        .invoice-card { background-color: white; padding: 25px 20px 20px 20px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); position: relative; border: 1px solid #e6ecf5; }
+        .invoice-card.product-item { border-right: 4px solid #00c0ef; padding-top: 35px; animation: slideIn 0.25s ease-in-out; margin-bottom: 10px; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .invoice-title-box h2 { font-size: 17px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+        .invoice-title-box p { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 15px; margin-bottom: 15px; width: 100%; }
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; }
+
+        .form-group label { position: absolute; top: -10px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 12px; font-weight: bold; color: #475569; z-index: 2; pointer-events: none; white-space: nowrap; }
+        .form-control { width: 100%; padding: 11px 14px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; background-color: #fff; position: relative; z-index: 1; height: 44px; transition: 0.3s;}
+        .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+        .form-control:disabled, .form-control[readonly] { background-color: #f8fafc; color: #64748b; }
+
+        .btn-add-another-product { background-color: #fff; color: #333; border: 1px solid #cbd5e1; padding: 10px 20px; border-radius: 20px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; width: fit-content; margin-top: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-self: flex-end; transition: 0.2s;}
+        .btn-add-another-product:hover { background-color: #f8fafc; border-color: #94a3b8; transform: translateY(-2px);}
+
+        .btn-remove-item { position: absolute; top: 10px; left: 15px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; z-index: 10; }
+        .btn-remove-item:hover { color: #b91c1c; transform: scale(1.15); }
+
+        /* منطقة الملخص الجانبية (Sticky) */
+        .invoice-summary-panel { display: flex; flex-direction: column; gap: 15px; position: sticky; top: 20px; height: fit-content; z-index: 10; }
+        .summary-block-card { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 5px; }
+        .summary-block-card span:first-child { font-size: 13px; font-weight: 600; color: #64748b; }
+        .summary-block-card span:last-child { font-size: 20px; font-weight: 700; color: #0f172a; }
+
+        .btn-save-invoice { background-color: #00a65a; color: white; border: none; width: 100%; padding: 13px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0, 166, 90, 0.15); transition: background 0.2s; }
+        .btn-save-invoice:hover { background-color: #008d4c; }
+
+        .item-finance-zone { background-color: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-top: 5px; }
+
+        /* الاقتراحات للبحث */
+        .suggestions-box { position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; z-index: 100; max-height: 180px; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .suggestion-item { padding: 10px 15px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap:3px; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: #f0fdf4; color: #00a65a; }
+
+        /* شريط التصفية والجدول السفلي */
+        .action-bar-filter { background: white; padding: 15px; border-radius: 6px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-right: 4px solid #f39c12;}
+        .filter-title { font-size: 15px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 8px;}
+        .btn-filter { background-color: #3b82f6; color: white; border: none; padding: 8px 18px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-filter:hover { background-color: #2563eb; }
+
+        .table-container { background-color: white; border-radius: 6px; border-top: 3px solid #605ca8; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; overflow: hidden; margin-top: 15px; }
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;}
+        .table-title { font-size: 15px; font-weight: bold; color: #444; }
+        
+        .export-group { display: flex; gap: 8px; }
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; padding: 6px 14px; border-radius: 3px; font-size: 13px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s;}
+        .btn-export.pdf:hover { color: #dd4b39; border-color: #dd4b39; background-color: #fdeaea;}
+        .btn-export.excel:hover { color: #00a65a; border-color: #00a65a; background-color: #e6f7ed;}
+
+        .table-responsive-box { width: 100%; overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 900px;}
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f9f9f9; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: middle; white-space: nowrap; }
+
+        .actions-wrapper { display: flex; justify-content: center; gap: 8px; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; border-radius: 3px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;}
+        .btn-edit-act { color: #f39c12; } .btn-edit-act:hover { transform: scale(1.15); }
+        .btn-delete-act { color: #dd4b39; } .btn-delete-act:hover { transform: scale(1.15); }
+
+        /* النوافذ المنبثقة (Modals) */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s ease; padding: 10px;}
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-box { background: white; width: 100%; max-width: 500px; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: translateY(-20px); transition: 0.3s ease; padding: 25px; margin: auto;}
+        
+        #filterModal .modal-box { border-top: 4px solid #3b82f6; }
+        #variantModal .modal-box { border-top: 4px solid #f39c12; }
+        #editModal .modal-box { border-top: 4px solid #f39c12; max-width: 700px; max-height: 90vh; overflow-y: auto;}
+        #deleteModal .modal-box { border-top: 4px solid #dd4b39; max-width: 400px; text-align: center; }
+
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #aaa; transition: 0.2s;}
+        .modal-close:hover { color: #dd4b39; }
+
+        .modal-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 20px; }
+        .modal-footer button { padding: 10px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; width: 100%; transition: 0.2s;}
+        .btn-submit-modal { background-color: #3b82f6; color: white; } .btn-submit-modal:hover { background-color: #2563eb; }
+        .btn-danger-modal { background-color: #dd4b39; color: white; } .btn-danger-modal:hover { background-color: #c23321; }
+        .btn-cancel-modal { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; } .btn-cancel-modal:hover { background-color: #e2e8f0; }
+
+        #customDateRange { display: none; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+
+        /* إشعارات */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; opacity: 0; transform: translateY(20px); transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+
+        #pdfExportContainer { position: absolute; left: -9999px; top: -9999px; width: 900px; background: white; padding: 30px; direction: rtl; font-family: 'Cairo', sans-serif; }
+
+        @media (max-width: 991px) {
+            .invoice-work-grid { grid-template-columns: 1fr; }
+            .invoice-summary-panel { position: static; height: auto; } 
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .main-card { min-height: 70px; padding: 10px; }
+            .card-header-title { font-size: 11px; } .card-stat { font-size: 14px; } .card-icon-side { font-size: 18px; }
+
+            .form-row { gap: 15px 10px; margin-bottom: 10px; grid-template-columns: 1fr 1fr !important; }
+            .form-row.full { grid-template-columns: 1fr !important; }
+            .form-control { padding: 9px 11px; font-size: 12px; border-radius: 6px; }
+            .form-group label { font-size: 10px; top: -9px; right: 8px; }
+            
+            .table-header-wrapper { flex-direction: column; align-items: stretch; gap: 12px; text-align: center;}
+            .export-group { overflow-x: auto; padding-bottom: 5px; width: 100%; display: grid; grid-template-columns: 1fr 1fr;}
+            .btn-export { justify-content: center; width: 100%; }
+            .data-table { min-width: 800px; }
+
+            .modal-box { padding: 20px 15px; width: 95%; max-height: 90vh; }
+            .modal-footer { flex-direction: column-reverse; display: flex; }
+        }
+    
+        .return-currency-wrap{display:none}.return-currency-wrap.active{display:flex}.return-currency-wrap small{font-size:11px;color:#64748b}
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        
+        <!-- الكروت العلوية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-returns-total"><div class="card-content-side"><span class="card-header-title">إجمالي المرتجعات</span><span class="card-stat" id="statTotalReturns">0.00 ₪</span></div><div class="card-icon-side"><i class="fa-solid fa-arrow-rotate-left"></i></div></div>
+            <div class="main-card card-due-returns"><div class="card-content-side"><span class="card-header-title">ديون لنا (معلقة)</span><span class="card-stat" id="statDueReturns">0.00 ₪</span></div><div class="card-icon-side"><i class="fa-solid fa-business-time"></i></div></div>
+            <div class="main-card card-received-cash"><div class="card-content-side"><span class="card-header-title">نقدية مستردة (مستلمة)</span><span class="card-stat" id="statReceivedCash">0.00 ₪</span></div><div class="card-icon-side"><i class="fa-solid fa-hand-holding-dollar"></i></div></div>
+            <div class="main-card card-active-suppliers"><div class="card-content-side"><span class="card-header-title">عدد الموردين المشمولين</span><span class="card-stat" id="statActiveSuppliers">0 مورد</span></div><div class="card-icon-side"><i class="fa-solid fa-truck-ramp-box"></i></div></div>
+        </div>
+
+        <!-- منطقة العمل الرئيسية لإصدار المرتجع -->
+        <div class="invoice-work-grid">
+            
+            <div class="invoice-main-panel">
+                <!-- كارد بيانات المورد -->
+                <div class="invoice-card">
+                    <div class="invoice-title-box">
+                        <h2>إنشاء مستند مرتجع مشتريات</h2>
+                        <p>إرجاع بضاعة للمورد، مع خصم المخزون وتسجيل النقدية المستردة بالصندوق، والباقي يُخصم من حساب المورد.</p>
+                    </div>
+
+                    <div class="form-row return-currency-wrap" id="returnCurrencyWrap">
+                        <div class="form-group">
+                            <select class="form-control" id="returnCurrencySelect" onchange="handleReturnCurrencyChange()"></select>
+                            <label>عملة المبلغ المسترد</label>
+                            <small id="returnCurrencyHint"></small>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <select class="form-control" id="supplierSelect" required></select>
+                            <label>المورد المُرجع له</label>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="accountSelect" required></select>
+                            <label>صندوق استلام المال</label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="date" class="form-control" id="returnDateBox" required>
+                            <label>تاريخ الإرجاع</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" class="form-control" value="0" min="0" step="any" id="moneyReceivedBox" oninput="calculateReturnsFinance()">
+                            <label>المبلغ المسترد (كاش)</label>
+                        </div>
+                    </div>
+
+                    <div class="form-row full" style="margin-bottom: 0;">
+                        <div class="form-group">
+                            <input type="text" class="form-control" placeholder="اختياري" id="notesBox" autocomplete="off">
+                            <label>ملاحظات المستند</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- حاوية المنتجات المرجعة -->
+                <div id="productsContainer" class="invoice-main-panel"></div>
+
+                <button type="button" class="btn-add-another-product" onclick="addNewProductRow()">
+                    <i class="fa-solid fa-plus"></i> إضافة منتج للمرجع
+                </button>
+            </div>
+
+            <!-- الملخص المالي الجانبي -->
+            <div class="invoice-summary-panel">
+                <div class="invoice-card" style="display:flex; flex-direction:column; gap:12px; border-top: 3px solid #00a65a;">
+                    <div class="summary-block-card">
+                        <span>إجمالي المرجع (بضاعة)</span>
+                        <span id="finalTotalRequired">0.00 ₪</span>
+                    </div>
+                    <div class="summary-block-card">
+                        <span>النقدي المسترد للصندوق</span>
+                        <span id="finalReceived">0.00 ₪</span>
+                    </div>
+                    <div class="summary-block-card">
+                        <div class="form-group" style="margin-top: 5px;">
+                            <input type="text" class="form-control" id="finalDebt" style="font-size:16px; font-weight:bold; background:#fdeaea; color:#dd4b39;" readonly value="0.00">
+                            <label style="color:#dd4b39; font-weight: bold;">يُخصم من حساب المورد</label>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn-save-invoice" onclick="savePurchaseReturn()"><i class="fa-solid fa-check"></i> حفظ وترحيل المرتجع</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- شريط التصفية والفرز -->
+        <div class="action-bar-filter">
+            <div class="filter-title"><i class="fa-solid fa-filter" style="color:#3b82f6;"></i> سجل المرتجعات: <span id="currentFilterLabel" style="color:#00a65a; margin-right:5px;">جميع الأوقات</span></div>
+            <button class="btn-filter" onclick="openModal('filterModal')"><i class="fa-solid fa-calendar-days"></i> تصفية وفرز</button>
+        </div>
+
+        <!-- سجل المرتجعات -->
+        <div class="table-container" style="margin-top: 0;">
+            <div class="table-header-wrapper">
+                <div class="table-title">سجل جرد وإحصاء مستندات مرتجعات المشتريات</div>
+                <div class="export-group">
+                    <button class="btn-export excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> تنزيل إكسل</button>
+                    <button class="btn-export pdf" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> استخراج PDF</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>رقم المرجع</th>
+                            <th>المورد</th>
+                            <th>التاريخ</th>
+                            <th>إجمالي البضاعة</th>
+                            <th>مسترد كاش</th>
+                            <th>المخصوم من المورد</th>
+                            <th>ملاحظات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="returnsTableBody">
+                        <!-- يُعبأ ديناميكياً -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الفرز والتصفية -->
+    <div class="modal-overlay" id="filterModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-filter" style="color:#3b82f6;"></i> فرز وتصفية السجلات</div>
+                <button class="modal-close" onclick="closeModal('filterModal')">&times;</button>
+            </div>
+            <div class="form-row full">
+                <div class="form-group">
+                    <select class="form-control" id="filterTypeSelect" onchange="toggleCustomDate()">
+                        <option value="all">جميع الأوقات</option>
+                        <option value="today">اليوم</option>
+                        <option value="week">هذا الأسبوع</option>
+                        <option value="month">هذا الشهر</option>
+                        <option value="year">هذه السنة</option>
+                        <option value="custom">تحديد فترة مخصصة...</option>
+                    </select>
+                    <label>الفترة الزمنية</label>
+                </div>
+            </div>
+            <div id="customDateRange" class="form-row">
+                <div class="form-group">
+                    <input type="date" class="form-control" id="filterFromDate">
+                    <label>من تاريخ</label>
+                </div>
+                <div class="form-group">
+                    <input type="date" class="form-control" id="filterToDate">
+                    <label>إلى تاريخ</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('filterModal')">إلغاء</button>
+                <button type="button" class="btn-submit-modal" onclick="applyFilter()">تطبيق الفرز</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة اختيار المقاسات -->
+    <div class="modal-overlay" id="variantModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-shirt" style="color:#f39c12;"></i> اختيار المقاس أو اللون</div>
+                <button class="modal-close" onclick="closeModal('variantModal')">&times;</button>
+            </div>
+            <div class="table-responsive-box" style="max-height:250px; overflow-y:auto;">
+                <table class="data-table">
+                    <thead><tr><th>المقاس</th><th>اللون</th><th>المتوفر</th></tr></thead>
+                    <tbody id="variantBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-modal" style="grid-column: span 2;" onclick="closeModal('variantModal')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تعديل المرتجع السريع (للملاحظات فقط حماية للقيود) -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box" style="max-width: 450px;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-pen-to-square" style="color:#f39c12;"></i> تعديل ملاحظات المستند</div>
+                <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+            </div>
+            <form onsubmit="saveEditReturn(event)">
+                <input type="hidden" id="editReturnId">
+                <p style="font-size:12px; color:#666; margin-bottom:15px;">لا يمكن تعديل القيم المالية أو الكميات بعد ترحيلها حماية للقيود. في حال وجود خطأ، قم بحذف المستند ليعكس القيود ثم أصدره من جديد.</p>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="editNotesInput" required>
+                        <label>الملاحظات / البيان</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel-modal" onclick="closeModal('editModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit-modal" style="background-color: #f39c12;">حفظ التعديلات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد الحذف الاحترافية -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <div style="font-size: 50px; color: #dd4b39; margin-bottom: 15px;"><i class="fa-regular fa-circle-xmark"></i></div>
+            <h3 style="margin-bottom: 10px; color: #333;">تأكيد إلغاء المرتجع</h3>
+            <p style="color: #666; font-size: 13px; margin-bottom: 25px; line-height: 1.6;">هل أنت متأكد من حذف مستند الإرجاع؟<br><strong style="color:#dd4b39;">سيتم استرداد البضاعة للمخزن، وسحب المبلغ من الصندوق، وإرجاع المديونية لحساب المورد تلقائياً.</strong></p>
+            <input type="hidden" id="deleteReturnId">
+            <div class="modal-footer" style="justify-content: center; border: none; padding: 0;">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('deleteModal')">تراجع</button>
+                <button type="button" class="btn-danger-modal" onclick="confirmDeleteReturn()"><i class="fa-solid fa-trash-can"></i> نعم، قم بالإلغاء وعكس القيود</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- حاوية مخفية للـ PDF -->
+    <div id="pdfExportContainer" style="position: absolute; left: -9999px; top: -9999px; width: 800px; background: white; padding: 30px; direction: rtl; font-family: 'Cairo', sans-serif;">
+        <h2 id="pdfHeaderTitle" style="text-align: center; color: #333; margin-bottom: 10px; border-bottom: 2px solid #605ca8; padding-bottom: 10px;">تقرير مرتجعات المشتريات</h2>
+        <p id="pdfDate" style="text-align: left; font-size: 13px; color: #666; font-weight: bold; margin-bottom: 20px;"></p>
+        <table id="pdfTable" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 13px;"></table>
+    </div>
+
+    <script>
+        // دوال الإشعارات والنوافذ
+        function moneyDisplay(value) {
+            const number = Number(value || 0);
+            if (!Number.isFinite(number)) return '0.00';
+            return number.toFixed(3).replace(/(\.\d{2})0$/, '$1');
+        }
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        // قواعد البيانات المتصلة بالنظام
+        let productsData = [];
+        let suppliersData = [];
+        let fundsData = { accounts: [], accountLogs: [] };
+        let purchaseReturnsData = [];
+        let supplierMovementsData = [];
+        
+        let rowCounter = 0;
+        let currentFilter = 'all';
+
+        function initSystem() {
+            // جلب البيانات من LocalStorage
+            productsData = JSON.parse(localStorage.getItem('cashtop_products')) || [];
+            suppliersData = JSON.parse(localStorage.getItem('cashtop_suppliers')) || [];
+            supplierMovementsData = JSON.parse(localStorage.getItem('cashtop_supplier_movements')) || [];
+            purchaseReturnsData = JSON.parse(localStorage.getItem('cashtop_purchase_returns')) || [];
+            
+            let localFunds = localStorage.getItem('cashtop_funds_db');
+            if(localFunds) fundsData = JSON.parse(localFunds);
+            else fundsData = { accounts: [{id: 1, name: "صندوق الكاش الرئيسي", type: "كاش", balance: 0}], accountLogs: [] };
+
+            // تعبئة القوائم المنسدلة
+            populateReturnCurrency();
+            populateSelects();
+
+            // إعداد تاريخ اليوم الافتراضي
+            document.getElementById('returnDateBox').value = new Date().toISOString().split('T')[0];
+
+            // تنظيف منطقة العمل وإضافة سطر فارغ
+            document.getElementById('productsContainer').innerHTML = '';
+            addNewProductRow();
+
+            // رسم الجدول والإحصائيات
+            renderReturnsTable();
+        }
+
+        function returnCurrencyConfig(){ return window.CashtopMulti?.getCurrencyConfig?.() || {enabled:false,baseCurrencyId:'ILS',base:{id:'ILS',symbol:'₪',code:'ILS',ratePer100Base:100},currencies:[{id:'ILS',name:'شيكل',symbol:'₪',code:'ILS',ratePer100Base:100}]}; }
+        function returnCurrencyId(){ const cfg=returnCurrencyConfig(); return document.getElementById('returnCurrencySelect')?.value || cfg.baseCurrencyId; }
+        function populateReturnCurrency(preferredId=''){ const cfg=returnCurrencyConfig(),select=document.getElementById('returnCurrencySelect'),wrap=document.getElementById('returnCurrencyWrap');if(!select)return;const previous=preferredId||select.value||cfg.baseCurrencyId;select.innerHTML=cfg.currencies.map(c=>`<option value="${c.id}">${c.name} (${c.symbol||c.code})</option>`).join('');select.value=cfg.currencies.some(c=>String(c.id)===String(previous))?previous:cfg.baseCurrencyId;wrap?.classList.toggle('active',cfg.enabled===true);const cur=window.CashtopMulti?.getCurrency?.(select.value)||cfg.base;const hint=document.getElementById('returnCurrencyHint');if(hint)hint.textContent=String(cur.id)===String(cfg.baseCurrencyId)?'العملة الأساسية':`100 ${cfg.base.symbol||cfg.base.code} = ${Number(cur.ratePer100Base||0)} ${cur.symbol||cur.code}`;}
+        function handleReturnCurrencyChange(){ populateSelects(); calculateReturnsFinance(); }
+        function populateSelects() {
+            let supHtml = '<option value="">اختر المورد...</option>';
+            suppliersData.forEach(s => { supHtml += `<option value="${s.id}">${s.name}</option>`; });
+            document.getElementById('supplierSelect').innerHTML = supHtml;
+
+            const cfg=returnCurrencyConfig(),cid=cfg.enabled?returnCurrencyId():cfg.baseCurrencyId;
+            fundsData.accounts.forEach(f=>{if(!f.currencyId)f.currencyId=cfg.baseCurrencyId;});
+            let fundHtml = '';
+            fundsData.accounts.forEach(f => { const cur=window.CashtopMulti?.getCurrency?.(f.currencyId||cfg.baseCurrencyId)||cfg.base; fundHtml += `<option value="${f.id}">${f.name} [${f.type}] — ${Number(f.balance||0).toFixed(2)} ${cur.symbol||cur.code}</option>`; });
+            document.getElementById('accountSelect').innerHTML = fundHtml;
+        }
+
+        // ==========================================
+        // إدارة أسطر المنتجات المرجعة
+        // ==========================================
+        function addNewProductRow() {
+            rowCounter++;
+            const rowId = `row_${rowCounter}`;
+            const newRowHtml = `
+                <div class="invoice-card product-item" id="${rowId}" data-product-id="" data-variant-index="" data-pieces-per-unit="1" data-stock-limit="0">
+                    <button type="button" class="btn-remove-item" onclick="removeProductRow('${rowId}')" title="إلغاء هذا الصنف"><i class="fa-solid fa-trash-can"></i></button>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" class="form-control search-input" placeholder="ابحث باسم المنتج أو الباركود..." oninput="searchProducts(this, '${rowId}')" autocomplete="off">
+                            <label>بحث المنتج / الباركود</label>
+                            <div class="suggestions-box"></div>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control return-type-select" onchange="handleReturnUnitChange(this)">
+                                <option value="piece">قطعة</option>
+                            </select>
+                            <label>نوع الإرجاع</label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="number" class="form-control qty-input" placeholder="1" min="1" step="any" value="1" oninput="calculateReturnsFinance()">
+                            <label>الكمية المرجعة</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" class="form-control stock-input" style="background:#f8fafc; font-weight:bold; color:#00a65a;" readonly placeholder="المخزون..." value="0">
+                            <label>المخزون المتاح</label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="number" step="0.001" class="form-control price-input" placeholder="0.00" value="0" oninput="calculateReturnsFinance()">
+                            <label>سعر التكلفة للوحدة المختارة (₪)</label>
+                        </div>
+                        <div class="form-group" style="visibility: hidden;"></div>
+                    </div>
+
+                    <div class="item-finance-zone">
+                        <div class="form-row" style="margin-bottom:0;">
+                            <div class="form-group">
+                                <input type="text" class="form-control row-calc-total" style="background:#eff6ff; font-weight:bold; color:#1d4ed8;" readonly value="0.00">
+                                <label style="color:#1d4ed8;">إجمالي قيمة المرجع للسطر</label>
+                            </div>
+                            <div class="form-group" style="visibility: hidden;"></div>
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.getElementById('productsContainer').insertAdjacentHTML('beforeend', newRowHtml);
+            calculateReturnsFinance();
+        }
+
+        function removeProductRow(rowId) {
+            const row = document.getElementById(rowId);
+            if(row) row.remove();
+            
+            if(document.querySelectorAll('.product-item').length === 0) addNewProductRow();
+            calculateReturnsFinance();
+        }
+
+        // ==========================================
+        // البحث الذكي واختيار المنتجات للمرجع
+        // ==========================================
+        function searchProducts(inputEl, rowId) {
+            const val = inputEl.value.trim().toLowerCase();
+            const box = inputEl.nextElementSibling.nextElementSibling; // suggestions-box
+            if (val === '') { box.style.display = 'none'; return; }
+            
+            box.innerHTML = '';
+            let matched = [];
+
+            productsData.forEach(p => {
+                if (p.name.toLowerCase().includes(val) || (p.barcode && p.barcode.toLowerCase().includes(val))) {
+                    if (p.hasVariants && p.variants) {
+                        let hasStock = p.variants.some(v => (parseFloat(v.qty)||0) > 0);
+                        if(hasStock) matched.push({prod: p, isZero: false});
+                    } else {
+                        let qty = parseFloat(p.stockPieces) || 0;
+                        if(qty > 0) matched.push({prod: p, qty: qty, isZero: false});
+                    }
+                }
+            });
+
+            if (matched.length > 0) {
+                matched.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    let p = match.prod;
+                    
+                    if (p.hasVariants) {
+                        div.innerHTML = `<span style="font-weight:bold; color:#333;">${p.name} <span style="font-size:10px;background:#eee;padding:2px 4px;border-radius:4px;">متعدد المقاسات</span></span><br><span style="font-size:11px; color:#00a65a; font-weight:bold;">اختر لعرض المقاسات</span>`;
+                        div.onmousedown = (e) => { e.preventDefault(); openVariantModal(p.id, rowId); box.style.display = 'none'; };
+                    } else {
+                        div.innerHTML = `<span style="font-weight:bold; color:#333;">${p.name}</span><br><span style="font-size:11px; color:#00a65a; font-weight:bold;">متوفر: ${match.qty} ${p.pieceName || 'قطعة'}</span>`;
+                        div.onmousedown = (e) => { e.preventDefault(); selectProduct(p, match.qty, rowId); box.style.display = 'none'; };
+                    }
+                    box.appendChild(div);
+                });
+                box.style.display = 'block';
+            } else { 
+                box.innerHTML = `<div style="padding: 10px; color:#999; text-align:center;">لا توجد مطابقة في المخزن</div>`;
+                box.style.display = 'block'; 
+            }
+        }
+
+        // إخفاء القوائم عند النقر بالخارج
+        document.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('search-input')) {
+                document.querySelectorAll('.suggestions-box').forEach(box => box.style.display = 'none');
+            }
+        });
+
+        function openVariantModal(productId, rowId) {
+            const prod = productsData.find(p => p.id === productId);
+            if (!prod || !prod.variants) return;
+            const tbody = document.getElementById('variantBody');
+            tbody.innerHTML = '';
+
+            prod.variants.forEach((v, vIndex) => {
+                let availQty = parseFloat(v.qty) || 0;
+                if (availQty > 0) {
+                    tbody.innerHTML += `
+                        <tr style="cursor:pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='transparent'" onclick="selectVariant('${prod.id}', ${vIndex}, ${availQty}, '${rowId}'); closeModal('variantModal');">
+                            <td><span style="background:#f1f5f9; padding:2px 8px; border-radius:4px; font-weight:bold;">${v.size || '---'}</span></td>
+                            <td>${v.color || '---'}</td>
+                            <td style="color:#00a65a; font-weight:bold;">${availQty}</td>
+                        </tr>
+                    `;
+                }
+            });
+            openModal('variantModal');
+        }
+
+        function setReturnRowChain(row, product) {
+            const chain = window.CashtopMulti?.normalizeProductChain?.(product) || [{id:'piece',name:product?.pieceName||'قطعة',factorToBase:1}];
+            row.dataset.unitChain = JSON.stringify(chain);
+            return chain;
+        }
+        function getReturnRowChain(row) { try { const value=JSON.parse(row.dataset.unitChain||'[]'); return Array.isArray(value)&&value.length?value:[{id:'piece',name:row.dataset.pieceName||'قطعة',factorToBase:1}]; } catch(_){ return [{id:'piece',name:'قطعة',factorToBase:1}]; } }
+        function handleReturnUnitChange(select){ const row=select.closest('.product-item'); const chain=getReturnRowChain(row); const level=chain.find(x=>String(x.id)===String(select.value))||chain[0]; const base=Number(row.dataset.baseCost||0); row.querySelector('.price-input').value=(base*Math.max(0.000001,Number(level.factorToBase||1))).toFixed(3).replace(/\.?0+$/,''); calculateReturnsFinance(); }
+
+        function selectVariant(prodId, vIndex, availQty, rowId) {
+            const prod = productsData.find(p => p.id === prodId);
+            const variant = prod.variants[vIndex];
+            
+            let row = document.getElementById(rowId);
+            if(!row) return;
+
+            row.querySelector('.search-input').value = `${prod.name} (${variant.size}-${variant.color})`;
+            row.querySelector('.stock-input').value = `${availQty} ${prod.pieceName || 'قطعة'}`;
+            row.querySelector('.price-input').value = parseFloat(prod.cost || 0).toFixed(3).replace(/\.?0+$/, '');
+            
+            // تحديث خيارات الوحدة (للمتفرع عادة قطعة فقط، لكن سنضع خيار الوحدة كقطعة للحماية)
+            let select = row.querySelector('.return-type-select');
+            const chain = setReturnRowChain(row, {pieceName: prod.pieceName || 'قطعة'});
+            select.innerHTML = `<option value="${chain[0].id}">${chain[0].name}</option>`;
+
+            row.dataset.productId = prod.id;
+            row.dataset.variantIndex = vIndex;
+            row.dataset.piecesPerUnit = 1;
+            row.dataset.stockLimit = availQty;
+
+            calculateReturnsFinance();
+        }
+
+        function selectProduct(prod, availQty, rowId) {
+            let row = document.getElementById(rowId);
+            if(!row) return;
+
+            row.querySelector('.search-input').value = prod.name;
+            row.querySelector('.stock-input').value = `${availQty} ${prod.pieceName || 'قطعة'}`;
+            
+            let select = row.querySelector('.return-type-select');
+            const chain = setReturnRowChain(row, prod);
+            select.innerHTML = chain.map(level => `<option value="${level.id}">${level.name} — ×${Number(level.factorToBase||1)} ${chain[0].name}</option>`).join('');
+
+            // السعر المبدئي للقطعة
+            row.querySelector('.price-input').value = parseFloat(prod.cost || 0).toFixed(3).replace(/\.?0+$/, '');
+
+            row.dataset.productId = prod.id;
+            row.dataset.variantIndex = "";
+            row.dataset.piecesPerUnit = prod.piecesPerUnit || 1;
+            row.dataset.stockLimit = availQty;
+            row.dataset.baseCost = prod.cost || 0; // تكلفة الوحدة الأساسية
+            select.onchange = function() { handleReturnUnitChange(this); };
+
+            calculateReturnsFinance();
+        }
+
+        // ==========================================
+        // الحسابات المالية للمستند
+        // ==========================================
+        function calculateReturnsFinance() {
+            let totalReturnsRequired = 0;
+            const productCards = document.querySelectorAll('.product-item');
+
+            productCards.forEach(card => {
+                const qty = parseFloat(card.querySelector('.qty-input').value) || 0;
+                const price = parseFloat(card.querySelector('.price-input').value) || 0;
+                const rowTotal = qty * price;
+
+                card.querySelector('.row-calc-total').value = moneyDisplay(rowTotal);
+                totalReturnsRequired += rowTotal;
+            });
+
+            const cfg=returnCurrencyConfig(),cid=cfg.enabled?returnCurrencyId():cfg.baseCurrencyId;
+            const receivedNative = parseFloat(document.getElementById('moneyReceivedBox').value) || 0;
+            const received = window.CashtopMulti?.toBase?.(receivedNative,cid) ?? receivedNative;
+            let finalDebt = totalReturnsRequired - received;
+            if (finalDebt < 0) finalDebt = 0;
+            const symbol=cfg.base.symbol||cfg.base.code||'₪';
+            document.getElementById('finalTotalRequired').textContent = moneyDisplay(totalReturnsRequired) + " " + symbol;
+            document.getElementById('finalReceived').textContent = moneyDisplay(received) + " " + symbol;
+            document.getElementById('finalDebt').value = moneyDisplay(finalDebt);
+        }
+
+        // ==========================================
+        // حفظ وترحيل المرتجع (أهم دالة)
+        // ==========================================
+        function savePurchaseReturn() {
+            let supplierId = document.getElementById('supplierSelect').value;
+            const cfg=returnCurrencyConfig(), currencyId=cfg.enabled?returnCurrencyId():cfg.baseCurrencyId;
+            let accountId = document.getElementById('accountSelect').value;
+            let returnDate = document.getElementById('returnDateBox').value;
+            let receivedNative = parseFloat(document.getElementById('moneyReceivedBox').value) || 0;
+            let receivedAmt = window.CashtopMulti?.toBase?.(receivedNative,currencyId) ?? receivedNative;
+            let notes = document.getElementById('notesBox').value.trim();
+
+            if (!supplierId || !accountId) {
+                showToast("يرجى اختيار المورد والصندوق المالي!", "error");
+                return;
+            }
+
+            let supplier = suppliersData.find(s => s.id == supplierId);
+            let account = fundsData.accounts.find(f => String(f.id) === String(accountId));
+            if (!supplier || !account) { showToast('تعذر العثور على المورد أو الصندوق المحدد.', 'error'); return; }
+            const refundSettlement = window.CashtopMulti?.settleToAccount?.(receivedNative, currencyId, account)
+                || { accountAmount: receivedNative, accountCurrencyId: account.currencyId || currencyId, baseAmount: receivedAmt };
+            const saveRollback = {
+                products: JSON.parse(JSON.stringify(productsData)),
+                suppliers: JSON.parse(JSON.stringify(suppliersData)),
+                supplierMovements: JSON.parse(JSON.stringify(supplierMovementsData)),
+                funds: JSON.parse(JSON.stringify(fundsData)),
+                returns: JSON.parse(JSON.stringify(purchaseReturnsData))
+            };
+
+            let itemsToReturn = [];
+            let totalReturnVal = 0;
+            let hasError = false;
+
+            const rows = document.querySelectorAll('.product-item');
+            rows.forEach(row => {
+                let pId = row.dataset.productId;
+                if (!pId) return; // سطر فارغ لم يتم اختيار منتج فيه
+
+                let vIdx = row.dataset.variantIndex;
+                let isVariant = vIdx !== "";
+                let ppu = parseFloat(row.dataset.piecesPerUnit) || 1;
+                let maxStock = parseFloat(row.dataset.stockLimit) || 0;
+                const chain = getReturnRowChain(row);
+                let returnType = row.querySelector('.return-type-select').value;
+                const selectedLevel = chain.find(level=>String(level.id)===String(returnType)) || chain[0];
+                let inputQty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                let inputCost = parseFloat(row.querySelector('.price-input').value) || 0;
+                let rowName = row.querySelector('.search-input').value;
+
+                if (inputQty <= 0) return;
+
+                let piecesToDeduct = inputQty * Math.max(0.000001, Number(selectedLevel.factorToBase || 1));
+
+                if (piecesToDeduct > maxStock) {
+                    showToast(`الكمية المرجعة للصنف [${rowName}] تتجاوز المخزون المتوفر!`, "error");
+                    hasError = true;
+                }
+
+                let rowTotal = inputQty * inputCost;
+                totalReturnVal += rowTotal;
+
+                itemsToReturn.push({
+                    id: pId,
+                    name: rowName,
+                    isVariant: isVariant,
+                    vIndex: isVariant ? parseInt(vIdx) : null,
+                    returnType: returnType, selectedUnitId: selectedLevel.id, selectedUnitName: selectedLevel.name, factorToBase: Number(selectedLevel.factorToBase||1),
+                    inputQty: inputQty,
+                    piecesToDeduct: piecesToDeduct,
+                    unitCost: inputCost,
+                    rowTotal: rowTotal
+                });
+            });
+
+            if (hasError) return;
+            if (itemsToReturn.length === 0) {
+                showToast("يجب إدراج منتج واحد على الأقل للإرجاع!", "error");
+                return;
+            }
+
+            let debtToDeductFromSupplier = Math.max(0, totalReturnVal - receivedAmt);
+            const returnId = `RET_${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(2,5)}`;
+            const productNames = itemsToReturn.map(item => item.name).filter(Boolean).join('، ');
+
+            // 1. الخصم من المخزون
+            itemsToReturn.forEach(item => {
+                let dbProd = productsData.find(p => p.id === item.id);
+                if(item.isVariant) {
+                    dbProd.variants[item.vIndex].qty -= item.piecesToDeduct;
+                } else {
+                    dbProd.stockPieces = parseFloat(dbProd.stockPieces) - item.piecesToDeduct;
+                }
+            });
+
+            // 2. تحديث الصندوق المالي (إذا استلمنا نقدية من المورد)
+            if (receivedAmt > 0) {
+                account.balance += Number(refundSettlement.accountAmount || 0);
+                fundsData.accountLogs.push({
+                    id: `LOG_${returnId}`,
+                    accountId: account.id,
+                    date: returnDate,
+                    type: "إيداع",
+                    amount: Number(refundSettlement.accountAmount || 0), baseAmount: receivedAmt, currencyId: refundSettlement.accountCurrencyId,
+                    transactionAmount: receivedNative, transactionCurrencyId: currencyId,
+                    notes: `مسترد نقدي من مرتجع [${productNames}] للمورد: ${supplier.name}`,
+                    sourceType: 'purchaseReturn', sourceId: returnId
+                });
+            }
+
+            // 3. تسجيل المرتجع داخل بطاقة المورد نفسها حتى يظهر في الرصيد وكشف الحساب.
+            supplier.movements = Array.isArray(supplier.movements) ? supplier.movements : [];
+            const supplierMovementIds = [];
+            if (debtToDeductFromSupplier > 0) {
+                const movementId = `SRET_${returnId}`;
+                supplierMovementIds.push(movementId);
+                supplier.movements.push({
+                    id: movementId, type: 'return', amount: debtToDeductFromSupplier,
+                    note: productNames || `مرتجع مشتريات ${returnId}`, productNames,
+                    date: returnDate, refType: 'purchaseReturn', refId: returnId
+                });
+                supplier.balance = (parseFloat(supplier.balance) || 0) - debtToDeductFromSupplier;
+            }
+            if (receivedAmt > 0) {
+                const cashMovementId = `SCASH_${returnId}`;
+                supplierMovementIds.push(cashMovementId);
+                supplier.movements.push({
+                    id: cashMovementId, type: 'refundCash', amount: receivedAmt, amountNative: receivedNative, currencyId,
+                    note: `مسترد نقدي عن: ${productNames || returnId}`, productNames,
+                    date: returnDate, refType: 'purchaseReturn', refId: returnId, balanceEffect: 0
+                });
+            }
+            supplierMovementsData.push({
+                id: `S_MOV_${returnId}`, supplierId: supplier.id, date: returnDate,
+                type: 'مرتجع مشتريات', amount: debtToDeductFromSupplier,
+                productNames, refId: returnId,
+                details: `قيمة المرتجع ${totalReturnVal.toFixed(3)}، المسترد نقداً ${receivedAmt.toFixed(3)}، المخفض من رصيد المورد ${debtToDeductFromSupplier.toFixed(3)}.`
+            });
+
+            // 4. حفظ مستند المرتجع
+            let newReturnRecord = {
+                id: returnId,
+                date: returnDate,
+                supplierId: supplier.id,
+                supplierName: supplier.name,
+                accountId: account.id,
+                accountName: account.name,
+                totalValue: totalReturnVal,
+                receivedCash: receivedAmt, receivedCashNative: receivedNative, currencyId,
+                accountAmountNative: Number(refundSettlement.accountAmount || 0), accountCurrencyId: refundSettlement.accountCurrencyId, currencyName:(window.CashtopMulti?.getCurrency?.(currencyId)||cfg.base).name, currencySymbol:(window.CashtopMulti?.getCurrency?.(currencyId)||cfg.base).symbol || (window.CashtopMulti?.getCurrency?.(currencyId)||cfg.base).code, exchangeRatePer100Base:Number((window.CashtopMulti?.getCurrency?.(currencyId)||cfg.base).ratePer100Base||100),
+                debtDeducted: debtToDeductFromSupplier,
+                supplierMovementIds,
+                productNames,
+                items: itemsToReturn,
+                notes: notes
+            };
+            purchaseReturnsData.push(newReturnRecord);
+            const returnChanges = {
+                cashtop_products: productsData,
+                cashtop_suppliers: suppliersData,
+                cashtop_supplier_movements: supplierMovementsData,
+                cashtop_funds_db: fundsData,
+                cashtop_purchase_returns: purchaseReturnsData
+            };
+            try {
+                if (window.Cashtop?.atomicSetItems) {
+                    window.Cashtop.atomicSetItems(returnChanges, { label: 'save-purchase-return' });
+                } else {
+                    Object.entries(returnChanges).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
+                }
+            } catch (error) {
+                productsData = saveRollback.products;
+                suppliersData = saveRollback.suppliers;
+                supplierMovementsData = saveRollback.supplierMovements;
+                fundsData = saveRollback.funds;
+                purchaseReturnsData = saveRollback.returns;
+                console.error(error);
+                showToast('تعذر حفظ مرتجع المشتريات كوحدة واحدة، ولم يتم اعتماد أي تغيير.', 'error');
+                return;
+            }
+
+            showToast("تم ترحيل مستند مرتجع المشتريات وعمل القيود بنجاح!", "success");
+            
+            // إعادة التهيئة
+            document.getElementById('productsContainer').innerHTML = '';
+            addNewProductRow();
+            document.getElementById('moneyReceivedBox').value = 0;
+            document.getElementById('notesBox').value = '';
+            calculateReturnsFinance();
+            renderReturnsTable();
+        }
+
+        // ==========================================
+        // إدارة جدول وعرض سجلات المرتجعات (والتصفية)
+        // ==========================================
+        function toggleCustomDate() {
+            const type = document.getElementById('filterTypeSelect').value;
+            document.getElementById('customDateRange').style.display = type === 'custom' ? 'grid' : 'none';
+        }
+
+        function applyFilter() {
+            currentFilter = document.getElementById('filterTypeSelect').value;
+            let label = "جميع الأوقات";
+            if(currentFilter === 'today') label = "اليوم";
+            else if(currentFilter === 'week') label = "هذا الأسبوع";
+            else if(currentFilter === 'month') label = "هذا الشهر";
+            else if(currentFilter === 'year') label = "هذه السنة";
+            else if(currentFilter === 'custom') label = "فترة مخصصة";
+            
+            document.getElementById('currentFilterLabel').innerText = label;
+            closeModal('filterModal');
+            renderReturnsTable();
+            showToast("تم تطبيق الفرز بنجاح", "success");
+        }
+
+        function isDateInRange(dateStr) {
+            if (currentFilter === 'all') return true;
+            
+            const itemDate = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            if (currentFilter === 'today') {
+                return itemDate.toDateString() === today.toDateString();
+            } else if (currentFilter === 'week') {
+                let diff = (today - itemDate) / (1000 * 60 * 60 * 24);
+                return diff >= 0 && diff <= 7;
+            } else if (currentFilter === 'month') {
+                return itemDate.getMonth() === today.getMonth() && itemDate.getFullYear() === today.getFullYear();
+            } else if (currentFilter === 'year') {
+                return itemDate.getFullYear() === today.getFullYear();
+            } else if (currentFilter === 'custom') {
+                let fromD = document.getElementById('filterFromDate').value;
+                let toD = document.getElementById('filterToDate').value;
+                if(!fromD || !toD) return true;
+                let start = new Date(fromD); start.setHours(0,0,0,0);
+                let end = new Date(toD); end.setHours(23,59,59,999);
+                return itemDate >= start && itemDate <= end;
+            }
+            return true;
+        }
+
+        function renderReturnsTable() {
+            const tbody = document.getElementById('returnsTableBody');
+            const filteredReturns = purchaseReturnsData.filter(r => isDateInRange(r.date)).slice().reverse();
+            const stats = filteredReturns.reduce((acc, r) => {
+                acc.totalReturns += Number(r?.totalValue) || 0;
+                acc.totalReceived += Number(r?.receivedCash) || 0;
+                if ((Number(r?.debtDeducted) || 0) > 0) {
+                    acc.totalDue += Number(r.debtDeducted) || 0;
+                    acc.dueCount += 1;
+                }
+                if (r?.supplierId != null) acc.suppliers.add(String(r.supplierId));
+                return acc;
+            }, { totalReturns: 0, totalDue: 0, totalReceived: 0, dueCount: 0, suppliers: new Set() });
+
+            const createRow = r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${r.id}</strong></td>
+                    <td>${r.supplierName}</td>
+                    <td style="direction:ltr;">${r.date}</td>
+                    <td style="font-weight: bold; color: #1e40af;">${moneyDisplay(r.totalValue)} ₪</td>
+                    <td style="font-weight: bold; color: #00a65a;">${moneyDisplay(r.receivedCash)} ₪</td>
+                    <td style="font-weight: bold; color: #dd4b39;">${moneyDisplay(r.debtDeducted)} ₪</td>
+                    <td style="color:#777; font-size:11px; white-space:normal; max-width:150px;">${r.notes || '-'}</td>
+                    <td>
+                        <div class="actions-wrapper">
+                            <button class="action-btn btn-edit-act" title="تعديل الملاحظات" onclick="openEditReturn('${r.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button class="action-btn btn-delete-act" title="حذف المستند وعكس القيود" onclick="openDeleteReturn('${r.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </td>`;
+                return tr;
+            };
+
+            if (window.Cashtop?.renderVirtualRows) {
+                window.Cashtop.renderVirtualRows(tbody, filteredReturns, createRow, {
+                    chunkSize: 80, eagerLimit: 160, colspan: 8,
+                    emptyHtml: `<tr><td colspan="8" style="color:#999; padding:20px;">لا توجد مرتجعات في هذه الفترة الزمنية.</td></tr>`
+                });
+            } else {
+                tbody.innerHTML = '';
+                if (!filteredReturns.length) tbody.innerHTML = `<tr><td colspan="8" style="color:#999; padding:20px;">لا توجد مرتجعات في هذه الفترة الزمنية.</td></tr>`;
+                else filteredReturns.forEach(r => tbody.appendChild(createRow(r)));
+            }
+
+            document.getElementById('statTotalReturns').innerText = moneyDisplay(stats.totalReturns) + ' ₪';
+            document.getElementById('statDueReturns').innerText = `${stats.dueCount} قيد (قيمة: ${moneyDisplay(stats.totalDue)})`;
+            document.getElementById('statReceivedCash').innerText = moneyDisplay(stats.totalReceived) + ' ₪';
+            document.getElementById('statActiveSuppliers').innerText = stats.suppliers.size + ' مورد';
+        }
+
+        // ==========================================
+        // التعديل والحذف لمستند المرتجع
+        // ==========================================
+        function openEditReturn(id) {
+            let r = purchaseReturnsData.find(x => x.id === id);
+            if(!r) return;
+            document.getElementById('editReturnId').value = r.id;
+            document.getElementById('editNotesInput').value = r.notes || '';
+            openModal('editModal');
+        }
+
+        function saveEditReturn(e) {
+            e.preventDefault();
+            let id = document.getElementById('editReturnId').value;
+            let r = purchaseReturnsData.find(x => x.id === id);
+            if(r) {
+                r.notes = document.getElementById('editNotesInput').value.trim();
+                localStorage.setItem('cashtop_purchase_returns', JSON.stringify(purchaseReturnsData));
+                showToast("تم تحديث الملاحظات بنجاح", "success");
+                closeModal('editModal');
+                renderReturnsTable();
+            }
+        }
+
+        function openDeleteReturn(id) {
+            document.getElementById('deleteReturnId').value = id;
+            openModal('deleteModal');
+        }
+
+        function confirmDeleteReturn() {
+            let id = document.getElementById('deleteReturnId').value;
+            let rIndex = purchaseReturnsData.findIndex(x => x.id === id);
+            if(rIndex === -1) return;
+            let r = purchaseReturnsData[rIndex];
+            const deleteRollback = {
+                products: JSON.parse(JSON.stringify(productsData)),
+                suppliers: JSON.parse(JSON.stringify(suppliersData)),
+                supplierMovements: JSON.parse(JSON.stringify(supplierMovementsData)),
+                funds: JSON.parse(JSON.stringify(fundsData)),
+                returns: JSON.parse(JSON.stringify(purchaseReturnsData))
+            };
+
+            // 1. عكس قيود المخزن (استرجاع البضاعة للمخزن)
+            r.items.forEach(item => {
+                let dbProd = productsData.find(p => p.id === item.id);
+                if (dbProd) {
+                    if(item.isVariant) {
+                        if(dbProd.variants && dbProd.variants[item.vIndex]) {
+                            dbProd.variants[item.vIndex].qty += item.piecesToDeduct;
+                        }
+                    } else {
+                        dbProd.stockPieces = parseFloat(dbProd.stockPieces) + item.piecesToDeduct;
+                    }
+                }
+            });
+
+            // 2. عكس قيود الصندوق (سحب المال الذي أودعناه من المورد)
+            if (r.receivedCash > 0) {
+                let account = fundsData.accounts.find(f => String(f.id) === String(r.accountId));
+                if (account) {
+                    const reversalAccountCurrencyId = r.accountCurrencyId || account.currencyId || returnCurrencyConfig().baseCurrencyId;
+                    const reversalNative = Number.isFinite(Number(r.accountAmountNative)) ? Number(r.accountAmountNative) : (window.CashtopMulti?.accountAmountFromBase?.(Number(r.receivedCash||0), reversalAccountCurrencyId) ?? Number(r.receivedCash||0));
+                    account.balance -= reversalNative;
+                    fundsData.accountLogs.push({ 
+                        accountId: account.id, 
+                        date: new Date().toISOString().split('T')[0], 
+                        type: "سحب", 
+                        amount: reversalNative, baseAmount: Number(r.receivedCash||0), currencyId: r.accountCurrencyId || account.currencyId || returnCurrencyConfig().baseCurrencyId, 
+                        notes: `عكس قيد: إلغاء مرتجع مشتريات رقم ${r.id} للمورد: ${r.supplierName}` 
+                    });
+                    }
+            }
+
+            // 3. عكس حساب المورد بحذف حركات المستند من بطاقة المورد.
+            let supplier = suppliersData.find(s => s.id == r.supplierId);
+            if (supplier) {
+                supplier.movements = (supplier.movements || []).filter(movement => String(movement.refId || '') !== String(r.id));
+                if (r.debtDeducted > 0) supplier.balance = (parseFloat(supplier.balance) || 0) + r.debtDeducted;
+                supplierMovementsData = supplierMovementsData.filter(movement => String(movement.refId || '') !== String(r.id));
+                supplierMovementsData.push({
+                    id: `S_MOV_REV_${Date.now()}`, supplierId: supplier.id,
+                    date: new Date().toISOString().split('T')[0], type: 'إلغاء مرتجع',
+                    amount: r.debtDeducted || 0, refId: r.id,
+                    productNames: r.productNames || (r.items || []).map(item => item.name).join('، '),
+                    details: `إلغاء مستند مرتجع مشتريات رقم ${r.id} وعكس أثره.`
+                });
+                    }
+
+            // حذف المستند
+            purchaseReturnsData.splice(rIndex, 1);
+            const reversalChanges = {
+                cashtop_products: productsData,
+                cashtop_suppliers: suppliersData,
+                cashtop_supplier_movements: supplierMovementsData,
+                cashtop_funds_db: fundsData,
+                cashtop_purchase_returns: purchaseReturnsData
+            };
+            try {
+                if (window.Cashtop?.atomicSetItems) {
+                    window.Cashtop.atomicSetItems(reversalChanges, { label: 'delete-purchase-return' });
+                } else {
+                    Object.entries(reversalChanges).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
+                }
+            } catch (error) {
+                productsData = deleteRollback.products;
+                suppliersData = deleteRollback.suppliers;
+                supplierMovementsData = deleteRollback.supplierMovements;
+                fundsData = deleteRollback.funds;
+                purchaseReturnsData = deleteRollback.returns;
+                console.error(error);
+                showToast('تعذر إلغاء المرتجع كوحدة واحدة، وتمت إعادة البيانات كما كانت.', 'error');
+                return;
+            }
+
+            showToast("تم إلغاء المرتجع وعكس جميع القيود بنجاح", "success");
+            closeModal('deleteModal');
+            renderReturnsTable();
+        }
+
+        // ==========================================
+        // التصدير للاكسل والـ PDF لجدول المرتجعات
+        // ==========================================
+        function exportExcel() {
+            let filteredReturns = purchaseReturnsData.filter(r => isDateInRange(r.date));
+            if (filteredReturns.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            showToast("جاري تصدير سجل المرتجعات...", "success");
+
+            let ws_data = [["تقرير مرتجعات المشتريات - كاش توب"], [], ["رقم المرجع", "المورد", "التاريخ", "إجمالي البضاعة (₪)", "مسترد كاش (₪)", "المخصوم من المورد (₪)", "ملاحظات"]];
+
+            filteredReturns.forEach(r => {
+                ws_data.push([
+                    r.id, r.supplierName, r.date, moneyDisplay(r.totalValue), 
+                    moneyDisplay(r.receivedCash), moneyDisplay(r.debtDeducted), r.notes || '-'
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "مرتجعات_المشتريات");
+            XLSX.writeFile(wb, `مرتجعات_المشتريات_${Date.now()}.xlsx`);
+        }
+
+        async function exportPDF() {
+            let filteredReturns = purchaseReturnsData.filter(r => isDateInRange(r.date));
+            if (filteredReturns.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            const rows = filteredReturns.map((r, i) => [i + 1, r.id || '-', r.supplierName || '-', r.date || '-', moneyDisplay(r.totalValue), moneyDisplay(r.receivedCash), moneyDisplay(r.debtDeducted)]);
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: 'تقرير مرتجعات المشتريات',
+                    subtitle: document.getElementById('currentFilterLabel')?.innerText || '',
+                    columns: ['#', 'رقم المرجع', 'المورد', 'التاريخ', 'إجمالي البضاعة', 'مسترد كاش', 'المخصوم من المورد'],
+                    rows,
+                    filename: `تقرير_مرتجعات_المشتريات_${Date.now()}.pdf`, orientation: 'landscape'
+                });
+            } catch (err) { console.error(err); showToast('تعذر إنشاء PDF مرتجعات المشتريات.', 'error'); }
+        }
+
+        window.onload = initSystem;
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"مرجع المشتريات.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

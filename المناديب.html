@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>إدارة المناديب والمبيعات الخارجية - كاش توب 2</title>
+    
+    <!-- خط القاهرة -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- الأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- مكتبات التصدير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: #f4f6f9; padding: 20px; color: #333; overflow-x: hidden; }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        /* الكروت العلوية */
+        .top-cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 100%; }
+        .main-card { border-radius: 6px; color: white; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; min-height: 90px; }
+
+        .card-total-agents { background-color: #605ca8; } 
+        .card-agents-sales { background-color: #00a65a; }     
+        .card-agents-commissions { background-color: #00c0ef; }     
+        .card-agents-custody { background-color: #f39c12; } 
+
+        .card-content-side { display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+        .card-header-title { font-size: 13px; font-weight: bold; opacity: 0.9; white-space: nowrap; }
+        .card-stat { font-size: 22px; font-weight: 700; white-space: nowrap; }
+        .card-icon-side { opacity: 0.25; font-size: 35px; }
+
+        /* شريط العمليات */
+        .action-bar { background-color: white; padding: 15px 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 15px; width: 100%; border-right: 4px solid #605ca8;}
+        .search-box { display: flex; align-items: center; flex: 1; max-width: 450px; position: relative; width: 100%; }
+        .search-control { width: 100%; padding: 10px 38px 10px 12px; font-size: 13px; border: 1px solid #d2d6de; border-radius: 4px; outline: none; transition: 0.3s;}
+        .search-control:focus { border-color: #00c0ef; box-shadow: 0 0 0 2px rgba(0,192,239,0.1);}
+        .search-box i { position: absolute; right: 12px; color: #999; font-size: 14px; }
+
+        .btn-add-agent { background-color: #00a65a; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: bold; white-space: nowrap; transition: 0.2s;}
+        .btn-add-agent:hover { background-color: #008d4c; }
+
+        /* سجل الجدول والتصدير */
+        .table-container { background-color: white; border-radius: 6px; border-top: 3px solid #605ca8; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 100%; overflow: hidden; }
+        .table-header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; gap: 15px; width: 100%; flex-wrap: wrap;}
+        .table-title { font-size: 16px; font-weight: bold; color: #444; white-space: nowrap; }
+
+        .export-group { display: flex; gap: 8px; align-items: center; }
+        .btn-export { border: 1px solid #ddd; background-color: #fff; color: #555; padding: 8px 16px; border-radius: 4px; font-size: 13px; font-weight:bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; transition: 0.2s;}
+        .btn-export.pdf:hover { color: #dd4b39; border-color: #dd4b39; background-color: #fdeaea;}
+        .btn-export.excel:hover { color: #00a65a; border-color: #00a65a; background-color: #e6f7ed;}
+
+        .table-responsive-box { width: 100%; overflow-x: auto; border: 1px solid #f4f4f4; border-radius: 6px;}
+        .data-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; min-width: 1200px; }
+        .data-table th { font-weight: bold; color: #333; padding: 12px 10px; border-bottom: 2px solid #ddd; background-color: #f8fafc; white-space: nowrap; }
+        .data-table td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
+
+        .badge-commission { background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;}
+
+        /* أزرار الإجراءات - تم التعديل هنا لتبقى في سطر واحد */
+        .actions-wrapper { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; min-width: max-content;}
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        
+        .btn-view { color: #605ca8; } .btn-view:hover { transform: scale(1.1); }
+        .btn-load-action { color: #f39c12; } .btn-load-action:hover { transform: scale(1.1); } 
+        .btn-settle-action { color: #3b82f6; } .btn-settle-action:hover { transform: scale(1.1); } 
+        .btn-pay-action { color: #00a65a; } .btn-pay-action:hover { transform: scale(1.1); } 
+        .btn-pay-rep-action { color: #8e44ad; } .btn-pay-rep-action:hover { transform: scale(1.1); } 
+        .btn-edit-act { color: #333; } .btn-edit-act:hover { transform: scale(1.1); }
+        .btn-delete-act { color: #dd4b39; } .btn-delete-act:hover { transform: scale(1.1); }
+
+        /* النوافذ المنبثقة */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 10px; overflow-y: auto;}
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-box { background: white; width: 100%; max-width: 650px; border-radius: 6px; border-top: 4px solid #00a65a; box-shadow: 0 10px 25px rgba(0,0,0,0.2); padding: 25px; transform: translateY(-20px); transition: 0.3s ease; margin: auto; }
+        
+        #payModal .modal-box { border-top-color: #00a65a; max-width: 450px; }
+        #payRepModal .modal-box { border-top-color: #8e44ad; max-width: 450px; }
+        #stockModal .modal-box { border-top-color: #f39c12; max-width: 850px; }
+        #settleModal .modal-box { border-top-color: #3b82f6; max-width: 1050px; } 
+        #agentHistoryModal .modal-box { border-top-color: #605ca8; max-width: 850px; }
+        #variantModal .modal-box { border-top-color: #f39c12; max-width: 500px; }
+        #deleteAgentModal .modal-box { border-top-color: #dd4b39; max-width: 400px; text-align: center; }
+
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f4f4f4; padding-bottom: 15px; margin-bottom: 20px; }
+        .modal-title { font-size: 16px; font-weight: bold; color: #333; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #aaa; transition: 0.2s;}
+        .modal-close:hover { color: #dd4b39; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px; width: 100%; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; position: relative; width: 100%; }
+
+        .form-group label { position: absolute; top: -10px; right: 12px; background-color: #fff; padding: 0 6px; font-size: 12px; font-weight: bold; color: #666; z-index: 2; pointer-events: none; }
+        .form-control { width: 100%; padding: 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; outline: none; background-color: #fff; transition: 0.3s;}
+        .form-control:focus { border-color: #00a65a; box-shadow: 0 0 0 2px rgba(0,166,90,0.1); }
+        .form-control:disabled { background-color: #f8fafc; color: #94a3b8; border-color: #e2e8f0; }
+
+        /* أزرار الحفظ في المودال متجاورة وتتجاوب للجريد */
+        .modal-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid #f4f4f4; padding-top: 15px; margin-top: 20px; width: 100%;}
+        .modal-footer button { padding: 10px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; border: none; width: 100%;}
+        .btn-submit { background-color: #00a65a; color: white; } .btn-submit:hover { background-color: #008d4c; }
+        .btn-blue { background-color: #3b82f6; color: white; } .btn-blue:hover { background-color: #2563eb; }
+        .btn-purple { background-color: #8e44ad; color: white; } .btn-purple:hover { background-color: #732d91; }
+        .btn-cancel { background-color: #f4f4f4; color: #444; border: 1px solid #ddd; } .btn-cancel:hover { background-color: #e2e8f0; }
+
+        /* البحث الذكي وسلة البضائع */
+        .suggestions-box { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; z-index: 100; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 12px 15px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap:4px; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: #f8fafc; color: #0284c7; }
+
+        .staged-table { width: 100%; text-align: right; font-size: 12px; border-collapse: collapse; margin-top: 15px; min-width: 700px;}
+        .staged-table th { background: #f1f5f9; padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: center; font-weight: bold; color:#444;}
+        .staged-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; vertical-align: middle;}
+
+        /* إدخالات التسوية المخصصة */
+        .settle-input { width: 65px; padding: 6px; text-align: center; border: 1px solid #ccc; border-radius: 4px; outline: none; font-weight: bold; border-left: none; border-top-left-radius: 0; border-bottom-left-radius: 0;}
+        .settle-input:focus { border-color: #3b82f6; }
+        .settle-unit-select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; outline: none; background: #f8fafc; font-size: 11px; border-right: none; border-top-right-radius: 0; border-bottom-right-radius: 0;}
+        .settle-unit-select:focus { border-color: #3b82f6; }
+        
+        .settle-summary { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;}
+        .settle-summary span { font-size: 14px; font-weight: bold; color: #166534; }
+        .settle-summary strong { font-size: 20px; color: #15803d; }
+
+        /* الإشعارات */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { padding: 12px 20px; border-radius: 4px; color: white; font-weight: bold; font-size: 13px; opacity: 0; transform: translateY(20px); transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);}
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: #00a65a; border-right: 4px solid #008d4c; }
+        .toast.error { background-color: #dd4b39; border-right: 4px solid #c23321; }
+        .toast.warning { background-color: #f39c12; border-right: 4px solid #d0830b; }
+
+        #pdfExportContainer { position: absolute; left: -9999px; top: -9999px; width: 900px; background: white; padding: 30px; direction: rtl; font-family: 'Cairo', sans-serif; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .top-cards-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+            .main-card { padding: 15px; min-height: 80px; }
+            .card-header-title { font-size: 11px; } .card-stat { font-size: 16px; } .card-icon-side { font-size: 24px; }
+            
+            .action-bar { flex-direction: column; align-items: stretch; gap: 12px; padding: 15px; }
+            .btn-add-agent { justify-content: center; width: 100%; padding: 12px; }
+            
+            .table-header-wrapper { flex-direction: column; align-items: stretch; text-align: center;}
+            .export-group { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 10px; }
+            .btn-export { width: 100%; }
+
+            .modal-box { padding: 20px 15px; width: 95%; max-height: 90vh; }
+            .form-row { grid-template-columns: 1fr 1fr !important; gap: 15px 10px; margin-bottom: 15px; }
+            .form-row.full { grid-template-columns: 1fr !important; }
+            .form-control { padding: 8px 10px; font-size: 11px; }
+            .form-group label { font-size: 10px; top: -8px; }
+
+            .data-table { min-width: 1000px; } 
+            .modal-footer.export-view { display: grid; grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard-container">
+        <!-- الكروت العلوية -->
+        <div class="top-cards-grid">
+            <div class="main-card card-total-agents"><div class="card-content-side"><span class="card-header-title">إجمالي المناديب</span><span class="card-stat" id="statAgents">0 مندوب</span></div><div class="card-icon-side"><i class="fa-solid fa-truck-ramp-box"></i></div></div>
+            <div class="main-card card-agents-sales"><div class="card-content-side"><span class="card-header-title">إجمالي المبيعات المسجلة</span><span class="card-stat" id="statSales">0.00 ₪</span></div><div class="card-icon-side"><i class="fa-solid fa-basket-shopping"></i></div></div>
+            <div class="main-card card-agents-commissions"><div class="card-content-side"><span class="card-header-title">عمولات مستحقة (لم تدفع)</span><span class="card-stat" id="statCommissions">0.00 ₪</span></div><div class="card-icon-side"><i class="fa-solid fa-coins"></i></div></div>
+            <div class="main-card card-agents-custody"><div class="card-content-side"><span class="card-header-title">بضاعة بالسيارات</span><span class="card-stat" id="statCustody">0.00 ₪</span></div><div class="card-icon-side"><i class="fa-solid fa-boxes-packing"></i></div></div>
+        </div>
+
+        <!-- شريط العمليات -->
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchAgentInput" class="search-control" placeholder="ابحث باسم المندوب أو العنوان..." oninput="renderAgentsTable()">
+            </div>
+            <button class="btn-add-agent" onclick="openAgentModal()"><i class="fa-solid fa-user-plus"></i> إضافة مندوب جديد</button>
+        </div>
+
+        <!-- جدول المناديب -->
+        <div class="table-container">
+            <div class="table-header-wrapper">
+                <div class="table-title">سجل حسابات وعمولات التوزيع الخارجي</div>
+                <div class="export-group">
+                    <button class="btn-export excel" onclick="exportMainExcel()"><i class="fa-solid fa-file-excel"></i> تصدير إكسل</button>
+                    <button class="btn-export pdf" onclick="exportMainPDF()"><i class="fa-solid fa-file-pdf"></i> استخراج PDF</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>اسم المندوب</th>
+                            <th>رقم الجوال</th>
+                            <th>العنوان / خط السير</th>
+                            <th>نظام العمولة</th>
+                            <th>بضاعة بالسيارة</th>
+                            <th>إجمالي المبيعات (المسجلة)</th>
+                            <th>نقدية مُحصلة (موردة)</th>
+                            <th>مطلوب سداده (الذمة)</th>
+                            <th>العمولة المستحقة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 1: إضافة/تعديل المندوب -->
+    <div class="modal-overlay" id="agentModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-user-tie" style="color:#00a65a;"></i> بيانات المندوب ونظام العمولة</div>
+                <button class="modal-close" onclick="closeModal('agentModal')">&times;</button>
+            </div>
+            <form id="agentForm" onsubmit="saveAgent(event)">
+                <input type="hidden" id="editAgentId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="aNameInput" required autocomplete="off">
+                        <label>اسم المندوب الكامل</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="tel" class="form-control" id="aPhoneInput" required autocomplete="off">
+                        <label>رقم الجوال</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="aAddressInput" required autocomplete="off">
+                        <label>المدينة / خط السير</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="aCommTypeSelect" required>
+                            <option value="percent">نسبة مئوية (%) من المبيعات</option>
+                            <option value="fixed">مبلغ ثابت على القطعة المباعة</option>
+                        </select>
+                        <label>طريقة احتساب العمولة</label>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="number" step="0.01" class="form-control" id="aCommValueInput" required autocomplete="off">
+                        <label>قيمة / نسبة العمولة</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('agentModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit">حفظ واعتماد البيانات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 2: تحميل بضاعة للسيارة -->
+    <div class="modal-overlay" id="stockModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-truck-arrow-right" style="color:#f39c12;"></i> تحميل بضاعة للمندوب (سحب من المخزن)</div>
+                <button class="modal-close" onclick="closeModal('stockModal')">&times;</button>
+            </div>
+            <form id="stockForm" onsubmit="processLoadAction(event)">
+                <input type="hidden" id="stockAgentId">
+                
+                <div class="form-row full">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="stockSearchInput" placeholder="اكتب اسم المنتج أو الباركود هنا للبحث..." oninput="searchStockProducts()" autocomplete="off">
+                        <label>ابحث في المخزن لتحميل السيارة</label>
+                        <div id="stockSuggestions" class="suggestions-box"></div>
+                    </div>
+                </div>
+
+                <div class="table-responsive-box" style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0;">
+                    <table class="staged-table">
+                        <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 5;">
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الوحدة والكمية المُحملة</th>
+                                <th>متوفر بالمخزن</th>
+                                <th>حذف</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockCartBody">
+                            <tr><td colspan="4" style="color:#999; padding: 15px;">الجدول فارغ. ابحث لإضافة المنتجات...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('stockModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit" style="background-color: #f39c12;">تأكيد التحميل وخصم المخزن</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 3: تسوية المبيعات والمرتجع (نهاية اليوم) -->
+    <div class="modal-overlay" id="settleModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-scale-balanced" style="color:#3b82f6;"></i> تسوية الجرد والمبيعات (نهاية اليوم)</div>
+                <button class="modal-close" onclick="closeModal('settleModal')">&times;</button>
+            </div>
+            <form onsubmit="processSettlement(event)">
+                <input type="hidden" id="settleAgentId">
+                <div style="margin-bottom: 10px; font-weight: bold; color: #333; font-size: 14px;">
+                    المندوب: <span id="settleAgentName" style="color: #3b82f6;"></span>
+                </div>
+                
+                <div class="table-responsive-box" style="max-height: 300px; overflow-y: auto;">
+                    <table class="staged-table" style="min-width: 900px;">
+                        <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 5;">
+                            <tr>
+                                <th>المنتج المحمل</th>
+                                <th>بالسيارة</th>
+                                <th>الكمية المباعة</th>
+                                <th>المرتجع للمخزن</th>
+                                <th>المتبقي معه</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settleTableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settle-summary">
+                    <div>
+                        <span>قيمة المبيعات المسجلة (تُضاف للذمة):</span><br>
+                        <strong id="settleTotalSalesValue">0.00 ₪</strong>
+                    </div>
+                    <div>
+                        <span>العمولة المكتسبة (للمندوب):</span><br>
+                        <strong id="settleTotalCommissionValue" style="color:#f39c12;">0.00 ₪</strong>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('settleModal')">إلغاء</button>
+                    <button type="submit" class="btn-blue"><i class="fa-solid fa-check-double"></i> اعتماد وتسجيل المبيعات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 4: سجل حركات المندوب -->
+    <div class="modal-overlay" id="agentHistoryModal">
+        <div class="modal-box" style="max-width: 850px; border-top-color: #605ca8;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-list-check" style="color:#605ca8;"></i> سجل الحركات والعمليات للمندوب</div>
+                <button class="modal-close" onclick="closeModal('agentHistoryModal')">&times;</button>
+            </div>
+            <input type="hidden" id="historyAgentId">
+            <div style="margin-bottom: 15px; font-weight: bold; color: #333; font-size: 14px;">
+                المندوب: <span id="historyAgentName" style="color: #605ca8;"></span>
+            </div>
+            
+            <div class="table-responsive-box" style="max-height: 350px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead style="position: sticky; top: 0; background: #f9f9f9; z-index: 2;">
+                        <tr>
+                            <th>التاريخ والوقت</th>
+                            <th>نوع الحركة</th>
+                            <th>التفاصيل</th>
+                            <th>القيمة الإجمالية (₪)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentHistoryBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="modal-footer export-view">
+                <button type="button" class="btn-export excel" style="width:100%; border-radius:4px; font-weight:bold; padding:10px; cursor:pointer;" onclick="exportAgentHistoryExcel()"><i class="fa-solid fa-file-excel"></i> تنزيل إكسل</button>
+                <button type="button" class="btn-export pdf" style="width:100%; border-radius:4px; font-weight:bold; padding:10px; cursor:pointer;" onclick="exportAgentHistoryPDF()"><i class="fa-solid fa-file-pdf"></i> تنزيل PDF</button>
+                <button type="button" class="btn-cancel" style="grid-column: span 2;" onclick="closeModal('agentHistoryModal')">إغلاق النافذة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 5: استلام مبيعات نقدية مع ربط الصناديق -->
+    <div class="modal-overlay" id="payModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-hand-holding-dollar" style="color:#00a65a;"></i> استلام مبيعات وتوريد نقدية</div>
+                <button class="modal-close" onclick="closeModal('payModal')">&times;</button>
+            </div>
+            <form id="payForm" onsubmit="processPayment(event)">
+                <input type="hidden" id="payAgentId">
+                <div style="margin-bottom: 20px; font-weight: bold; color: #333; font-size: 14px; text-align: center;">
+                    المندوب: <span id="payAgentNameTitle" style="color: #605ca8;"></span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="number" step="0.01" class="form-control" id="payAmountInput" required min="0.01">
+                        <label>المبلغ ₪</label>
+                    </div>
+                    <div class="form-group" id="payCurrencyGroup" style="display:none;">
+                        <select class="form-control" id="payCurrencySelect" onchange="handleAgentCurrencyChange('pay')"></select>
+                        <label>عملة التوريد</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="payVaultSelect" required>
+                            <!-- تعبأ الصناديق من قاعدة البيانات الحقيقية للصناديق -->
+                        </select>
+                        <label>إلى صندوق / حساب (المستلم)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('payModal')">إلغاء</button>
+                    <button type="submit" class="btn-submit">تأكيد استلام النقدية</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 6: تسديد عمولة للمندوب (صرف) مع ربط الصناديق -->
+    <div class="modal-overlay" id="payRepModal">
+        <div class="modal-box" style="border-top-color: #8e44ad;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-money-bill-transfer" style="color:#8e44ad;"></i> تسديد عمولة / دفعة للمندوب</div>
+                <button class="modal-close" onclick="closeModal('payRepModal')">&times;</button>
+            </div>
+            <form id="payRepForm" onsubmit="processPayRep(event)">
+                <input type="hidden" id="payRepAgentId">
+                <div style="margin-bottom: 20px; font-weight: bold; color: #333; font-size: 14px; text-align: center;">
+                    المندوب: <span id="payRepAgentNameTitle" style="color: #8e44ad;"></span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="number" step="0.01" class="form-control" id="payRepAmountInput" required min="0.01">
+                        <label>المبلغ</label>
+                    </div>
+                    <div class="form-group" id="payRepCurrencyGroup" style="display:none;">
+                        <select class="form-control" id="payRepCurrencySelect" onchange="handleAgentCurrencyChange('payRep')"></select>
+                        <label>عملة الصرف</label>
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control" id="payRepVaultSelect" required>
+                            <!-- تعبأ الصناديق من قاعدة البيانات الحقيقية -->
+                        </select>
+                        <label>اختر الصندوق</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeModal('payRepModal')">إلغاء</button>
+                    <button type="submit" class="btn-purple">تأكيد وصرف الدفعة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- النافذة 7: تأكيد الحذف -->
+    <div class="modal-overlay" id="deleteAgentModal">
+        <div class="modal-box" style="max-width: 400px; text-align: center; border-top-color: #dd4b39;">
+            <div style="font-size: 50px; color: #dd4b39; margin-bottom: 15px;"><i class="fa-regular fa-circle-xmark"></i></div>
+            <h3 style="margin-bottom: 10px; color: #333;">تأكيد حذف المندوب</h3>
+            <p style="color: #666; font-size: 14px; margin-bottom: 25px;">هل أنت متأكد من حذف هذا المندوب نهائياً؟ لا يمكن التراجع.</p>
+            <input type="hidden" id="deleteTargetAgentId">
+            <div class="modal-footer" style="justify-content: center; border: none; padding: 0;">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteAgentModal')">تراجع</button>
+                <button type="button" class="btn-submit" style="background-color: #dd4b39;" onclick="confirmDeleteAgent()"><i class="fa-solid fa-trash-can"></i> احذف</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- النافذة 8: اختيار المقاسات -->
+    <div class="modal-overlay" id="variantModal">
+        <div class="modal-box" style="max-width: 500px; border-top-color: #f39c12;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-solid fa-shirt" style="color:#f39c12;"></i> اختيار المقاس أو اللون</div>
+                <button class="modal-close" onclick="closeModal('variantModal')">&times;</button>
+            </div>
+            <div class="table-responsive-box">
+                <table class="data-table">
+                    <thead><tr><th>المقاس</th><th>اللون</th><th>المتوفر بالمخزن</th></tr></thead>
+                    <tbody id="variantBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" style="grid-column: span 2;" onclick="closeModal('variantModal')">تراجع</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- حاوية التصدير للـ PDF -->
+    <div id="pdfExportContainer" style="position: absolute; left: -9999px; top: -9999px; width: 800px; background: white; padding: 30px; direction: rtl; font-family: 'Cairo', sans-serif;">
+        <h2 id="pdfHeaderTitle" style="text-align: center; color: #333; margin-bottom: 10px; border-bottom: 2px solid #605ca8; padding-bottom: 10px;">تقرير</h2>
+        <p id="pdfDate" style="text-align: left; font-size: 13px; color: #666; font-weight: bold; margin-bottom: 20px;"></p>
+        <table id="pdfTable" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 13px;"></table>
+    </div>
+
+    <script>
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        let agentsData = [];
+        let productsData = [];
+        let agentMovementsData = []; 
+        let transferCart = [];
+        let fundsData = { accounts: [] }; 
+
+        function initSystem() {
+            agentsData = JSON.parse(localStorage.getItem('cashtop_sales_agents')) || [];
+            agentsData.forEach(a => {
+                if(!a.carStock) a.carStock = [];
+                if(a.totalSales === undefined) a.totalSales = 0; 
+                if(a.totalCollected === undefined) a.totalCollected = 0; 
+                if(a.totalCommission === undefined) a.totalCommission = 0;
+            });
+
+            productsData = JSON.parse(localStorage.getItem('cashtop_products')) || [];
+            productsData.forEach(p => { if (!p.storeStocks) p.storeStocks = {}; });
+
+            agentMovementsData = JSON.parse(localStorage.getItem('cashtop_agent_movements')) || [];
+            
+            let localFunds = localStorage.getItem('cashtop_funds_db');
+            if(localFunds) fundsData = JSON.parse(localFunds);
+            else fundsData = { accounts: [{id: 1, name: "صندوق الكاش الرئيسي", type: "كاش", balance: 0}] };
+
+            normalizeAgentAccountCurrencies();
+            populateAgentCurrencySelects();
+            populateVaultSelects();
+            renderAgentsTable(); 
+        }
+
+        function agentCurrencyConfig() {
+            return window.CashtopMulti?.getCurrencyConfig?.() || {
+                enabled: false,
+                baseCurrencyId: 'base',
+                currencies: [{ id: 'base', name: 'العملة الأساسية', code: '', symbol: '₪', ratePer100Base: 100 }]
+            };
+        }
+
+        function normalizeAgentAccountCurrencies() {
+            const cfg = agentCurrencyConfig();
+            if (!Array.isArray(fundsData.accounts)) fundsData.accounts = [];
+            fundsData.accounts.forEach(account => {
+                if (!account.currencyId) account.currencyId = cfg.baseCurrencyId;
+            });
+        }
+
+        function populateAgentCurrencySelects() {
+            const cfg = agentCurrencyConfig();
+            ['pay', 'payRep'].forEach(prefix => {
+                const select = document.getElementById(`${prefix}CurrencySelect`);
+                const group = document.getElementById(`${prefix}CurrencyGroup`);
+                if (!select || !group) return;
+                group.style.display = cfg.enabled ? '' : 'none';
+                select.innerHTML = cfg.currencies.map(currency =>
+                    `<option value="${currency.id}">${currency.name}${currency.code ? ` (${currency.code})` : ''}</option>`
+                ).join('');
+                select.value = cfg.baseCurrencyId;
+            });
+        }
+
+        function getAgentFlowCurrencyId(prefix) {
+            const cfg = agentCurrencyConfig();
+            if (!cfg.enabled) return cfg.baseCurrencyId;
+            return document.getElementById(`${prefix}CurrencySelect`)?.value || cfg.baseCurrencyId;
+        }
+
+        function populateVaultSelects() {
+            const cfg = agentCurrencyConfig();
+            [['pay', 'payVaultSelect'], ['payRep', 'payRepVaultSelect']].forEach(([prefix, selectId]) => {
+                const select = document.getElementById(selectId);
+                if (!select) return;
+                const currencyId = getAgentFlowCurrencyId(prefix);
+                const accounts = (fundsData.accounts || []);
+                select.innerHTML = accounts.length
+                    ? accounts.map(account => {
+                        const currency = window.CashtopMulti?.getCurrency?.(account.currencyId || cfg.baseCurrencyId, cfg);
+                        const suffix = cfg.enabled ? ` - ${currency?.symbol || currency?.code || ''}` : '';
+                        return `<option value="${account.id}">${account.name} [${account.type}]${suffix}</option>`;
+                    }).join('')
+                    : '<option value="">لا يوجد صندوق مالي</option>';
+            });
+        }
+
+        function handleAgentCurrencyChange(prefix) {
+            populateVaultSelects();
+            if (prefix === 'payRep') {
+                const id = document.getElementById('payRepAgentId')?.value;
+                const agent = agentsData.find(x => String(x.id) === String(id));
+                const currencyId = getAgentFlowCurrencyId('payRep');
+                if (agent) {
+                    const native = window.CashtopMulti?.fromBase?.(Number(agent.totalCommission || 0), currencyId) ?? Number(agent.totalCommission || 0);
+                    document.getElementById('payRepAmountInput').value = native.toFixed(2);
+                }
+            }
+        }
+
+        // ==========================================
+        // إدارة جدول المناديب والإحصائيات
+        // ==========================================
+        async function renderAgentsTable() {
+            const tbody = document.getElementById('agentsTableBody');
+            agentsData = JSON.parse(localStorage.getItem('cashtop_sales_agents')) || [];
+            const searchVal = String(document.getElementById('searchAgentInput').value || '').trim();
+            const sequence = renderAgentsTable._sequence = (renderAgentsTable._sequence || 0) + 1;
+            const fallback = () => !searchVal ? agentsData : agentsData.filter(a =>
+                String(a?.name || '').toLowerCase().includes(searchVal.toLowerCase()) || String(a?.address || '').toLowerCase().includes(searchVal.toLowerCase())
+            );
+            const filtered = searchVal && agentsData.length >= 800 && window.Cashtop?.runWorkerTask
+                ? await window.Cashtop.runWorkerTask('filter-records', { records: agentsData, query: searchVal, fields: ['name','address'] }, fallback)
+                : fallback();
+            if (sequence !== renderAgentsTable._sequence) return;
+
+            const totals = filtered.reduce((acc, a) => {
+                const carValue = (Array.isArray(a?.carStock) ? a.carStock : []).reduce((sum, item) => sum + ((Number(item?.qty)||0) * (Number(item?.price)||0)), 0);
+                acc.custody += carValue;
+                acc.sales += Number(a?.totalSales) || 0;
+                acc.commissions += Number(a?.totalCommission) || 0;
+                return acc;
+            }, { sales: 0, commissions: 0, custody: 0 });
+
+            const createRow = a => {
+                const carValue = (Array.isArray(a?.carStock) ? a.carStock : []).reduce((sum, item) => sum + ((Number(item?.qty)||0) * (Number(item?.price)||0)), 0);
+                const debt = (parseFloat(a.totalSales) || 0) - (parseFloat(a.totalCollected) || 0);
+                const commStr = a.commType === 'percent' ? `نسبة (${a.commValue}%)` : `ثابت (${a.commValue} ₪)`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${a.name}</strong></td>
+                    <td dir="ltr" style="color:#555;font-weight:600;">${a.phone || ''}</td>
+                    <td>${a.address || ''}</td>
+                    <td><span class="badge-commission">${commStr}</span></td>
+                    <td style="font-weight:bold;color:#f39c12;">${carValue.toFixed(2)} ₪</td>
+                    <td style="font-weight:bold;color:#3b82f6;">${(parseFloat(a.totalSales)||0).toFixed(2)} ₪</td>
+                    <td style="font-weight:bold;color:#00a65a;">${(parseFloat(a.totalCollected)||0).toFixed(2)} ₪</td>
+                    <td style="font-weight:bold;color:#dd4b39;">${debt.toFixed(2)} ₪</td>
+                    <td style="font-weight:bold;color:#605ca8;">${(parseFloat(a.totalCommission)||0).toFixed(2)} ₪</td>
+                    <td><div class="actions-wrapper" style="flex-wrap:nowrap;">
+                        <button class="action-btn btn-view" title="سجل الحركات" onclick="openAgentHistoryModal('${a.id}')"><i class="fa-solid fa-list-check"></i></button>
+                        <button class="action-btn btn-load-action" title="تحميل بضاعة" onclick="openStockLoadModal('${a.id}')"><i class="fa-solid fa-truck-arrow-right"></i></button>
+                        <button class="action-btn btn-settle-action" title="تسوية" onclick="openSettleModal('${a.id}')"><i class="fa-solid fa-scale-balanced"></i></button>
+                        <button class="action-btn btn-pay-action" title="توريد نقدية" onclick="openPayModal('${a.id}')"><i class="fa-solid fa-cash-register"></i></button>
+                        <button class="action-btn btn-pay-rep-action" title="صرف دفعة" onclick="openPayRepModal('${a.id}')"><i class="fa-solid fa-money-bill-transfer"></i></button>
+                        <button class="action-btn btn-edit-act" title="تعديل" onclick="openAgentModal('${a.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-btn btn-delete-act" title="حذف" onclick="openDeleteAgentModal('${a.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                    </div></td>`;
+                return tr;
+            };
+            if (window.Cashtop?.renderVirtualRows) window.Cashtop.renderVirtualRows(tbody, filtered, createRow, { chunkSize: 80, eagerLimit: 160, colspan: 10, emptyHtml: `<tr><td colspan="10" style="color:#999;padding:20px;">لا يوجد مناديب مطابقين للبحث.</td></tr>` });
+            else { tbody.innerHTML=''; if (!filtered.length) tbody.innerHTML=`<tr><td colspan="10" style="color:#999;padding:20px;">لا يوجد مناديب مطابقين للبحث.</td></tr>`; else filtered.forEach(a=>tbody.appendChild(createRow(a))); }
+            document.getElementById('statAgents').innerText = agentsData.length + ' مندوب';
+            document.getElementById('statSales').innerText = totals.sales.toFixed(2) + ' ₪';
+            document.getElementById('statCommissions').innerText = totals.commissions.toFixed(2) + ' ₪';
+            document.getElementById('statCustody').innerText = totals.custody.toFixed(2) + ' ₪';
+        }
+
+        // ==========================================
+        // الإضافة والتعديل والحذف
+        // ==========================================
+        function openAgentModal(id = null) {
+            document.getElementById('agentForm').reset();
+            if(id) {
+                let a = agentsData.find(x => x.id === id);
+                if(a) {
+                    document.getElementById('editAgentId').value = a.id;
+                    document.getElementById('aNameInput').value = a.name;
+                    document.getElementById('aPhoneInput').value = a.phone;
+                    document.getElementById('aAddressInput').value = a.address;
+                    document.getElementById('aCommTypeSelect').value = a.commType;
+                    document.getElementById('aCommValueInput').value = a.commValue;
+                }
+            } else {
+                document.getElementById('editAgentId').value = '';
+            }
+            openModal('agentModal');
+        }
+
+        function saveAgent(e) {
+            e.preventDefault();
+            let id = document.getElementById('editAgentId').value;
+            let name = document.getElementById('aNameInput').value.trim();
+            let phone = document.getElementById('aPhoneInput').value.trim();
+            let address = document.getElementById('aAddressInput').value.trim();
+            let type = document.getElementById('aCommTypeSelect').value;
+            let val = parseFloat(document.getElementById('aCommValueInput').value) || 0;
+
+            if (id) {
+                let a = agentsData.find(x => x.id === id);
+                if(a) {
+                    a.name = name; a.phone = phone; a.address = address;
+                    a.commType = type; a.commValue = val;
+                }
+                showToast("تم تحديث بيانات المندوب بنجاح", "success");
+            } else {
+                agentsData.push({
+                    id: `AG_${Date.now()}`, name: name, phone: phone, address: address,
+                    commType: type, commValue: val, carStock: [], totalSales: 0, totalCollected: 0, totalCommission: 0
+                });
+                showToast("تم إضافة المندوب الجديد للنظام", "success");
+            }
+
+            localStorage.setItem('cashtop_sales_agents', JSON.stringify(agentsData));
+            closeModal('agentModal');
+            renderAgentsTable(); 
+        }
+
+        function openDeleteAgentModal(id) {
+            document.getElementById('deleteTargetAgentId').value = id;
+            openModal('deleteAgentModal');
+        }
+
+        function confirmDeleteAgent() {
+            let id = document.getElementById('deleteTargetAgentId').value;
+            let a = agentsData.find(x => x.id === id);
+            
+            if (a.carStock.length > 0) {
+                showToast("لا يمكن حذف المندوب لوجود عهدة بضاعة معه. قم بعمل تسوية أولاً.", "error");
+                closeModal('deleteAgentModal');
+                return;
+            }
+
+            agentsData = agentsData.filter(x => x.id !== id);
+            localStorage.setItem('cashtop_sales_agents', JSON.stringify(agentsData));
+            showToast('تم حذف المندوب نهائياً', 'success');
+            closeModal('deleteAgentModal');
+            renderAgentsTable(); 
+        }
+
+        // ==========================================
+        // تحميل البضاعة (سحب من المخزن للسيارة)
+        // ==========================================
+        function openStockLoadModal(id) {
+            let a = agentsData.find(x => x.id === id);
+            if(!a) return;
+
+            document.getElementById('stockAgentId').value = a.id;
+            transferCart = [];
+            renderTransferCart();
+            document.getElementById('stockSearchInput').value = '';
+            openModal('stockModal');
+        }
+
+        function searchStockProducts() {
+            const val = document.getElementById('stockSearchInput').value.trim().toLowerCase();
+            const box = document.getElementById('stockSuggestions');
+            if (val === '') { box.style.display = 'none'; return; }
+            
+            box.innerHTML = '';
+            let matched = [];
+
+            productsData.forEach(p => {
+                if (p.name.toLowerCase().includes(val) || (p.barcode && p.barcode.toLowerCase().includes(val))) {
+                    if (p.hasVariants && p.variants) {
+                        let hasStock = p.variants.some(v => (parseFloat(v.qty)||0) > 0);
+                        if(hasStock) matched.push({prod: p, isZero: false});
+                    } else {
+                        let qty = parseFloat(p.stockPieces) || 0;
+                        if(qty > 0) matched.push({prod: p, qty: qty, isZero: false});
+                    }
+                }
+            });
+
+            if (matched.length > 0) {
+                matched.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    
+                    let p = match.prod;
+                    if (p.hasVariants) {
+                        div.innerHTML = `<span style="font-weight:bold; color:#333;">${p.name} <span class="badge-variant">متعدد المقاسات</span></span><br><span style="font-size:11px; color:#00a65a; font-weight:bold;">اختر لعرض المقاسات</span>`;
+                        div.onmousedown = (e) => { e.preventDefault(); openTransferVariantModal(p.id); box.style.display = 'none'; };
+                    } else {
+                        div.innerHTML = `<span style="font-weight:bold; color:#333;">${p.name}</span><br><span style="font-size:11px; color:#00a65a; font-weight:bold;">متوفر بالمخزن: ${match.qty} ${p.pieceName || 'قطعة'}</span>`;
+                        div.onmousedown = (e) => { e.preventDefault(); addProdToCartLoad(p, match.qty); box.style.display = 'none'; };
+                    }
+                    box.appendChild(div);
+                });
+                box.style.display = 'block';
+            } else { 
+                box.innerHTML = `<div style="padding: 10px; color:#999; text-align:center;">لا توجد مطابقة في المخزن</div>`;
+                box.style.display = 'block'; 
+            }
+        }
+
+        function agentItemUnitChain(item) {
+            if (item?.isVariant) {
+                return [{ id: 'piece', name: item.pieceName || 'قطعة', factorToPrevious: 1, factorToBase: 1, salePrice: Number(item.price || 0) }];
+            }
+            const chain = window.CashtopMulti?.normalizeProductChain?.(item) || [];
+            return chain.length ? chain : [{ id: 'piece', name: item?.pieceName || 'قطعة', factorToPrevious: 1, factorToBase: 1, salePrice: Number(item?.price || 0) }];
+        }
+
+        function agentItemUnit(item, unitId) {
+            const chain = agentItemUnitChain(item);
+            return chain.find(level => String(level.id) === String(unitId))
+                || chain.find((_, index) => (unitId === 'piece' && index === 0) || (unitId === 'unit' && index === chain.length - 1))
+                || chain[0];
+        }
+
+        function agentItemUnitFactor(item, unitId) {
+            return Math.max(0.000001, Number(agentItemUnit(item, unitId)?.factorToBase || 1));
+        }
+
+        function agentItemUnitName(item, unitId) {
+            return agentItemUnit(item, unitId)?.name || item?.pieceName || 'قطعة';
+        }
+
+        function agentItemUnitPrice(item, unitId) {
+            const unit = agentItemUnit(item, unitId);
+            const chain = agentItemUnitChain(item);
+            if (item?.unitPrices && Number.isFinite(Number(item.unitPrices[unit.id]))) return Math.max(0, Number(item.unitPrices[unit.id]));
+            if (Number.isFinite(Number(unit.salePrice))) return Math.max(0, Number(unit.salePrice));
+            const basePrice = Number(item?.pricePiece ?? item?.price ?? 0);
+            return Math.max(0, basePrice * Number(unit.factorToBase || 1));
+        }
+
+        function addProdToCartLoad(prod, availQty) {
+            const existing = transferCart.find(item => item.id === prod.id && !item.isVariant);
+            if(!existing) {
+                const unitChain = agentItemUnitChain(prod);
+                const defaultUnit = unitChain[unitChain.length - 1] || unitChain[0];
+                transferCart.push({
+                    id: prod.id, name: prod.name, barcode: prod.barcode || `BC_${Date.now()}`, stockLimit: availQty,
+                    piecesPerUnit: Number(defaultUnit?.factorToBase || 1), unitName: defaultUnit?.name || prod.unitName || 'وحدة', pieceName: unitChain[0]?.name || prod.pieceName || 'قطعة',
+                    addType: unitChain.length > 1 ? 'unit' : 'piece', transferUnit: defaultUnit?.id || 'piece', transferQty: 1,
+                    unitChain: JSON.parse(JSON.stringify(unitChain)), unitPrices: { ...(prod.unitPrices || {}) },
+                    pricePiece: Number(prod.pricePiece ?? prod.price ?? 0), priceUnit: Number(prod.priceUnit || 0),
+                    price: agentItemUnitPrice(prod, defaultUnit?.id || 'piece'), isVariant: false
+                });
+                renderTransferCart();
+            } else { showToast("المنتج موجود بالقائمة", "warning"); }
+        }
+
+        function openTransferVariantModal(productId) {
+            const prod = productsData.find(p => p.id === productId);
+            if (!prod || !prod.variants) return;
+            const tbody = document.getElementById('variantBody');
+            tbody.innerHTML = '';
+
+            prod.variants.forEach((v, vIndex) => {
+                let availQty = parseFloat(v.qty) || 0;
+                if (availQty > 0) {
+                    tbody.innerHTML += `
+                        <tr style="cursor:pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='transparent'" onclick="addVariantToCartLoad('${prod.id}', ${vIndex}, ${availQty}); closeModal('variantModal');">
+                            <td><span style="background:#f1f5f9; padding:2px 8px; border-radius:4px; font-weight:bold;">${v.size || '---'}</span></td>
+                            <td>${v.color || '---'}</td>
+                            <td style="color:#00a65a; font-weight:bold;">${availQty}</td>
+                        </tr>
+                    `;
+                }
+            });
+            openModal('variantModal');
+        }
+
+        function addVariantToCartLoad(prodId, vIndex, availQty) {
+            const prod = productsData.find(p => p.id === prodId);
+            const variant = prod.variants[vIndex];
+            
+            const existing = transferCart.find(item => item.id === prod.id && item.isVariant && item.vIndex === vIndex);
+            if(!existing) {
+                transferCart.push({
+                    id: prod.id, name: `${prod.name} (مقاس: ${variant.size} - لون: ${variant.color})`, barcode: variant.barcode || prod.barcode, stockLimit: availQty,
+                    piecesPerUnit: 1, unitName: 'وحدة', pieceName: 'قطعة', addType: 'piece', transferUnit: 'piece', transferQty: 1, 
+                    price: parseFloat(prod.pricePiece || 0), isVariant: true, vIndex: vIndex, vSize: variant.size, vColor: variant.color
+                });
+                renderTransferCart();
+            } else { showToast("المقاس موجود بالقائمة", "warning"); }
+        }
+
+        function renderTransferCart() {
+            const tbody = document.getElementById('stockCartBody');
+            tbody.innerHTML = '';
+
+            if(transferCart.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding:15px; font-weight:bold;">الجدول فارغ. ابحث لإضافة المنتجات...</td></tr>`;
+                return;
+            }
+
+            transferCart.forEach((item, index) => {
+                const chain = agentItemUnitChain(item);
+                const selectedUnit = agentItemUnit(item, item.transferUnit);
+                const factor = Number(selectedUnit?.factorToBase || 1);
+                const maxAllowed = Number(item.stockLimit || 0) / factor;
+                const unitOptions = chain.map((unit, unitIndex) => {
+                    const detail = unitIndex === 0 ? '' : ` (${Number(unit.factorToBase || 1)} ${chain[0].name})`;
+                    return `<option value="${unit.id}" ${String(item.transferUnit) === String(unit.id) ? 'selected' : ''}>${unit.name}${detail}</option>`;
+                }).join('');
+                const unitAndQtyHtml = `
+                    <div style="display:flex; flex-direction:row; gap:8px; align-items:center;">
+                        <input type="number" step="any" class="form-control" value="${item.transferQty}" min="0.000001" max="${maxAllowed}" onchange="updateTransferQty(${index}, this.value)" style="width:90px; padding:4px; text-align:center; height:32px; font-weight:bold; border-radius:4px;" placeholder="الكمية">
+                        <select class="form-control" style="padding:4px 8px; font-size:11px; height:32px; min-width:125px; border-radius:4px; border-color:#3b82f6;" onchange="updateTransferUnit(${index}, this.value)">
+                            ${unitOptions}
+                        </select>
+                    </div>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:bold; font-size:13px; color:#222; text-align:right;">${item.name}</td>
+                        <td style="vertical-align: middle;">${unitAndQtyHtml}</td>
+                        <td style="color:#00a65a; font-weight:bold; font-size:14px; vertical-align: middle;">${item.stockLimit} ${chain[0]?.name || 'قطعة'}</td>
+                        <td style="vertical-align: middle;"><button type="button" class="action-btn btn-delete-act" onclick="removeTransferItem(${index})"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>`;
+            });
+        }
+
+        function updateTransferUnit(index, val) {
+            const item = transferCart[index];
+            if (!item) return;
+            item.transferUnit = val;
+            item.transferQty = 1;
+            item.price = agentItemUnitPrice(item, val);
+            renderTransferCart();
+        }
+        function updateTransferQty(index, val) { transferCart[index].transferQty = Math.max(0, parseFloat(val) || 0); }
+        function removeTransferItem(index) { transferCart.splice(index, 1); renderTransferCart(); }
+
+        function processLoadAction(e) {
+            e.preventDefault();
+            let aId = document.getElementById('stockAgentId').value;
+            let a = agentsData.find(x => String(x.id) === String(aId));
+            if(!a) return;
+
+            if (transferCart.length === 0) { showToast("السلة فارغة!", "error"); return; }
+
+            let hasError = false;
+            transferCart.forEach(item => {
+                const piecesToMove = Number(item.transferQty || 0) * agentItemUnitFactor(item, item.transferUnit);
+                if (piecesToMove <= 0 || piecesToMove > Number(item.stockLimit || 0) + 0.000001) {
+                    showToast(`الكمية المطلوبة للصنف [${item.name}] تتجاوز المتوفر بالمخزن أو غير صحيحة!`, "error");
+                    hasError = true;
+                }
+            });
+            if(hasError) return;
+
+            let totalVal = 0;
+            let detailsArr = [];
+
+            transferCart.forEach(item => {
+                const factor = agentItemUnitFactor(item, item.transferUnit);
+                const piecesToMove = Number(item.transferQty || 0) * factor;
+                item.price = agentItemUnitPrice(item, item.transferUnit);
+                totalVal += Number(item.transferQty || 0) * Number(item.price || 0);
+                const unitStr = agentItemUnitName(item, item.transferUnit);
+                detailsArr.push(`${item.name} (${item.transferQty} ${unitStr})`);
+
+                let dbProd = productsData.find(p => String(p.id) === String(item.id));
+                if (item.isVariant) dbProd.variants[item.vIndex].qty -= piecesToMove;
+                else dbProd.stockPieces = parseFloat(dbProd.stockPieces) - piecesToMove;
+
+                let carItemCode = item.isVariant ? `${item.id}_${item.vSize}_${item.vColor}` : item.id;
+                let existingInCar = a.carStock.find(c => c.cartId === carItemCode && String(c.transferUnit) === String(item.transferUnit));
+
+                if(existingInCar) {
+                    existingInCar.qty = Number(existingInCar.qty || 0) + Number(item.transferQty || 0);
+                    existingInCar.price = agentItemUnitPrice(existingInCar, existingInCar.transferUnit);
+                } else {
+                    let newItemForCar = JSON.parse(JSON.stringify(item));
+                    newItemForCar.cartId = carItemCode;
+                    newItemForCar.qty = Number(item.transferQty || 0);
+                    newItemForCar.transferFactor = factor;
+                    a.carStock.push(newItemForCar);
+                }
+            });
+
+            agentMovementsData.push({
+                id: `MOV_${Date.now()}`, agentId: aId, date: new Date().toLocaleString('ar-EG'),
+                type: 'تحميل بضاعة', details: detailsArr.join('، '), amount: totalVal
+            });
+            localStorage.setItem('cashtop_agent_movements', JSON.stringify(agentMovementsData));
+            localStorage.setItem('cashtop_sales_agents', JSON.stringify(agentsData));
+            localStorage.setItem('cashtop_products', JSON.stringify(productsData));
+
+            showToast(`تم تحميل البضاعة لسيارة المندوب وخصمها من المخزن بنجاح!`, "success");
+            closeModal('stockModal');
+            renderAgentsTable();
+        }
+
+        // ==========================================
+        // تسوية الجرد والمبيعات (نهاية اليوم)
+        // ==========================================
+        // تسوية الجرد والمبيعات (نهاية اليوم)
+        // ==========================================
+        let settleDataTemp = [];
+        let currentSettleAgentId = null;
+
+        function openSettleModal(id) {
+            let a = agentsData.find(x => x.id === id);
+            if(!a) return;
+
+            currentSettleAgentId = a.id;
+            document.getElementById('settleAgentName').innerText = a.name;
+            settleDataTemp = JSON.parse(JSON.stringify(a.carStock)); 
+
+            renderSettleTable();
+            openModal('settleModal');
+        }
+
+        function renderSettleTable() {
+            const tbody = document.getElementById('settleTableBody');
+            tbody.innerHTML = '';
+
+            if (settleDataTemp.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="color:#999; padding:20px;">السيارة فارغة، لا يوجد بضاعة لتسويتها.</td></tr>`;
+                document.getElementById('settleTotalSalesValue').innerText = "0.00 ₪";
+                document.getElementById('settleTotalCommissionValue').innerText = "0.00 ₪";
+                return;
+            }
+
+            settleDataTemp.forEach((item, index) => {
+                const chain = agentItemUnitChain(item);
+                if(!Number.isFinite(Number(item.soldQty))) item.soldQty = 0;
+                if(!item.soldUnit) item.soldUnit = item.transferUnit || chain[0].id;
+                if(!Number.isFinite(Number(item.returnedQty))) item.returnedQty = 0;
+                if(!item.returnedUnit) item.returnedUnit = item.transferUnit || chain[0].id;
+
+                const originalFactor = agentItemUnitFactor(item, item.transferUnit);
+                const returnedPieces = Number(item.returnedQty || 0) * agentItemUnitFactor(item, item.returnedUnit);
+                const originalPieces = Number(item.qty || 0) * originalFactor;
+                const soldPieces = Number(item.soldQty || 0) * agentItemUnitFactor(item, item.soldUnit);
+                const remainingPieces = originalPieces - soldPieces - returnedPieces;
+                const remainingDisplay = (remainingPieces / originalFactor).toFixed(3).replace(/\.?0+$/, '');
+                const unitStr = agentItemUnitName(item, item.transferUnit);
+                const options = chain.map(unit => `<option value="${unit.id}" ${String(item.soldUnit) === String(unit.id) ? 'selected' : ''}>${unit.name}</option>`).join('');
+                const returnOptions = chain.map(unit => `<option value="${unit.id}" ${String(item.returnedUnit) === String(unit.id) ? 'selected' : ''}>${unit.name}</option>`).join('');
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="text-align:right; font-weight:bold;">${item.name}<br><small style="color:#777; font-weight:normal;">سعر ${unitStr}: ${Number(agentItemUnitPrice(item, item.transferUnit)).toFixed(2)} ₪</small></td>
+                        <td style="font-weight:bold; color:#333; font-size:14px;">${item.qty} <span style="font-size:10px;">${unitStr}</span></td>
+                        <td>
+                            <div style="display:flex; align-items:center; justify-content:center; gap: 8px;">
+                                <input type="number" min="0" step="any" class="settle-input" value="${item.soldQty}" oninput="updateSettleMath(${index}, 'sold', this.value)" style="border-radius:4px;">
+                                <select class="settle-unit-select" onchange="updateSettleMath(${index}, 'soldUnit', this.value)" style="border-radius:4px; border-left:1px solid #ccc;">${options}</select>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display:flex; align-items:center; justify-content:center; gap: 8px;">
+                                <input type="number" min="0" step="any" class="settle-input" value="${item.returnedQty}" oninput="updateSettleMath(${index}, 'return', this.value)" style="border-radius:4px;">
+                                <select class="settle-unit-select" onchange="updateSettleMath(${index}, 'returnUnit', this.value)" style="border-radius:4px; border-left:1px solid #ccc;">${returnOptions}</select>
+                            </div>
+                        </td>
+                        <td style="font-weight:bold; color:${remainingPieces < 0 ? '#dd4b39' : '#00a65a'};" id="rem_${index}">${remainingDisplay} <span style="font-size:10px;">${unitStr}</span></td>
+                    </tr>`;
+            });
+            updateSettleSummary();
+        }
+
+        function updateSettleMath(index, field, val) {
+            let item = settleDataTemp[index];
+            if (!item) return;
+            if (field === 'sold') item.soldQty = Math.max(0, parseFloat(val) || 0);
+            else if (field === 'soldUnit') item.soldUnit = val;
+            else if (field === 'return') item.returnedQty = Math.max(0, parseFloat(val) || 0);
+            else if (field === 'returnUnit') item.returnedUnit = val;
+
+            const originalFactor = agentItemUnitFactor(item, item.transferUnit);
+            const originalPieces = Number(item.qty || 0) * originalFactor;
+            const soldPieces = Number(item.soldQty || 0) * agentItemUnitFactor(item, item.soldUnit);
+            const returnedPieces = Number(item.returnedQty || 0) * agentItemUnitFactor(item, item.returnedUnit);
+            const remainingPieces = originalPieces - soldPieces - returnedPieces;
+            const remainingDisplay = (remainingPieces / originalFactor).toFixed(3).replace(/\.?0+$/, '');
+            const unitStr = agentItemUnitName(item, item.transferUnit);
+
+            let remTd = document.getElementById(`rem_${index}`);
+            if(remTd) {
+                remTd.innerHTML = `${remainingDisplay} <span style="font-size:10px;">${unitStr}</span>`;
+                remTd.style.color = remainingPieces < 0 ? '#dd4b39' : '#00a65a';
+            }
+            updateSettleSummary();
+        }
+
+        function updateSettleSummary() {
+            let a = agentsData.find(x => String(x.id) === String(currentSettleAgentId));
+            let totalSalesVal = 0;
+            let totalSoldItemsCount = 0;
+
+            settleDataTemp.forEach(item => {
+                const unitPrice = agentItemUnitPrice(item, item.soldUnit);
+                totalSalesVal += Number(item.soldQty || 0) * unitPrice;
+                totalSoldItemsCount += Number(item.soldQty || 0) * agentItemUnitFactor(item, item.soldUnit);
+            });
+
+            let commissionVal = 0;
+            if(a?.commType === 'percent') commissionVal = totalSalesVal * (Number(a.commValue || 0) / 100);
+            else commissionVal = totalSoldItemsCount * Number(a?.commValue || 0);
+
+            document.getElementById('settleTotalSalesValue').innerText = totalSalesVal.toFixed(2) + ' ₪';
+            document.getElementById('settleTotalCommissionValue').innerText = commissionVal.toFixed(2) + ' ₪';
+        }
+
+        function processSettlement(e) {
+            e.preventDefault();
+            let a = agentsData.find(x => x.id === currentSettleAgentId);
+            
+            let hasError = false;
+            settleDataTemp.forEach(item => {
+                let originalPieces = Number(item.qty || 0) * agentItemUnitFactor(item, item.transferUnit);
+                let soldPieces = Number(item.soldQty || 0) * agentItemUnitFactor(item, item.soldUnit);
+                let returnedPieces = Number(item.returnedQty || 0) * agentItemUnitFactor(item, item.returnedUnit);
+
+                if (soldPieces + returnedPieces > originalPieces) {
+                    showToast(`المباع والمرتجع للصنف [${item.name}] أكبر من المتوفر بالسيارة!`, "error");
+                    hasError = true;
+                }
+            });
+            if(hasError) return;
+
+            let totalSalesVal = 0;
+            let totalSoldItemsCount = 0;
+            let soldItemsToInvoice = [];
+
+            for (let i = settleDataTemp.length - 1; i >= 0; i--) {
+                let item = settleDataTemp[i];
+                let originalItemInCar = a.carStock[i];
+                let dbProd = productsData.find(p => p.id === item.id);
+
+                let originalPieces = Number(item.qty || 0) * agentItemUnitFactor(item, item.transferUnit);
+                let soldPieces = Number(item.soldQty || 0) * agentItemUnitFactor(item, item.soldUnit);
+                let returnedPieces = Number(item.returnedQty || 0) * agentItemUnitFactor(item, item.returnedUnit);
+
+                if (item.soldQty > 0) {
+                    let unitPrice = agentItemUnitPrice(item, item.soldUnit);
+                    totalSalesVal += (Number(item.soldQty || 0) * unitPrice);
+                    totalSoldItemsCount += soldPieces;
+                    
+                    let itemCost = dbProd ? parseFloat(dbProd.cost) : 0;
+                    soldItemsToInvoice.push({
+                        id: item.id,
+                        name: item.name,
+                        qty: soldPieces,
+                        price: agentItemUnitPrice(item, agentItemUnitChain(item)[0]?.id || 'piece'),
+                        cost: itemCost
+                    });
+                }
+
+                // 1. إرجاع المرتجع للمخزن العام
+                if (returnedPieces > 0 && dbProd) {
+                    if (item.isVariant) dbProd.variants[item.vIndex].qty += returnedPieces;
+                    else dbProd.stockPieces = parseFloat(dbProd.stockPieces) + returnedPieces;
+                }
+
+                // 2. تحديث سيارة المندوب 
+                let remainingPieces = originalPieces - soldPieces - returnedPieces;
+                if (remainingPieces <= 0) {
+                    a.carStock.splice(i, 1);
+                } else {
+                    originalItemInCar.qty = remainingPieces / agentItemUnitFactor(item, item.transferUnit);
+                }
+            }
+
+            // 3. حساب وتسجيل العمولة
+            let commissionVal = 0;
+            if(a.commType === 'percent') commissionVal = totalSalesVal * (a.commValue / 100);
+            else commissionVal = totalSoldItemsCount * a.commValue;
+
+            // تحديث ذمة وعمولة المندوب - لا يتم دفع العمولة هنا، فقط تُسجل كذمة للمندوب
+            a.totalSales += totalSalesVal;
+            a.totalCommission += commissionVal;
+
+            // تسجيل الحركة
+            agentMovementsData.push({
+                id: `MOV_${Date.now()}`, agentId: currentSettleAgentId, date: new Date().toLocaleString('ar-EG'),
+                type: 'تسوية مبيعات ومرتجعات', details: `تمت تسوية مبيعات (ذمة) بقيمة ${totalSalesVal.toFixed(2)} ₪ وعمولة ${commissionVal.toFixed(2)} ₪`, amount: totalSalesVal
+            });
+            localStorage.setItem('cashtop_agent_movements', JSON.stringify(agentMovementsData));
+
+            // الترحيل المالي للتقارير 
+            if (soldItemsToInvoice.length > 0) {
+                let invoicesDB = JSON.parse(localStorage.getItem('cashtop_invoices')) || [];
+                invoicesDB.push({
+                    id: `INV_REP_${Date.now()}`,
+                    status: 'issued',
+                    date: new Date().toISOString(),
+                    customer: `مبيعات المندوب: ${a.name}`,
+                    phone: a.phone,
+                    items: soldItemsToInvoice,
+                    discount: 0,
+                    total: totalSalesVal,
+                    paid: 0, // لا يعتبر مقبوضاً حتى يورده المندوب في نافذة الاستلام
+                    debt: totalSalesVal, // يتم تسجيله كدين (مطلوب سداده) على المندوب
+                    notes: `تسوية مبيعات مندوب. عمولته المستحقة: ${commissionVal.toFixed(2)} ₪`
+                });
+                localStorage.setItem('cashtop_invoices', JSON.stringify(invoicesDB));
+
+                let expensesDB = JSON.parse(localStorage.getItem('cashtop_expenses')) || [];
+                expensesDB.push({
+                    id: `EXP_COMM_${Date.now()}`,
+                    date: new Date().toISOString(),
+                    type: 'عمولات مناديب',
+                    amount: commissionVal,
+                    notes: `عمولة مستحقة لـ: ${a.name}`
+                });
+                localStorage.setItem('cashtop_expenses', JSON.stringify(expensesDB));
+            }
+
+            localStorage.setItem('cashtop_sales_agents', JSON.stringify(agentsData));
+            localStorage.setItem('cashtop_products', JSON.stringify(productsData));
+
+            showToast("تمت التسوية وترحيل الأرباح والعمولات والمخزون بنجاح!", "success");
+            closeModal('settleModal');
+            renderAgentsTable(); 
+        }
+
+        // ==========================================
+        // توريد نقدية لخزينة المنشأة
+        // ==========================================
+        function openPayModal(id) {
+            let a = agentsData.find(x => String(x.id) === String(id));
+            if(!a) return;
+            document.getElementById('payForm').reset();
+            document.getElementById('payAgentId').value = a.id;
+            document.getElementById('payAgentNameTitle').innerText = a.name;
+            const cfg = agentCurrencyConfig();
+            const currencySelect = document.getElementById('payCurrencySelect');
+            if (currencySelect) currencySelect.value = cfg.baseCurrencyId;
+            populateVaultSelects();
+            openModal('payModal');
+        }
+
+        function processPayment(e) {
+            e.preventDefault();
+            let id = document.getElementById('payAgentId').value;
+            const amountNative = parseFloat(document.getElementById('payAmountInput').value) || 0;
+            const currencyId = getAgentFlowCurrencyId('pay');
+            const amount = window.CashtopMulti?.toBase?.(amountNative, currencyId) ?? amountNative;
+            const vaultId = document.getElementById('payVaultSelect').value;
+            let vault = fundsData.accounts.find(v => String(v.id) === String(vaultId));
+            let a = agentsData.find(x => String(x.id) === String(id));
+            const cfg = agentCurrencyConfig();
+
+            if(a && vault && amountNative > 0) {
+                const settlement = window.CashtopMulti?.settleToAccount?.(amountNative, currencyId, vault)
+                    || { accountAmount: amountNative, accountCurrencyId: vault.currencyId || currencyId, baseAmount: amount };
+                vault.balance = Number(vault.balance || 0) + Number(settlement.accountAmount || 0);
+                if(!fundsData.accountLogs) fundsData.accountLogs = [];
+                fundsData.accountLogs.push({
+                    accountId: vault.id, date: new Date().toISOString().split('T')[0], type: "إيداع",
+                    amount: Number(settlement.accountAmount || 0), baseAmount: amount, currencyId: settlement.accountCurrencyId,
+                    transactionAmount: amountNative, transactionCurrencyId: currencyId,
+                    notes: `استلام نقدية مبيعات من المندوب: ${a.name}`
+                });
+                localStorage.setItem('cashtop_funds_db', JSON.stringify(fundsData));
+
+                a.totalCollected = (parseFloat(a.totalCollected) || 0) + amount;
+
+                let expenses = JSON.parse(localStorage.getItem('cashtop_expenses')) || [];
+                expenses.push({
+                    id: `INC_${Date.now()}`, date: new Date().toISOString(), type: 'توريد مناديب', amount,
+                    amountNative, currencyId, accountAmountNative: Number(settlement.accountAmount || 0), accountCurrencyId: settlement.accountCurrencyId, accountId: vault.id,
+                    notes: `استلام نقدية من المندوب: ${a.name} إلى ${vault.name}`
+                });
+                localStorage.setItem('cashtop_expenses', JSON.stringify(expenses));
+
+                agentMovementsData.push({
+                    id: `MOV_${Date.now()}`, agentId: id, date: new Date().toLocaleString('ar-EG'),
+                    type: 'توريد نقدية', details: `دفعة مبيعات محصلة تم توريدها لـ: ${vault.name}`,
+                    amount, amountNative, currencyId
+                });
+                localStorage.setItem('cashtop_agent_movements', JSON.stringify(agentMovementsData));
+                localStorage.setItem('cashtop_sales_agents', JSON.stringify(agentsData));
+
+                // الفواتير وذمم المندوب محفوظة دائماً بقيمة العملة الأساسية.
+                let invoicesDB = JSON.parse(localStorage.getItem('cashtop_invoices')) || [];
+                let remainingPayment = amount;
+                for (let i = 0; i < invoicesDB.length; i++) {
+                    let inv = invoicesDB[i];
+                    if (inv.customer === `مبيعات المندوب: ${a.name}` && inv.debt > 0 && remainingPayment > 0) {
+                        if (remainingPayment >= inv.debt) {
+                            remainingPayment -= inv.debt;
+                            inv.paid += inv.debt;
+                            inv.debt = 0;
+                        } else {
+                            inv.paid += remainingPayment;
+                            inv.debt -= remainingPayment;
+                            remainingPayment = 0;
+                        }
+                    }
+                }
+                localStorage.setItem('cashtop_invoices', JSON.stringify(invoicesDB));
+
+                const currency = window.CashtopMulti?.getCurrency?.(currencyId, cfg);
+                showToast(`تم استلام ${amountNative.toFixed(2)} ${currency?.symbol || currency?.code || ''} وتوريدها لـ ${vault.name}.`, 'success');
+                closeModal('payModal');
+                renderAgentsTable(); 
+            }
+        }
+
+        // ==========================================
+        // تسديد عمولة للمندوب (صرف)
+        // ==========================================
+        function openPayRepModal(id) {
+            let a = agentsData.find(x => String(x.id) === String(id));
+            if(!a) return;
+            document.getElementById('payRepForm').reset();
+            document.getElementById('payRepAgentId').value = a.id;
+            document.getElementById('payRepAgentNameTitle').innerText = a.name;
+            const cfg = agentCurrencyConfig();
+            const currencySelect = document.getElementById('payRepCurrencySelect');
+            if (currencySelect) currencySelect.value = cfg.baseCurrencyId;
+            const native = window.CashtopMulti?.fromBase?.(Number(a.totalCommission || 0), cfg.baseCurrencyId) ?? Number(a.totalCommission || 0);
+            document.getElementById('payRepAmountInput').value = native.toFixed(2);
+            populateVaultSelects();
+            openModal('payRepModal');
+        }
+
+        function processPayRep(e) {
+            e.preventDefault();
+            let id = document.getElementById('payRepAgentId').value;
+            const amountNative = parseFloat(document.getElementById('payRepAmountInput').value) || 0;
+            const currencyId = getAgentFlowCurrencyId('payRep');
+            const amount = window.CashtopMulti?.toBase?.(amountNative, currencyId) ?? amountNative;
+            const vaultId = document.getElementById('payRepVaultSelect').value;
+            let vault = fundsData.accounts.find(v => String(v.id) === String(vaultId));
+            let a = agentsData.find(x => String(x.id) === String(id));
+            const cfg = agentCurrencyConfig();
+
+            if(a && vault && amountNative > 0) {
+                const settlement = window.CashtopMulti?.settleToAccount?.(amountNative, currencyId, vault)
+                    || { accountAmount: amountNative, accountCurrencyId: vault.currencyId || currencyId, baseAmount: amount };
+                if(Number(vault.balance || 0) < Number(settlement.accountAmount || 0)) {
+                    showToast(`رصيد صندوق [${vault.name}] غير كافٍ لسحب الدفعة بعد تحويل العملة!`, "error");
+                    return;
+                }
+                if (amount > Number(a.totalCommission || 0) + 0.000001) {
+                    showToast('قيمة الدفعة بعد التحويل أكبر من العمولة المستحقة للمندوب.', 'error');
+                    return;
+                }
+
+                vault.balance = Number(vault.balance || 0) - Number(settlement.accountAmount || 0);
+                if(!fundsData.accountLogs) fundsData.accountLogs = [];
+                fundsData.accountLogs.push({
+                    accountId: vault.id, date: new Date().toISOString().split('T')[0], type: "سحب",
+                    amount: Number(settlement.accountAmount || 0), baseAmount: amount, currencyId: settlement.accountCurrencyId,
+                    transactionAmount: amountNative, transactionCurrencyId: currencyId,
+                    notes: `تسديد عمولة للمندوب: ${a.name}`
+                });
+                localStorage.setItem('cashtop_funds_db', JSON.stringify(fundsData));
+
+                a.totalCommission = Math.max(0, Number(a.totalCommission || 0) - amount);
+
+                let expenses = JSON.parse(localStorage.getItem('cashtop_expenses')) || [];
+                expenses.push({
+                    id: `EXP_${Date.now()}`, date: new Date().toISOString(), type: 'تسديد عمولة مندوب', amount,
+                    amountNative, currencyId, accountAmountNative: Number(settlement.accountAmount || 0), accountCurrencyId: settlement.accountCurrencyId, accountId: vault.id,
+                    notes: `تسديد عمولة للمندوب: ${a.name} من ${vault.name}`
+                });
+                localStorage.setItem('cashtop_expenses', JSON.stringify(expenses));
+
+                agentMovementsData.push({
+                    id: `MOV_${Date.now()}`, agentId: id, date: new Date().toLocaleString('ar-EG'),
+                    type: 'صرف دفعة / عمولة', details: `تم صرف دفعة للمندوب من ${vault.name}`,
+                    amount, amountNative, currencyId
+                });
+                localStorage.setItem('cashtop_agent_movements', JSON.stringify(agentMovementsData));
+                localStorage.setItem('cashtop_sales_agents', JSON.stringify(agentsData));
+
+                const currency = window.CashtopMulti?.getCurrency?.(currencyId, cfg);
+                showToast(`تم صرف ${amountNative.toFixed(2)} ${currency?.symbol || currency?.code || ''} للمندوب بنجاح.`, 'success');
+                closeModal('payRepModal');
+                renderAgentsTable(); 
+            }
+        }
+
+        // ==========================================
+        // سجل الحركات للمندوب (History)
+        // ==========================================
+        function openAgentHistoryModal(id) {
+            let a = agentsData.find(x => x.id === id);
+            if(!a) return;
+
+            document.getElementById('historyAgentId').value = a.id;
+            document.getElementById('historyAgentName').innerText = a.name;
+            const tbody = document.getElementById('agentHistoryBody');
+            tbody.innerHTML = '';
+
+            let agentHistory = agentMovementsData.filter(m => m.agentId === id);
+
+            if (agentHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding:20px; text-align:center;">لا يوجد أي حركات مسجلة لهذا المندوب.</td></tr>`;
+            } else {
+                agentHistory.reverse().forEach(mov => {
+                    let colorCode = '#333';
+                    if(mov.type.includes('تحميل')) colorCode = '#f39c12';
+                    if(mov.type.includes('إرجاع')) colorCode = '#d35400';
+                    if(mov.type.includes('تسوية')) colorCode = '#3b82f6';
+                    if(mov.type.includes('توريد')) colorCode = '#00a65a';
+                    if(mov.type.includes('صرف')) colorCode = '#8e44ad';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="direction:ltr;">${mov.date}</td>
+                            <td style="color:${colorCode}; font-weight:bold;">${mov.type}</td>
+                            <td style="font-size:12px; line-height:1.6; text-align:right;">${mov.details}</td>
+                            <td style="font-weight:bold;">${mov.amount.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            openModal('agentHistoryModal');
+        }
+
+        function exportAgentHistoryExcel() {
+            let id = document.getElementById('historyAgentId').value;
+            let a = agentsData.find(x => x.id === id);
+            let agentHistory = agentMovementsData.filter(m => m.agentId === id);
+
+            if(agentHistory.length === 0) { showToast("لا توجد حركات للتصدير", "error"); return; }
+            
+            showToast("جاري التصدير لإكسل...", "success");
+            let ws_data = [
+                [`سجل حركات وعمليات المندوب: ${a.name}`],
+                [],
+                ["التاريخ والوقت", "نوع الحركة", "التفاصيل", "القيمة الإجمالية (₪)"]
+            ];
+
+            agentHistory.reverse().forEach(mov => {
+                ws_data.push([mov.date, mov.type, mov.details, mov.amount.toFixed(2)]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "سجل_الحركات");
+            XLSX.writeFile(wb, `سجل_حركات_المندوب_${Date.now()}.xlsx`);
+        }
+
+        async function exportAgentHistoryPDF() {
+            const id = document.getElementById('historyAgentId').value;
+            const a = agentsData.find(x => x.id === id);
+            const agentHistory = agentMovementsData.filter(m => m.agentId === id).slice().reverse();
+            if(!a || agentHistory.length === 0) { showToast("لا توجد حركات للتصدير!", "error"); return; }
+            const rows = agentHistory.map((mov, i) => [i + 1, mov.date || '-', mov.type || '-', mov.details || '-', Number(mov.amount || 0).toFixed(2)]);
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: `سجل حركات وعمليات المندوب: ${a.name || '-'}`,
+                    columns: ['#', 'التاريخ والوقت', 'نوع الحركة', 'التفاصيل', 'القيمة (₪)'],
+                    rows, filename: `حركات_المندوب_${a.name || 'مندوب'}_${Date.now()}.pdf`, orientation: 'landscape'
+                });
+                showToast('تم تنزيل سجل حركات المندوب.', 'success');
+            } catch (err) { console.error(err); showToast('تعذر إنشاء PDF سجل المندوب.', 'error'); }
+        }
+
+        // ==========================================
+        // التصدير للاكسل والـ PDF لجدول المناديب الرئيسي
+        // ==========================================
+        function exportMainExcel() {
+            if (agentsData.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            showToast("جاري تصدير سجل المناديب...", "success");
+
+            let ws_data = [["تقرير مناديب المبيعات وعمولاتهم - كاش توب"], [], ["اسم المندوب", "رقم الجوال", "خط السير", "العمولة", "عهدة بضاعة (₪)", "المبيعات المسجلة (₪)", "نقدية موردة (₪)", "الذمة (₪)", "العمولة المستحقة (₪)"]];
+
+            agentsData.forEach(a => {
+                let carValue = 0;
+                a.carStock.forEach(item => { carValue += (item.qty * item.price); });
+                let debt = (parseFloat(a.totalSales) || 0) - (parseFloat(a.totalCollected) || 0);
+
+                ws_data.push([
+                    a.name, a.phone, a.address, 
+                    (a.commType === 'percent' ? `نسبة ${a.commValue}%` : `ثابت ${a.commValue} ₪`),
+                    carValue.toFixed(2), 
+                    (parseFloat(a.totalSales)||0).toFixed(2), 
+                    (parseFloat(a.totalCollected)||0).toFixed(2), 
+                    debt.toFixed(2), 
+                    a.totalCommission.toFixed(2)
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "سجل_المناديب");
+            XLSX.writeFile(wb, `سجل_المناديب_الخارجي_${Date.now()}.xlsx`);
+        }
+
+        async function exportMainPDF() {
+            if (agentsData.length === 0) { showToast("لا توجد بيانات للتصدير", "error"); return; }
+            const rows = agentsData.map((a, i) => {
+                let carValue = 0;
+                (a.carStock || []).forEach(item => { carValue += (Number(item.qty) || 0) * (Number(item.price) || 0); });
+                const sales = parseFloat(a.totalSales) || 0;
+                const collected = parseFloat(a.totalCollected) || 0;
+                const debt = sales - collected;
+                return [i + 1, a.name || '-', a.phone || '-', carValue.toFixed(2), sales.toFixed(2), collected.toFixed(2), debt.toFixed(2), Number(a.totalCommission || 0).toFixed(2)];
+            });
+            try {
+                await CashtopExport.exportDataTablePDF({
+                    title: 'التقرير الشامل لمناديب المبيعات',
+                    columns: ['#', 'اسم المندوب', 'الجوال', 'عهدة البضاعة', 'المبيعات', 'النقدية الموردة', 'الذمة', 'العمولة المستحقة'],
+                    rows,
+                    filename: `تقرير_مناديب_كاش_توب_${Date.now()}.pdf`, orientation: 'landscape', fontSize: 7
+                });
+            } catch (err) { console.error(err); showToast('تعذر إنشاء PDF المناديب.', 'error'); }
+        }
+
+        window.onload = initSystem;
+    </script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"المناديب.html"}</script>
+<script src="cashtop-export.js"></script>
+</body>
+
+</html>

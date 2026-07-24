@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>تسجيل الدخول - كاش توب 2</title>
+<!-- استيراد خط القاهرة للواجهات -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- استيراد مكتبة Font Awesome للأيقونات الاحترافية -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f9;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* حاوية صندوق تسجيل الدخول */
+        .login-container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border-top: 4px solid #605ca8; /* اللون البنفسجي المعتمد لكاش توب */
+            padding: 30px 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ترويسة الشعار والاسم */
+        .login-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .login-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .login-header h1 i {
+            color: #605ca8;
+        }
+
+        .login-header p {
+            font-size: 13px;
+            color: #777;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        /* نظام الحقول المحمية بالأيقونات والأطر المتقاطعة */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .form-group label {
+            position: absolute;
+            top: -10px;
+            right: 12px;
+            background-color: #fff;
+            padding: 0 6px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            z-index: 2;
+        }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 14px;
+            z-index: 3;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 11px 38px 11px 12px;
+            font-size: 13px;
+            border: 1px solid #d2d6de;
+            border-radius: 4px;
+            outline: none;
+            background-color: #fff;
+            position: relative;
+            z-index: 1;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: #605ca8;
+        }
+
+        /* خيارات التذكر وحفظ الجلسة */
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            accent-color: #605ca8;
+            width: 15px;
+            height: 15px;
+        }
+
+        /* زر الدخول الرئيسي */
+        .btn-login {
+            background-color: #605ca8;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            transition: background 0.2s;
+            box-shadow: 0 2px 4px rgba(96, 92, 168, 0.2);
+        }
+
+        .btn-login:hover {
+            background-color: #4b4885;
+        }
+
+        /* إشعار الأمان في الأسفل للعمل دون إنترنت */
+        .offline-shield {
+            font-size: 11px;
+            color: #00a65a;
+            text-align: center;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background-color: #e6f7f0;
+            padding: 6px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 25px 20px;
+                box-shadow: none;
+                border: 1px solid #e2e8f0;
+            }
+        }
+    </style>
+<link href="manifest.webmanifest" rel="manifest"/><link href="icon-512.png" rel="icon"/><meta content="#605ca8" name="theme-color"/><script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="login-container">
+<!-- الترويسة -->
+<div class="login-header">
+<h1><i class="fa-solid fa-vault"></i> CASH TOP 2</h1>
+<p>نظام إدارة المبيعات والمخازن الذكي</p>
+</div>
+<!-- نموذج تسجيل الدخول -->
+<form id="loginForm" onsubmit="handleLogin(event)">
+<!-- 1. مفتاح الشركة -->
+<div class="form-group" style="margin-bottom: 18px;">
+<label>مفتاح الشركة (Company Key)</label>
+<div class="input-wrapper">
+<i class="fa-solid fa-key"></i>
+<input class="form-control" id="companyKey" placeholder="أدخل مفتاح المنشأة المخصص..." required="" type="text"/>
+</div>
+</div>
+<!-- 2. اسم المستخدم -->
+<div class="form-group" style="margin-bottom: 18px;">
+<label>اسم المستخدم (Username)</label>
+<div class="input-wrapper">
+<i class="fa-solid fa-user"></i>
+<input autocomplete="username" class="form-control" id="username" placeholder="أدخل اسم المستخدم هنا..." required="" type="text"/>
+</div>
+</div>
+<!-- 3. كلمة المرور -->
+<div class="form-group" style="margin-bottom: 15px;">
+<label>كلمة المرور (Password)</label>
+<div class="input-wrapper">
+<i class="fa-solid fa-lock"></i>
+<input autocomplete="current-password" class="form-control" id="password" placeholder="••••••••" required="" type="password"/>
+</div>
+</div>
+<!-- خيارات إضافية -->
+<div class="login-options" style="margin-bottom: 20px;">
+<label class="checkbox-label">
+<input id="rememberMe" type="checkbox"/>
+<span>تذكر بيانات الدخول محلياً</span>
+</label>
+</div>
+<!-- زر الإجراء -->
+<button class="btn-login" type="submit">
+<i class="fa-solid fa-right-to-bracket"></i> تسجيل الدخول للنظام
+            </button>
+</form>
+<button class="btn-login" id="enablePushBtn" type="button" style="margin-top:10px;background:#fff;color:#605ca8;border:1px solid #605ca8;box-shadow:none;">
+<i class="fa-solid fa-bell"></i> تفعيل إشعارات التطبيق
+</button>
+<!-- كبسولة الأمان للوضع المحلي (Offline-First) -->
+<div class="offline-shield">
+<i class="fa-solid fa-shield-halved"></i>
+<span>تشفير محلي آمن نشط (يعمل بالكامل بدون إنترنت)</span>
+</div>
+
+</div>
+
+<script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script><script src="multi-database.js?v=61"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script><script src="login.js?v=61"></script></body>
+</html>

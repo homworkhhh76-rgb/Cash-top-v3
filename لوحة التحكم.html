@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>لوحة التحكم - كاش توب 2</title>
+    <!-- استيراد خط القاهرة للواجهات -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- استيراد مكتبة Font Awesome للأيقونات الاحترافية -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f9;
+            padding: 20px;
+            color: #333;
+        }
+
+        /* حاوية التصميم الرئيسية */
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* شبكة الكروت العلوية الأربعة (للابتوب) */
+        .top-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        /* النمط العام للكروت العلوية */
+        .main-card {
+            border-radius: 4px;
+            color: white;
+            padding: 15px;
+            position: relative;
+            min-height: 115px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* ألوان الكروت العلوية */
+        .card-definitions { background-color: #00a65a; }
+        .card-invoices { background-color: #00c0ef; }
+        .card-safe { background-color: #605ca8; }
+        .card-store { background-color: #dd4b39; }
+
+        .card-header-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: left;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header-title i {
+            opacity: 0.3;
+            font-size: 22px;
+        }
+
+        .card-links {
+            display: flex;
+            justify-content: flex-start;
+            gap: 12px;
+            font-size: 13px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            padding-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .card-links span {
+            cursor: pointer;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        .card-links span:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        /* القسم السفلي: الكروت الجانبية والجدول (للابتوب) */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 3fr 7fr;
+            gap: 20px;
+        }
+
+        /* العمود الأيمن: الكروت الطولية الأربعة بعد إضافة الديون */
+        .side-cards-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .side-card {
+            display: flex;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 85px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .side-card-info {
+            flex: 1;
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: white;
+        }
+
+        .side-card-info h3 {
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .side-card-info p {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+        .side-card-info strong {
+            font-size: 18px;
+        }
+
+        .side-card-icon {
+            width: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 26px;
+            background-color: rgba(0, 0, 0, 0.12);
+        }
+
+        /* ألوان الكروت الجانبية */
+        .sc-sales { background-color: #f39c12; }
+        .sc-expenses { background-color: #00a65a; }
+        .sc-safe-daily { background-color: #dd4b39; }
+        .sc-debts { background-color: #34495e; } /* لون الكرت الجديد (الديون) */
+
+        /* العمود الأيسر: جدول فواتير البيع */
+        .table-container {
+            background-color: white;
+            border-radius: 4px;
+            border-top: 3px solid #00c0ef;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #f4f4f4;
+            padding-bottom: 10px;
+        }
+
+        .table-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .btn-print {
+            background-color: #00a65a;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 3px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* تصميم الجدول */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .data-table th {
+            font-weight: bold;
+            color: #333;
+            padding: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .data-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f4f4f4;
+            vertical-align: middle;
+        }
+
+        /* تنسيقات حقول الجدول المخصصة */
+        .badge-val {
+            background-color: #5cb85c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .badge-date-red { background-color: #dd4b39; color: white; padding: 2px 6px; border-radius: 3px; }
+        .badge-date-yellow { background-color: #f39c12; color: white; padding: 2px 6px; border-radius: 3px; }
+
+        .invoice-link {
+            color: #3c8dbc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* تنسيق أيقونة الرسم البياني أقصى يمين السطر */
+        .table-chart-icon {
+            color: #dd4b39;
+            font-size: 14px;
+            width: 30px;
+        }
+        .table-chart-icon.green { color: #00a65a; }
+
+        /* أزرار الإجراءات داخل الجدول */
+        .actions-wrapper {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action-print { color: #00a65a; }
+        .btn-action-print:hover { background-color: rgba(0, 166, 90, 0.1); }
+
+        .btn-action-edit { color: #f39c12; }
+        .btn-action-edit:hover { background-color: rgba(243, 156, 18, 0.1); }
+
+        .btn-action-delete { color: #dd4b39; }
+        .btn-action-delete:hover { background-color: rgba(221, 75, 57, 0.1); }
+
+        .btn-action-image { color: #00c0ef; }
+        .btn-action-image:hover { background-color: rgba(0, 192, 239, 0.1); }
+
+        .btn-action-pdf { color: #605ca8; }
+        .btn-action-pdf:hover { background-color: rgba(96, 92, 168, 0.1); }
+
+        /* أزرار التحكم السفلية للجدول */
+        .table-footer-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding-top: 10px;
+        }
+
+        .btn-blue {
+            background-color: #00c0ef;
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-primary-blue {
+            background-color: #3c8dbc;
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+
+        /* ========================================== */
+        /*  تعديلات شاشات الجوال والتابلت (Mobile Responsive) */
+        /* ========================================== */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            /* الكروت العلوية: تظهر كل بطاقتين بجانب بعض (عمودين) */
+            .top-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .main-card {
+                min-height: 110px;
+                padding: 12px;
+            }
+
+            .card-header-title {
+                font-size: 14px;
+            }
+            .card-header-title i {
+                font-size: 18px;
+            }
+
+            .card-links {
+                font-size: 12px;
+                gap: 6px;
+            }
+
+            /* تحويل القسم السفلي إلى عمودي */
+            .bottom-section {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            /* الكروت الجانبية الأربعة: تصبح كل بطاقتين بجانب بعض بشكل شبكي ممتاز */
+            .side-cards-col {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            /* إلغاء تمدد الكرت الأخير لأن العدد أصبح زوجي (4 كروت) لتظهر بشكل متناسق جداً */
+            .side-cards-col .side-card:last-child {
+                grid-column: auto;
+            }
+
+            .side-card {
+                height: 80px;
+            }
+
+            /* دعم التمرير الأفقي للجدول على الجوال */
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .data-table {
+                min-width: 750px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card-links {
+                font-size: 11px;
+            }
+            .side-card-info h3 {
+                font-size: 13px;
+            }
+            .side-card-info p {
+                font-size: 11px;
+            }
+        }
+    </style>
+
+    <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
+    <link rel="icon" href="icon-192.png">
+    <link rel="stylesheet" href="cashtop-core.css?v=56">
+    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="multi-system.js?v=57"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=61"></script>
+    <script src="accounting-engine.js"></script>
+    <script src="firebase-sync.js?v=61"></script>
+<script src="cashtop-download-fix.js"></script>
+</head>
+<body>
+<div class="ct-sidebar-overlay" id="ctSidebarOverlay" data-ct-action="close-sidebar"></div>
+<div class="ct-app-shell">
+  <aside class="ct-sidebar" id="ctSidebar" aria-label="القائمة الجانبية">
+    <div class="ct-sidebar-brand">
+      <img src="cashtop-logo.png" alt="كاش توب 2">
+      <strong>كاش توب 2</strong>
+      <small id="ctSidebarCompany">كاش توب</small>
+    </div>
+
+    <nav class="ct-sidebar-nav">
+      <a class="ct-menu-link" href="لوحة التحكم.html" data-page="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>لوحة التحكم</span></a>
+      <a class="ct-menu-link" href="cashier.html" data-page="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="products.html">المنتجات</a>
+          <a href="materials.html">الأصناف</a>
+          <a href="warehouses.html">المخازن</a>
+          <a href="branches.html">الفروع</a>
+          <a href="units.html">الوحدات</a>
+          <a href="shortages.html">النواقص</a>
+          <a href="barcode-generator.html">الباركود</a>
+          <a href="ادارة التصنيع.html">التصنيع</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-file-invoice-dollar"></i><span>الفواتير</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="invoices.html">فواتير المبيعات</a>
+          <a href="المشتريات.html">المشتريات</a>
+          <a href="مرجع المشتريات.html">مرتجع المشتريات</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users"></i><span>العملاء والموردون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="customers.html">العملاء</a>
+          <a href="customer-groups.html">مجموعات العملاء</a>
+          <a href="suppliers.html">الموردون</a>
+          <a href="المناديب.html">المناديب</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-wallet"></i><span>الحسابات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="accounts.html">الصناديق والحسابات</a>
+          <a href="journal.html">دفتر القيود</a>
+          <a href="sands.html">سندات القبض والصرف</a>
+          <a href="المصاريف.html">المصاريف</a>
+          <a href="التقارير.html">التقارير</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-users-gear"></i><span>المستخدمون</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="الموظفين.html">الموظفون</a>
+          <a href="العمال والاجور.html">العمال والأجور</a>
+        </div>
+      </details>
+
+      <details class="ct-menu-group">
+        <summary><i class="fa-solid fa-gear"></i><span>الإدارة والإعدادات</span><i class="fa-solid fa-chevron-down ct-menu-arrow"></i></summary>
+        <div class="ct-submenu">
+          <a href="sales-offers.html">عروض المبيعات</a>
+          
+          <a href="notifications.html">الإشعارات</a>
+          <a href="tax-settings.html">إعدادات الضريبة</a>
+          <a href="storage-settings.html">التخزين والأرشفة</a>
+          <a href="استيراد وتصدير ل كل قسم.html">النسخ الاحتياطي</a>
+          <a href="setting.html">إعدادات النظام</a>
+          <a href="printer-settings.html">إعدادات الطابعة</a>
+        </div>
+      </details>
+    </nav>
+
+    <button class="ct-sidebar-logout" type="button" data-ct-action="logout"><i class="fa-solid fa-right-from-bracket"></i><span>خروج</span></button>
+  </aside>
+
+  <section class="ct-main-wrapper">
+    <header class="ct-topbar">
+      <div class="ct-topbar-start">
+        <button class="ct-icon-button" type="button" data-ct-action="open-sidebar" aria-label="فتح القائمة"><i class="fa-solid fa-bars"></i></button>
+        <img class="ct-topbar-logo" src="cashtop-logo.png" alt="كاش توب 2">
+        <div class="ct-title-block">
+          <strong id="ctPageTitle">كاش توب</strong>
+          <small id="ctCompanyTitle">نظام المحاسبة والمخزون</small>
+        </div>
+      </div>
+      <div class="ct-topbar-actions">
+        <span class="ct-net-status" id="ctNetStatus"><i class="fa-solid fa-circle"></i><span>متصل</span></span>
+        <button class="ct-icon-button" id="ctSyncButton" type="button" data-ct-action="sync" title="مزامنة البيانات"><i class="fa-solid fa-rotate"></i></button>
+        <div class="ct-user-chip"><i class="fa-solid fa-user-shield"></i><span id="ctCurrentUser">مستخدم</span></div>
+        <button class="ct-icon-button ct-logout-top" type="button" data-ct-action="logout" title="خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="ct-page-host" id="ctPageHost"><div class="ct-original-page" id="ctOriginalPage">
+
+    <div class="dashboard-container">
+        
+        <!-- صف الكروت العلوية الأربعة -->
+        <div class="top-cards-grid">
+            
+            <!-- كرت تعريفات أساسية -->
+            <div class="main-card card-definitions">
+                <div class="card-header-title">
+                    <span>تعريفات أساسية</span>
+                    <i class="fa-solid fa-user-plus"></i>
+                </div>
+                <div class="card-links">
+                    <span>إضافة صنف</span>
+                    <span>إضافة عميل</span>
+                    <span>إضافة مورد</span>
+                </div>
+            </div>
+
+            <!-- كرت الفواتير -->
+            <div class="main-card card-invoices">
+                <div class="card-header-title">
+                    <span>الفواتير</span>
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+                <div class="card-links">
+                    <span>فاتورة بيع</span>
+                    <span>فاتورة شراء</span>
+                    <span>مرتجع بيع</span>
+                    <span>مرتجع شراء</span>
+                </div>
+            </div>
+
+            <!-- كرت الخزينة -->
+            <div class="main-card card-safe">
+                <div class="card-header-title">
+                    <span>الخزينة</span>
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <div class="card-links">
+                    <span>رصيد الخزينة</span>
+                    <span>تسجيل نقدية</span>
+                </div>
+            </div>
+
+            <!-- كرت المخزن -->
+            <div class="main-card card-store">
+                <div class="card-header-title">
+                    <span>المخزن</span>
+                    <i class="fa-solid fa-database"></i>
+                </div>
+                <div class="card-links">
+                    <span>رصيد المخزن</span>
+                    <span>الأصناف الناقصة</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- القسم السفلي: الكروت الطولية والجدول الرئيسي -->
+        <div class="bottom-section">
+            
+            <!-- عمود الكروت الجانبية (4 كروت تظهر بشكل شبكي متناسق على الجوال) -->
+            <div class="side-cards-col">
+                
+                <!-- كرت مبيعات -->
+                <div class="side-card sc-sales">
+                    <div class="side-card-info">
+                        <h3>مبيعات</h3>
+                        <p><strong id="dashSales">0.00 ₪</strong></p>
+                    </div>
+                    <div class="side-card-icon"><i class="fa-solid fa-tags"></i></div>
+                </div>
+
+                <!-- كرت مصروفات -->
+                <div class="side-card sc-expenses">
+                    <div class="side-card-info">
+                        <h3>مصروفات</h3>
+                        <p><strong id="dashExpenses">0.00 ₪</strong></p>
+                    </div>
+                    <div class="side-card-icon"><i class="fa-solid fa-dollar-sign"></i></div>
+                </div>
+
+                <!-- كرت الخزينة -->
+                <div class="side-card sc-safe-daily">
+                    <div class="side-card-info">
+                        <h3>الخزينة</h3>
+                        <p><strong id="dashFunds">0.00 ₪</strong></p>
+                    </div>
+                    <div class="side-card-icon"><i class="fa-solid fa-cash-register"></i></div>
+                </div>
+
+                <!-- كرت الديون المضاف حديثاً -->
+                <div class="side-card sc-debts">
+                    <div class="side-card-info">
+                        <h3>الديون</h3>
+                        <p><strong id="dashDebts">0.00 ₪</strong></p>
+                    </div>
+                    <div class="side-card-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                </div>
+
+            </div>
+
+            <!-- كرت ومساحة الجدول الرئيسي (آخر فواتير البيع) -->
+            <div class="table-container">
+                
+                <div class="table-header">
+                    <button class="btn-print"><i class="fa-solid fa-print"></i> طباعة فواتير اليوم</button>
+                    <div class="table-title">آخر فواتير البيع</div>
+                </div>
+
+                <!-- جدول البيانات المتجاوب المعكوس من اليمين لليسار مع الأيقونة الثابتة -->
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;"></th> <!-- عمود الأيقونة يمين رقم الفاتورة -->
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th>العميل</th>
+                                <th>القيمة</th>
+                                <th>المستخدم</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashInvoicesBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- أزرار التحكم السفلية داخل كرت الجدول -->
+                <div class="table-footer-buttons">
+                    <button class="btn-primary-blue" onclick="location.href='invoices.html'">عرض كل فواتير البيع</button>
+                    <button class="btn-blue" onclick="location.href='cashier.html'">فاتورة بيع جديدة</button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+<script>
+(function(){
+  const money = n => {
+    const cfg = window.CashtopMulti?.getCurrencyConfig?.();
+    const symbol = cfg?.base?.symbol || cfg?.base?.code || '₪';
+    return (Number.parseFloat(n)||0).toFixed(2) + ' ' + symbol;
+  };
+  const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  function readDataset(key, fallback){
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key));
+      if (Array.isArray(fallback)) return Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? Object.values(parsed) : fallback);
+      return parsed && typeof parsed === 'object' ? parsed : fallback;
+    } catch (_) { return fallback; }
+  }
+  function invoiceTime(invoice){
+    const candidates=[invoice.date,invoice.createdAt,invoice.updatedAt,invoice.invoiceDate];
+    for(const value of candidates){const time=new Date(value||0).getTime();if(Number.isFinite(time)&&time>0)return time;}
+    const idNumber=Number(String(invoice.id||'').replace(/\D/g,''));
+    return Number.isFinite(idNumber)?idNumber:0;
+  }
+  function loadDashboard(){
+    const session=window.Cashtop?.getSession?.()||{};
+    const currentBranchId=window.Cashtop?.branchIdFromSession?.(session)||String(session.branchId||'MAIN');
+    let invoices=readDataset('cashtop_invoices',[]).filter(i=>i&&i.status!=='draft');
+    invoices=invoices.filter(i=>String(i.branchId||'MAIN')===String(currentBranchId));
+    const expenses=readDataset('cashtop_expenses',[]);
+    const funds=readDataset('cashtop_funds_db',{accounts:[]});
+    const customers=readDataset('cashtop_customers',[]);
+    const salesTotal=invoices.reduce((sum,item)=>sum+(Number(item.total)||0),0);
+    const expensesTotal=expenses.reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+    const currencyCfg=window.CashtopMulti?.getCurrencyConfig?.()||{baseCurrencyId:'base'};
+    const fundsTotal=(Array.isArray(funds.accounts)?funds.accounts:[]).reduce((sum,item)=>sum+(window.CashtopMulti?.toBase?.(Number(item.balance)||0,item.currencyId||currencyCfg.baseCurrencyId)??(Number(item.balance)||0)),0);
+    const debtsTotal=customers.reduce((sum,item)=>sum+Math.max(0,Number(item.balance)||0),0);
+    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    set('dashSales',money(salesTotal));set('dashExpenses',money(expensesTotal));set('dashFunds',money(fundsTotal));set('dashDebts',money(debtsTotal));
+    const body=document.getElementById('dashInvoicesBody');
+    if(!body)return;
+    const latest=invoices.slice().sort((a,b)=>invoiceTime(b)-invoiceTime(a)).slice(0,5);
+    body.innerHTML=latest.length?latest.map(inv=>{
+      const date=new Date(inv.date||inv.createdAt||Date.now());
+      const dateText=Number.isFinite(date.getTime())?date.toLocaleDateString('en-GB'):'-';
+      const id=String(inv.id||'-');
+      return `<tr>
+        <td class="table-chart-icon ${Number(inv.debt||0)>0?'':'green'}"><i class="fa-solid fa-chart-bar"></i></td>
+        <td><a href="invoices.html" class="invoice-link">${esc(id)}</a></td>
+        <td><span class="${Number(inv.debt||0)>0?'badge-date-red':'badge-date-yellow'}">${esc(dateText)}</span></td>
+        <td>${esc(inv.customer||'عميل نقدي')}</td><td><span class="badge-val">${money(inv.total)}</span></td><td>${esc(inv.user||'-')}</td>
+        <td><div class="actions-wrapper"><button class="action-btn btn-action-edit" title="تعديل" onclick="location.href='cashier.html?edit=${encodeURIComponent(id)}'"><i class="fa-solid fa-pen-to-square"></i></button><button class="action-btn btn-action-print" title="عرض" onclick="location.href='invoices.html'"><i class="fa-solid fa-eye"></i></button></div></td>
+      </tr>`;
+    }).join(''):'<tr><td colspan="7" style="padding:30px;color:#888">لا توجد فواتير بيع حتى الآن.</td></tr>';
+  }
+  window.loadCashTopDashboard=loadDashboard;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadDashboard,{once:true});else loadDashboard();
+  window.addEventListener('load',loadDashboard);
+  window.addEventListener('storage',event=>{if(!event.key||['cashtop_invoices','cashtop_funds_db','cashtop_settings'].includes(event.key)||event.key.includes('cashtop_invoices'))loadDashboard();});
+  window.addEventListener('cashtop:data-changed',event=>{if(['cashtop_invoices','cashtop_funds_db','cashtop_settings'].includes(event.detail?.key))loadDashboard();});
+  window.addEventListener('cashtop:remote-applied',event=>{if(!event.detail?.key||event.detail.key==='cashtop_invoices')loadDashboard();});
+  window.addEventListener('cashtop:sync-complete',loadDashboard);
+  document.addEventListener('DOMContentLoaded',()=>{
+    const links=[['إضافة صنف','products.html'],['إضافة عميل','customers.html'],['إضافة مورد','suppliers.html'],['فاتورة بيع','cashier.html'],['فاتورة شراء','المشتريات.html'],['مرتجع شراء','مرجع المشتريات.html'],['رصيد الخزينة','accounts.html'],['تسجيل نقدية','sands.html'],['رصيد المخزن','products.html'],['الأصناف الناقصة','shortages.html']];
+    document.querySelectorAll('.card-links span').forEach(span=>{const match=links.find(x=>x[0]===span.textContent.trim());if(match){span.style.cursor='pointer';span.onclick=()=>location.href=match[1];}});
+  });
+})();
+</script>
+</div></main>
+
+    <nav class="ct-bottom-nav" aria-label="التنقل السريع">
+      <a href="لوحة التحكم.html"><i class="fa-solid fa-house"></i><span>الرئيسية</span></a>
+      <a href="cashier.html"><i class="fa-solid fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="products.html"><i class="fa-solid fa-box-open"></i><span>المنتجات</span></a>
+      <a href="customers.html"><i class="fa-solid fa-users"></i><span>العملاء</span></a>
+      <a href="invoices.html"><i class="fa-solid fa-file-invoice"></i><span>الفواتير</span></a>
+    </nav>
+  </section>
+</div>
+
+<script type="application/json" id="ctEmbeddedShellMarker">{"embedded":true,"page":"لوحة التحكم.html"}</script>
+</body>
+
+</html>
