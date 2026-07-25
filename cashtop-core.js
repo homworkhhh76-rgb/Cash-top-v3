@@ -3286,7 +3286,7 @@
         return;
       }
       const script = document.createElement('script');
-      script.src = 'firebase-sync.js?v=23';
+      script.src = 'firebase-sync.js?v=64';
       script.async = true;
       script.dataset.ctSyncRuntime = 'classic';
       script.onload = () => resolve(Boolean(window.CashtopFirebase?.syncAll));

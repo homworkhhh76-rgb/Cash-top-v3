@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "cashTopExchange": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "cashTopAdmin": {
+        "companies": {
+          ".indexOn": ["key", "companyKey", "tenantId", "companyId"]
+        }
+      }
+    }
+  }
+}

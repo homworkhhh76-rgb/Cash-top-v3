@@ -1,40 +1,37 @@
-إعداد Firestore متعدد القواعد — كاش توب 2 / Revision 60
+إعداد المزامنة — كاش توب 2 / Revision 64
 
-قاعدة الإدارة الرئيسية:
-- projectId: ahmed-97701
-- تعريفات قواعد الشركات: cashtopDatabases/{databaseId}
-- فهرس توجيه المفاتيح: cashtopDatabaseRoutes/{companyKey}
-- حساب المشرف العام: cashtopRoot/main
-- لا تُحفظ بيانات الشركات التشغيلية في هذه المجموعات.
+يدعم المشروع نوعين من قواعد Firebase:
+1) Google Cloud Firestore.
+2) Firebase Realtime Database عبر REST.
 
-كل قاعدة شركة:
-- حالة شركات القاعدة: cashtopAdmin/main
-- فهرس مفاتيح القاعدة: companyKeys/{companyKey}
-- ملخص الشركة: companies/{tenantId}
-- بيانات الشركة: companies/{tenantId}/datasets/{datasetKey}
+اختيار النوع:
+- Firestore: اجعل databaseURL بالشكل firestore://PROJECT_ID، أو backendMode = firestore-sdk.
+- Realtime Database: ضع رابط القاعدة الحقيقي مثل:
+  https://PROJECT_ID-default-rtdb.firebaseio.com
+  ويمكن وضع backendMode = firebase-rtdb-rest، أو ترك backendMode = auto.
 
-طريقة الإعداد:
-1. فعّل Cloud Firestore في مشروع الإدارة الرئيسي وفي كل مشروع شركة.
-2. انشر firestore.rules على مشروع الإدارة الرئيسي؛ هذه القواعد تمنع بيانات الشركات التشغيلية من القاعدة الرئيسية.
-3. انشر firestore-company.rules على كل مشروع/قاعدة شركة. ويمكن استخدام firebase-company.json كملف إعداد منفصل للنشر.
-4. إذا كانت القواعد تشترط request.auth، فعّل Anonymous Authentication في كل مشروع؛ النظام يجرب القراءة أولاً ثم يسجل دخولاً مجهولاً عند رفض الصلاحية.
-5. افتح admin.html وأنشئ حساب المشرف العام.
-6. أضف كل قاعدة من حقول firebaseConfig: apiKey وauthDomain وprojectId وstorageBucket وmessagingSenderId وappId وmeasurementId وDatabase ID.
-7. عند إنشاء شركة اختر القاعدة المطلوبة من قائمة «قاعدة بيانات الشركة».
+إعداد Firestore:
+- قاعدة الإدارة الرئيسية تستخدم firestore.rules.
+- قواعد الشركات تستخدم firestore-company.rules مع firebase-company.json.
+- فعّل Anonymous Authentication إذا كانت القواعد تتطلب request.auth.
+- بيانات الشركة تحفظ داخل companies/{tenantId}/datasets/{datasetKey}.
 
-تسجيل الدخول:
-- يقرأ المفتاح من cashtopDatabaseRoutes في القاعدة الرئيسية.
-- يتحقق من companyKeys داخل قاعدة الشركة.
-- يحمل بيانات الوصول والفروع والموظفين من قاعدة الشركة.
-- يحفظ إعداد القاعدة في cashtop_active_database_v1 داخل كاش المتصفح.
-- بعد الانتقال للوحة التحكم تستخدم firebase-config.js القاعدة المحفوظة تلقائياً.
-- يمكن إضافة أي عدد من المفاتيح إلى القاعدة الواحدة، لكن المفتاح نفسه لا يجوز أن يتكرر بين قاعدتين.
+إعداد Realtime Database:
+- انشر database.rules.json باستخدام firebase-rtdb.json، أو من قسم database داخل firebase.json.
+- فعّل Anonymous Authentication لأن القواعد المرفقة تستخدم auth != null.
+- بيانات الشركة تحفظ داخل:
+  cashTopExchange/cashTopPOS/{tenantId}/datasets/{datasetKey}
+- فهرس المفاتيح يحفظ داخل:
+  cashTopExchange/cashTopAdmin/keyIndex/{companyKey}
 
-النسخ الاحتياطي:
-- نسخة الأدمن الجديدة تشمل تعريفات القواعد، حالات الشركات، وجميع بيانات الشركات من كل القواعد.
-- الاستعادة تعيد البيانات إلى المشاريع المحددة داخل ملف النسخة.
+إصلاح المزامنة بين الأجهزة:
+- قراءة Firestore تتم من الخادم أولاً، وليس من IndexedDB القديم.
+- عند انقطاع الشبكة فقط يرجع النظام إلى كاش Firestore المحلي.
+- Service Worker لا يخزن أي استجابة تخص Firebase أو Firestore APIs.
+- الرفع يليه تحقق بقراءة بعيدة، لذلك لا تظهر رسالة نجاح اعتماداً على كاش قديم.
 
-ملاحظات أمنية:
-- قيم firebaseConfig الخاصة بتطبيق الويب ليست أسراراً.
-- حماية البيانات تعتمد على Firestore Security Rules وFirebase Authentication.
-- كلمة مرور المشرف داخل الواجهة ليست بديلاً عن قواعد أمان قوية أو صلاحيات خادم موثوق.
+Cache First:
+- جميع صفحات وملفات التطبيق المحلية مخزنة مسبقاً.
+- أي صفحة تفتح من Cache Storage فوراً حتى مع توفر الإنترنت.
+- تحديث الملفات يحدث في الخلفية ولا يؤخر فتح الصفحة.
+- إصدار Service Worker الحالي: v74-server-sync-dual-backend-cache-first.

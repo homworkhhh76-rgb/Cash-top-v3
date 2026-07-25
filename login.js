@@ -538,6 +538,16 @@
   }
 
   async function databaseLogin(key, username, password, remember) {
+    if (!isFirestoreBridge) {
+      const remote = await findRemoteCompany(key);
+      if (!remote) throw new Error('لم يتم العثور على المفتاح في Realtime Database.');
+      // لا نسمح لإعداد Firestore محفوظ من دخول سابق أن يغيّر نوع القاعدة بعد الانتقال للوحة.
+      window.CashtopMultiDatabase?.clearCachedActiveDatabase?.();
+      rawRemove(window.CASHTOP_FIREBASE?.activeDatabaseStorageKey || 'cashtop_active_database_v1');
+      hydrateRemoteCompany(remote, key);
+      return await localLogin(key, username, password, remember);
+    }
+
     const multi = window.CashtopMultiDatabase;
     if (!multi) throw new Error('طبقة قواعد البيانات المتعددة غير محملة.');
     const resolved = await multi.resolveKey(key);

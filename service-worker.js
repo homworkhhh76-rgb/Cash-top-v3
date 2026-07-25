@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = 'v73-cross-company-restore-cache-first';
+const CACHE_VERSION = 'v74-server-sync-dual-backend-cache-first';
 const APP_CACHE = `cash-top-2-app-${CACHE_VERSION}`;
 const REMOTE_STATIC_CACHE = `cash-top-2-remote-static-${CACHE_VERSION}`;
 
@@ -298,6 +298,10 @@ function canonicalLocalRequest(request) {
   const url = new URL(request.url);
   url.search = '';
   url.hash = '';
+  const scopePath = new URL(self.registration.scope).pathname.replace(/\/+$/, '/');
+  if (url.pathname === scopePath || url.pathname === scopePath.replace(/\/$/, '')) {
+    url.pathname = `${scopePath}index.html`.replace(/\/{2,}/g, '/');
+  }
   return new Request(url.href, {
     method: 'GET',
     credentials: 'same-origin'

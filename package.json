@@ -1,8 +1,8 @@
 {
   "name": "cash-top-firestore",
   "private": true,
-  "version": "2.63.0",
-  "description": "Cash Top frontend using Google Cloud Firestore",
+  "version": "2.64.0",
+  "description": "Cash Top frontend with server-first Firestore sync, Firebase RTDB support, and cache-first navigation",
   "engines": {
     "node": "22.x"
   }
