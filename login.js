@@ -434,15 +434,28 @@
   }
 
   async function findRemoteCompany(companyKey) {
+    const settings = window.CASHTOP_FIREBASE || {};
+    const cfg = settings.config || {};
+    const base = String(cfg.databaseURL || '').replace(/\/+$/, '');
+    const boundTenant = sanitizeSegment(getTenantBindings()[companyKey] || '');
+
+    // بعد أول دخول نستخدم tenantId المحفوظ في الكاش مباشرة ولا نعيد البحث في فهارس القاعدة.
+    if (base && boundTenant) {
+      try {
+        const cached = await fetchLoginBootstrap(companyKey, boundTenant);
+        const cachedKey = normalizeKey(cached?.access?.companyKey || cached?.node?.meta?.companyKey || '');
+        const cachedTenant = sanitizeSegment(cached?.access?.tenantId || cached?.access?.companyId || cached?.tenantId || cached?.companyId || '');
+        if (cachedKey === companyKey && cachedTenant === boundTenant) return cached;
+      } catch (error) {
+        console.warn('[CASH TOP LOGIN] cached RTDB route:', error);
+      }
+    }
+
     const indexed = await findRemoteCompanyViaAdminIndex(companyKey);
     if (indexed) return indexed;
 
     // لا نفحص جذر قاعدة البيانات كاملاً ولا نختار شركة بالتخمين. عند غياب
     // فهرس الإدارة نسمح فقط بمسار محلي معروف مسبقاً لنفس المفتاح (ترحيل قديم).
-    const settings = window.CASHTOP_FIREBASE || {};
-    const cfg = settings.config || {};
-    const base = String(cfg.databaseURL || '').replace(/\/+$/, '');
-    const boundTenant = sanitizeSegment(getTenantBindings()[companyKey] || '');
     if (!base || !boundTenant) return null;
     const roots = [...new Set([settings.rootPath || 'cashTopExchange/cashTopPOS', ...(settings.legacyRootPaths || [])])]
       .map(root => String(root || '').replace(/^\/+|\/+$/g, '')).filter(Boolean);
@@ -550,6 +563,8 @@
 
     const multi = window.CashtopMultiDatabase;
     if (!multi) throw new Error('طبقة قواعد البيانات المتعددة غير محملة.');
+    const cachedRoute = multi.getCachedResolvedRoute?.(key);
+    if (cachedRoute?.database) showStatus(`تم العثور على قاعدة ${cachedRoute.database.name || cachedRoute.database.id} في الكاش؛ جاري التحقق المباشر...`, 'info');
     const resolved = await multi.resolveKey(key);
     if (!resolved?.database || !resolved?.route?.tenantId) throw new Error('لم يتم العثور على المفتاح في قواعد البيانات المسجلة.');
     const remote = await multi.readLoginBootstrap(resolved.database.config, resolved.route.tenantId, key);

@@ -1,8 +1,10 @@
 'use strict';
 
-const CACHE_VERSION = 'v74-server-sync-dual-backend-cache-first';
+const CACHE_VERSION = 'v75-fast-sync-local-images-route-cache-120hz';
 const APP_CACHE = `cash-top-2-app-${CACHE_VERSION}`;
 const REMOTE_STATIC_CACHE = `cash-top-2-remote-static-${CACHE_VERSION}`;
+const REMOTE_IMAGE_CACHE = `cash-top-2-remote-images-${CACHE_VERSION}`;
+const REMOTE_IMAGE_LIMIT = 120;
 
 /*
  * حزمة التطبيق المحلية كاملة. التثبيت لا ينجح إلا بعد حفظ كل ملف محلي،
@@ -106,8 +108,8 @@ const REMOTE_STATIC_HOSTS = new Set([
 /* Prevent background network refreshes from competing with UI rendering.
  * HTML can refresh relatively often; immutable app assets refresh much less. */
 const LOCAL_REFRESH_AT = new Map();
-const HTML_REFRESH_MS = 12 * 60 * 60 * 1000;
-const STATIC_REFRESH_MS = 48 * 60 * 60 * 1000;
+const HTML_REFRESH_MS = 24 * 60 * 60 * 1000;
+const STATIC_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 let shellVerificationPromise = null;
 let remoteWarmPromise = null;
 
@@ -279,7 +281,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    const keep = new Set([APP_CACHE, REMOTE_STATIC_CACHE]);
+    const keep = new Set([APP_CACHE, REMOTE_STATIC_CACHE, REMOTE_IMAGE_CACHE]);
     const names = await caches.keys();
     await Promise.all(names.filter(name => !keep.has(name)).map(name => caches.delete(name)));
     if (self.registration.navigationPreload) {
@@ -356,6 +358,26 @@ async function remoteStaticCacheFirst(request) {
   }
 }
 
+async function trimRemoteImageCache(cache) {
+  const keys = await cache.keys();
+  if (keys.length <= REMOTE_IMAGE_LIMIT) return;
+  await Promise.all(keys.slice(0, keys.length - REMOTE_IMAGE_LIMIT).map(key => cache.delete(key)));
+}
+
+async function externalImageCacheFirst(request) {
+  const cache = await caches.open(REMOTE_IMAGE_CACHE);
+  const cached = await cache.match(request, { ignoreSearch: false });
+  if (cached) return cached;
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    await putIfUsable(cache, request, response);
+    trimRemoteImageCache(cache).catch(() => null);
+    return response;
+  } catch (_) {
+    return cached || Response.error();
+  }
+}
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -376,6 +398,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  if (request.destination === 'image' || /\.(?:png|jpe?g|webp|gif|svg)(?:$|\?)/i.test(url.pathname + url.search)) {
+    event.respondWith(externalImageCacheFirst(request));
+    return;
+  }
   if (isCacheableRemoteStatic(request, url)) {
     event.respondWith(remoteStaticCacheFirst(request));
   }

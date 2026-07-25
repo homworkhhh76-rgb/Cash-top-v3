@@ -6,6 +6,7 @@
 'use strict';
 const ACTIVE_STORAGE_KEY='cashtop_active_database_v1';
 const BACKEND_STORAGE_KEY='cashtop_backend_config_v1';
+const ROUTE_CACHE_STORAGE_KEY='cashtop_database_route_cache_v2';
 const MASTER_CONFIG=Object.freeze({
   apiKey:'AIzaSyDt2fEDDgjkRLqcpEFUBTIFne4JOKfPTFs',
   authDomain:'ahmed-97701.firebaseapp.com',
@@ -67,6 +68,7 @@ window.CASHTOP_FIREBASE=Object.freeze({
   adminRootPath:'cashTopExchange/cashTopAdmin',
   legacyRootPaths:Object.freeze(['cashTopPOS/v6']),
   activeDatabaseStorageKey:ACTIVE_STORAGE_KEY,
+  routeCacheStorageKey:ROUTE_CACHE_STORAGE_KEY,
   backendConfigStorageKey:BACKEND_STORAGE_KEY,
   masterConfig:MASTER_CONFIG,
   config:runtimeConfig,
@@ -82,7 +84,7 @@ window.CASHTOP_FIREBASE=Object.freeze({
     genericNodesCollection:'nodes',
     authPolicy:'auto',
     chunkChars:140000,
-    closeIdleMs:320
+    closeIdleMs:1100
   }),
   multiDatabase:Object.freeze({
     databasesCollection:'cashtopDatabases',

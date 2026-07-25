@@ -88,6 +88,59 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     return 'الإنترنت متوفر، لكن خادم المزامنة لم يستجب لهذه المحاولة. ستتم إعادة المحاولة تلقائياً دون فقدان أي عملية.';
   }
 
+  const CLOUD_OMIT = Symbol('cashtop-cloud-omit');
+  function containsDeviceLocalImage(value) {
+    return typeof value === 'string' && (/^(?:data:image\/|blob:)/i.test(value.trim()) || /(?:data:image\/[^;]+;base64,|blob:)/i.test(value));
+  }
+  function imageRecordId(value) {
+    if (!value || typeof value !== 'object') return '';
+    return String(value.id ?? value.productId ?? value.uuid ?? value.code ?? value.barcode ?? value.key ?? '').trim();
+  }
+  function cloudSafeValue(localValue, remoteValue) {
+    if (typeof localValue === 'string') {
+      if (/^(?:data:image\/|blob:)/i.test(localValue.trim())) {
+        return typeof remoteValue === 'string' && !containsDeviceLocalImage(remoteValue) ? remoteValue : CLOUD_OMIT;
+      }
+      if (containsDeviceLocalImage(localValue)) {
+        // HTML التصميم قد يحتوي صورة Base64 داخله؛ نحذف بايتات الصورة فقط ونزامن بقية التصميم.
+        const cleaned = localValue
+          .replace(/data:image\/[^;,'")]+;base64,[A-Za-z0-9+/=\s]+/gi, '')
+          .replace(/blob:[^'")\s]+/gi, '');
+        return cleaned || (typeof remoteValue === 'string' && !containsDeviceLocalImage(remoteValue) ? remoteValue : CLOUD_OMIT);
+      }
+      return localValue;
+    }
+    if (Array.isArray(localValue)) {
+      const remoteRows = Array.isArray(remoteValue) ? remoteValue : [];
+      const remoteById = new Map(remoteRows.map(item => [imageRecordId(item), item]).filter(([id]) => id));
+      return localValue.map((item, index) => {
+        const id = imageRecordId(item);
+        return cloudSafeValue(item, (id && remoteById.get(id)) ?? remoteRows[index]);
+      }).filter(item => item !== CLOUD_OMIT);
+    }
+    if (localValue && typeof localValue === 'object') {
+      const remoteObject = remoteValue && typeof remoteValue === 'object' && !Array.isArray(remoteValue) ? remoteValue : {};
+      const output = {};
+      for (const [field, fieldValue] of Object.entries(localValue)) {
+        const safe = cloudSafeValue(fieldValue, remoteObject[field]);
+        if (safe !== CLOUD_OMIT) output[field] = safe;
+      }
+      return output;
+    }
+    return localValue;
+  }
+  function makeCloudSafePayload(key, localPayload, remotePayload) {
+    if (!localPayload || localPayload.deleted || typeof localPayload.value !== 'string') return localPayload;
+    const localValue = payloadJsonValue(localPayload);
+    if (localValue == null || typeof localValue !== 'object') {
+      if (!containsDeviceLocalImage(localPayload.value)) return localPayload;
+    }
+    const remoteValue = remotePayload ? payloadJsonValue(remotePayload) : undefined;
+    const safe = cloudSafeValue(localValue, remoteValue);
+    if (safe === CLOUD_OMIT) return { ...localPayload, value: JSON.stringify(null), localImagesOmitted: true };
+    return { ...localPayload, value: JSON.stringify(safe), localImagesOmitted: JSON.stringify(safe) !== JSON.stringify(localValue) };
+  }
+
 
   function reportSyncProgress(current, total, label = '', extra = {}) {
     window.dispatchEvent(new CustomEvent('cashtop:sync-progress', {
@@ -846,9 +899,9 @@ if (settings.enabled && core && settings.config?.databaseURL) {
    * بها فقط، بينما تبقى العملية الأحدث في الطابور للدفعة التالية. هذا يمنع
    * ضياع فرع/موظف/فاتورة أُضيفت أثناء مزامنة جارية.
    */
-  function markUploaded(key, payload) {
+  function markUploaded(key, payload, sourcePayload = payload) {
     const currentRaw = core.getRawCompanyDataset ? core.getRawCompanyDataset(key) : localStorage.getItem(key);
-    const expectedRaw = payload.deleted ? null : payload.value;
+    const expectedRaw = sourcePayload.deleted ? null : sourcePayload.value;
     const currentMeta = localMetaFor(key);
     if (currentRaw !== expectedRaw || Number(currentMeta.updatedAt || 0) > Number(payload.updatedAt || 0)) {
       return false;
@@ -993,7 +1046,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     return pullDatasetKeys(pagePriorityDatasets(), options);
   }
 
-  function scheduleBackgroundFullPull(delay = 1400) {
+  function scheduleBackgroundFullPull(delay = 420) {
     clearTimeout(backgroundPullTimer);
     backgroundPullTimer = setTimeout(async () => {
       if (backgroundPullRunning || core.getSyncQueue().length) return;
@@ -1001,13 +1054,13 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       try {
         const priority = new Set(pagePriorityDatasets());
         const remaining = CLOUD_DATA_KEYS.filter(key => !priority.has(key));
-        const chunkSize = 5;
+        const chunkSize = 8;
         for (let i = 0; i < remaining.length; i += chunkSize) {
           if (core.getSyncQueue().length) break;
-          await pullDatasetKeys(remaining.slice(i, i + chunkSize), { concurrency: 6, silentProgress: true }).catch(error => console.warn('[CASH TOP 2] background dataset sync:', error));
+          await pullDatasetKeys(remaining.slice(i, i + chunkSize), { concurrency: 8, silentProgress: true }).catch(error => console.warn('[CASH TOP 2] background dataset sync:', error));
           await new Promise(resolve => {
             if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 900 });
-            else setTimeout(resolve, 80);
+            else setTimeout(resolve, 24);
           });
         }
       } finally {
@@ -1285,16 +1338,15 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     if (payload.deleted) return;
     const currentRaw = core.getRawCompanyDataset ? core.getRawCompanyDataset(key) : localStorage.getItem(key);
     if (String(currentRaw ?? '') === String(payload.value ?? '')) return;
-    core.rawSet(core.namespaceKey(key), String(payload.value ?? ''));
-    core.rawSet(core.metaKey(key), JSON.stringify({
+    core.applyRemoteDataset(key, payload.value, {
       ...localMetaFor(key),
       updatedAt: Number(payload.updatedAt || Date.now()),
       revision: Number(payload.revision || 1),
       deviceId: payload.deviceId || core.rawGet('cashtop_device_id') || '',
       source: backendSource,
-      seeded: false
-    }));
-    window.dispatchEvent(new CustomEvent('cashtop:remote-applied', { detail: { key, merged: true } }));
+      seeded: false,
+      merged: true
+    });
   }
 
   /*
@@ -1328,29 +1380,34 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       let pendingProgress = 0;
       if (pendingKeys.length) reportSyncProgress(0, pendingKeys.length, options.importSync ? 'جاري رفع النسخة الاحتياطية...' : 'جاري رفع العمليات المعلقة...');
 
-      for (const key of pendingKeys) {
-        if (!canRetryDatasetNow(key, manual)) {
-          failedKeys.push(key);
-          pendingProgress += 1;
-          reportSyncProgress(pendingProgress, pendingKeys.length, `تأجيل ${key} مؤقتاً ومتابعة بقية العمليات...`);
-          continue;
-        }
+      const hardware = Math.max(2, Number(navigator.hardwareConcurrency || 4));
+      const memory = Math.max(0, Number(navigator.deviceMemory || 0));
+      const uploadConcurrency = Math.max(2, Math.min(options.importSync ? 6 : 5, memory && memory <= 2 ? 2 : Math.ceil(hardware / 2)));
+      let nextPendingIndex = 0;
+      let tokenPromise = null;
+      const ensureSharedToken = async () => {
+        if (token) return token;
+        if (!tokenPromise) tokenPromise = requireDatabaseToken().finally(() => { tokenPromise = null; });
+        token = await tokenPromise;
+        return token;
+      };
 
+      const processPendingKey = async key => {
         try {
+          if (!canRetryDatasetNow(key, manual)) {
+            failedKeys.push(key);
+            return;
+          }
           let remoteRaw;
           try {
             remoteRaw = await readDatasetLocation(location, key, token);
           } catch (error) {
             if (!token && isPermissionError(error)) {
-              token = await requireDatabaseToken();
+              await ensureSharedToken();
               remoteRaw = await readDatasetLocation(location, key, token);
-            } else {
-              throw error;
-            }
+            } else throw error;
           }
           let remote = remoteRaw == null ? null : normalizeRemotePayload(remoteRaw);
-
-          // حقول الاشتراك/الخطة وحالة مدير الشركة مرجعها البعيد حتى أثناء رفع تعديل محلي.
           if (key === 'cashtop_company_access' && remoteRaw != null) mergeAdminControlledAccess(remoteRaw);
 
           let committed = false;
@@ -1362,33 +1419,25 @@ if (settings.enabled && core && settings.config?.databaseURL) {
             sourcePending = pendingForKey(key);
             if (!sourcePending) { committed = true; break; }
             sourceLocalPayload = makeLocalPayload(key, remote?.revision || 0);
-            desired = mergePendingPayload(sourceLocalPayload, remote, sourcePending);
+            const cloudLocalPayload = makeCloudSafePayload(key, sourceLocalPayload, remote);
+            desired = mergePendingPayload(cloudLocalPayload, remote, sourcePending);
             try {
               await writeDatasetLocation(location, key, token, desired);
             } catch (error) {
               if (!token && isPermissionError(error)) {
-                token = await requireDatabaseToken();
+                await ensureSharedToken();
                 await writeDatasetLocation(location, key, token, desired);
-              } else {
-                throw error;
-              }
+              } else throw error;
             }
             const verifiedRaw = await readDatasetLocation(location, key, token);
             committed = pendingChangesPresent(verifiedRaw, desired, sourcePending);
             remote = verifiedRaw == null ? null : normalizeRemotePayload(verifiedRaw);
-            if (!committed) await new Promise(resolve => setTimeout(resolve, 55 * (attempt + 1)));
+            if (!committed) await new Promise(resolve => setTimeout(resolve, 35 * (attempt + 1)));
           }
 
-          // قد تكون العملية حُسمت أثناء الانتظار؛ لا نعدّها فشلاً.
-          if (!pendingForKey(key)) {
-            clearDatasetFailure(key);
-            continue;
-          }
-          if (!committed || !desired || !sourceLocalPayload) {
-            throw new Error(`تعذر تثبيت تعديلات ${key} بسبب تعارض مزامنة متكرر.`);
-          }
+          if (!pendingForKey(key)) { clearDatasetFailure(key); return; }
+          if (!committed || !desired || !sourceLocalPayload) throw new Error(`تعذر تثبيت تعديلات ${key} بسبب تعارض مزامنة متكرر.`);
 
-          // إذا حدث تعديل أحدث أثناء انتظار الشبكة نترك العملية الجديدة في الطابور.
           const currentRaw = core.getRawCompanyDataset ? core.getRawCompanyDataset(key) : localStorage.getItem(key);
           const currentMeta = localMetaFor(key);
           const localUnchanged = currentRaw === (sourceLocalPayload.deleted ? null : sourceLocalPayload.value) &&
@@ -1396,7 +1445,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
 
           if (localUnchanged) {
             if (!desired.deleted) applyMergedPayloadLocally(key, desired);
-            if (markUploaded(key, desired)) uploaded += 1;
+            if (markUploaded(key, desired, sourceLocalPayload)) uploaded += 1;
           }
           clearDatasetFailure(key);
         } catch (error) {
@@ -1404,18 +1453,26 @@ if (settings.enabled && core && settings.config?.databaseURL) {
           failedKeys.push(key);
           errorSummaries.push({ key, message: safeSyncMessage(error) });
           console.warn('[CASH TOP 2] deferred dataset sync:', key, error);
-          // مهم: لا نرمي الخطأ هنا حتى تكمل بقية العمليات الجاهزة في الطابور.
         } finally {
           pendingProgress += 1;
           reportSyncProgress(pendingProgress, Math.max(1, pendingKeys.length), `مزامنة ${key}...`);
+          core.updateSyncBadge();
         }
-      }
+      };
+
+      const workers = Array.from({ length: Math.min(uploadConcurrency, Math.max(1, pendingKeys.length)) }, async () => {
+        while (nextPendingIndex < pendingKeys.length) {
+          const key = pendingKeys[nextPendingIndex++];
+          await processPendingKey(key);
+        }
+      });
+      await Promise.all(workers);
 
       // بعد رفع ما يمكن رفعه، اسحب بيانات الصفحة. المجموعات التي بقيت معلقة
       // محمية داخل applyRemote ولن تُستبدل بنسخة بعيدة أقدم.
       const pullKeys = options.manual === true || options.forceCheck === true ? CLOUD_DATA_KEYS : pagePriorityDatasets();
       try {
-        const pullResult = await pullDatasetKeys(pullKeys, { force: options.force === true, concurrency: 4 });
+        const pullResult = await pullDatasetKeys(pullKeys, { force: options.force === true, concurrency: 8 });
         pulled = Number(pullResult?.applied || 0);
       } catch (error) {
         errorSummaries.push({ key: '__pull__', message: safeSyncMessage(error) });
@@ -1482,7 +1539,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   async function pullAll(options = {}) {
     return pullDatasetKeys(CLOUD_DATA_KEYS, {
       force: options.force === true,
-      concurrency: options.concurrency || 4
+      concurrency: options.concurrency || 8
     });
   }
 
@@ -1515,7 +1572,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     return Number(result.uploaded || 0) > 0;
   }
 
-  function scheduleSync(delay = 900) {
+  function scheduleSync(delay = 120) {
     clearTimeout(scheduledSync);
     scheduledSync = setTimeout(() => {
       // لا نعتمد على navigator.onLine كحكم نهائي؛ بعض الأجهزة تعطي حالة خاطئة.
@@ -1523,13 +1580,13 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       job.then(result => {
         if (core.getSyncQueue().length) {
           // تبقى العمليات المتعثرة معلقة ويُعاد فحصها لاحقاً، من دون تعطيل ما بعدها.
-          scheduleSync(result?.networkDeferred ? 6000 : 3500);
+          scheduleSync(result?.networkDeferred ? 2200 : 650);
         } else {
-          scheduleBackgroundFullPull(900);
+          scheduleBackgroundFullPull(260);
         }
       }).catch(error => {
         console.warn('[CASH TOP 2] scheduled database sync:', error);
-        if (core.getSyncQueue().length) scheduleSync(6500);
+        if (core.getSyncQueue().length) scheduleSync(2500);
       });
     }, delay);
   }
@@ -1688,7 +1745,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     if (document.hidden || core.getSyncQueue().length) return;
     const realtimeHealthy = !isFirestoreBridge && realtimeSource && realtimeSource.readyState === EventSource.OPEN;
     if (!realtimeHealthy) pullPriorityDatasets({ concurrency: 8, silentProgress: true }).catch(() => null);
-  }, isFirestoreBridge ? 5000 : 7000);
+  }, isFirestoreBridge ? 2800 : 4500);
 
   window.addEventListener('pagehide', () => {
     clearTimeout(scheduledSync);
@@ -1703,7 +1760,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   // أول دخول: نحاول قاعدة البيانات مباشرة حتى لو كانت navigator.onLine غير دقيقة.
   scheduleSync(10);
   setTimeout(() => flushAuditTrailPending({ limit: 120 }).catch(() => null), 350);
-  if (!core.getSyncQueue().length) scheduleBackgroundFullPull(750);
+  if (!core.getSyncQueue().length) scheduleBackgroundFullPull(180);
 } else if (core) {
   console.warn('[CASH TOP 2] Firebase sync configuration is incomplete.');
   core.updateSyncBadge();

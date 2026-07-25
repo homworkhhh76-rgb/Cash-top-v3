@@ -2123,14 +2123,28 @@
   }
 
   function installGlobalPerformanceGuards() {
-    /* Browser-level lazy painting for every record table, including pages that
-       still use their legacy render functions. */
+    if (document.getElementById('ctPerformanceGuards')) return;
+    /* Browser-level lazy painting for every record table and off-screen card. */
     const style = document.createElement('style');
     style.id = 'ctPerformanceGuards';
-    style.textContent = 'tbody tr{content-visibility:auto;contain-intrinsic-size:auto 44px}.ct-lazy-table-sentinel,.ct-virtual-spacer,.ct-virtual-window-sentinel{content-visibility:visible!important;contain:none!important}';
+    style.textContent = 'tbody tr{content-visibility:auto;contain-intrinsic-size:auto 44px}.ct-lazy-table-sentinel,.ct-virtual-spacer,.ct-virtual-window-sentinel,.modal-overlay.active,.ct-modal.open{content-visibility:visible!important;contain:none!important}.ct-is-scrolling *{animation-play-state:paused!important}.ct-is-scrolling .ct-sidebar,.ct-is-scrolling .ct-bottom-nav,.ct-is-scrolling .ct-topbar{animation-play-state:running!important}';
     document.head.appendChild(style);
 
-    /* Convert common inline search handlers to a 300ms debounced listener. */
+    // لا ننفذ أكثر من تحديث DOM واحد لكل إطار؛ requestAnimationFrame يتبع 60/90/120Hz تلقائياً.
+    let scrollFrame = 0;
+    let scrollStopTimer = 0;
+    const onScroll = () => {
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = 0;
+        document.body?.classList.add('ct-is-scrolling');
+      });
+      clearTimeout(scrollStopTimer);
+      scrollStopTimer = setTimeout(() => document.body?.classList.remove('ct-is-scrolling'), 90);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    window.addEventListener('touchmove', onScroll, { passive: true });
+
+    /* Convert common inline search handlers to a short debounced listener. */
     document.querySelectorAll('input[type="text"],input[type="search"],input:not([type])').forEach(input => {
       const attr = input.getAttribute('oninput') || '';
       const match = attr.trim().match(/^([A-Za-z_$][\w$]*)\(\)\s*;?$/);
@@ -2141,7 +2155,7 @@
       const fn = window[fnName];
       if (typeof fn !== 'function') return;
       input.removeAttribute('oninput');
-      input.addEventListener('input', debounce(() => window[fnName]?.(), 120));
+      input.addEventListener('input', debounce(() => window[fnName]?.(), 80));
       input.dataset.ctDebounced = 'true';
     });
   }
@@ -3286,7 +3300,7 @@
         return;
       }
       const script = document.createElement('script');
-      script.src = 'firebase-sync.js?v=64';
+      script.src = 'firebase-sync.js?v=65';
       script.async = true;
       script.dataset.ctSyncRuntime = 'classic';
       script.onload = () => resolve(Boolean(window.CashtopFirebase?.syncAll));
@@ -3521,18 +3535,69 @@
     return { imported: importedKeys.length, crossCompanyImport, syncResult, remaining: getSyncQueue().length };
   }
 
+  function containsDeviceLocalImage(value) {
+    return typeof value === 'string' && (/^(?:data:image\/|blob:)/i.test(value.trim()) || /(?:data:image\/[^;]+;base64,|blob:)/i.test(value));
+  }
+
+  function localImageRecordId(value) {
+    if (!value || typeof value !== 'object') return '';
+    return String(value.id ?? value.productId ?? value.uuid ?? value.code ?? value.barcode ?? value.key ?? '').trim();
+  }
+
+  /*
+   * الصور المختارة من الجهاز تبقى خاصة بهذا الجهاز. عند وصول نسخة بعيدة
+   * ندمج البيانات العادية، لكننا لا نستبدل أي data:image أو blob محفوظ محلياً.
+   * روابط http/https تبقى ضمن البيانات العادية ولذلك تتزامن بين الأجهزة.
+   */
+  function preserveDeviceLocalImages(remoteValue, localValue) {
+    if (containsDeviceLocalImage(localValue)) return localValue;
+    if (Array.isArray(remoteValue)) {
+      const localRows = Array.isArray(localValue) ? localValue : [];
+      const localById = new Map(localRows.map(item => [localImageRecordId(item), item]).filter(([id]) => id));
+      return remoteValue.map((item, index) => {
+        const id = localImageRecordId(item);
+        const localItem = (id && localById.get(id)) ?? localRows[index];
+        return preserveDeviceLocalImages(item, localItem);
+      });
+    }
+    if (remoteValue && typeof remoteValue === 'object') {
+      const localObject = localValue && typeof localValue === 'object' && !Array.isArray(localValue) ? localValue : {};
+      const output = { ...remoteValue };
+      for (const [field, localField] of Object.entries(localObject)) {
+        if (containsDeviceLocalImage(localField)) output[field] = localField;
+        else if (localField && typeof localField === 'object') {
+          const merged = preserveDeviceLocalImages(remoteValue[field], localField);
+          if (merged !== undefined) output[field] = merged;
+        }
+      }
+      return output;
+    }
+    return remoteValue;
+  }
+
   function applyRemoteDataset(key, value, meta) {
     const canonical = canonicalKey(key);
     const ns = namespaceKey(canonical);
+    const incomingRaw = typeof value === 'string' ? value : JSON.stringify(value);
+    const localRaw = rawGet(ns);
+    let finalRaw = incomingRaw;
+    const incomingParsed = safeJson(incomingRaw, undefined);
+    const localParsed = safeJson(localRaw, undefined);
+    if (incomingParsed !== undefined && localParsed !== undefined) {
+      const merged = preserveDeviceLocalImages(incomingParsed, localParsed);
+      finalRaw = typeof merged === 'string' ? merged : JSON.stringify(merged);
+    } else if (containsDeviceLocalImage(localRaw)) {
+      finalRaw = localRaw;
+    }
     suppressEvents = true;
     try {
-      rawSet(ns, typeof value === 'string' ? value : JSON.stringify(value));
+      rawSet(ns, finalRaw);
       rawSet(metaKey(canonical), JSON.stringify(meta || { updatedAt: Date.now(), source: 'remote' }));
     } finally {
       suppressEvents = false;
     }
-    dispatchLogicalStorageEvents(canonical, null, typeof value === 'string' ? value : JSON.stringify(value));
-    window.dispatchEvent(new CustomEvent('cashtop:remote-applied', { detail: { key: canonical } }));
+    dispatchLogicalStorageEvents(canonical, localRaw, finalRaw);
+    window.dispatchEvent(new CustomEvent('cashtop:remote-applied', { detail: { key: canonical, localImagesPreserved: finalRaw !== incomingRaw } }));
   }
 
 

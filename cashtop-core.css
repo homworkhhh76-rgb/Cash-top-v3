@@ -1640,3 +1640,28 @@ html.ct-cashier-page .ct-sidebar-overlay { z-index: 9100 !important; }
 /* Revision 56: keep the basket insight dialog light and smooth without reintroducing layout shake. */
 #itemInfoModal.modal-overlay > .modal-box { opacity: 0; transition: opacity .18s ease !important; }
 #itemInfoModal.modal-overlay.active > .modal-box { opacity: 1 !important; transition: opacity .18s ease !important; }
+
+
+/* ===== Revision 65: high-refresh rendering for mobile and desktop ===== */
+html, body { max-width: 100%; }
+body { -webkit-font-smoothing: antialiased; }
+.ct-main-wrapper, .ct-page-host, .ct-original-page { min-width: 0; }
+.table-responsive-box, .table-wrap, .ct-table-wrap {
+  contain: layout style;
+}
+.ct-sidebar, .ct-sidebar-overlay, .ct-bottom-nav, .ct-topbar {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.ct-sidebar:not(.open), .ct-sidebar-overlay:not(.active),
+.modal-overlay:not(.active), .ct-modal:not(.open) { will-change: auto !important; }
+.ct-sidebar.open, .ct-sidebar-overlay.active,
+.modal-overlay.active, .ct-modal.open { will-change: transform, opacity; }
+@media (hover:none), (pointer:coarse) {
+  * { -webkit-tap-highlight-color: transparent; }
+  .card, .info-box, .modal-box, .modal-content, .ct-modal-box { backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ct-sync-progress-bar { transition-duration: 80ms !important; }
+  .ct-icon-button.ct-syncing .ct-svg-icon { animation-duration: .42s !important; }
+}
