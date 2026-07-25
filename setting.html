@@ -141,11 +141,11 @@
     <!-- CASH TOP: shared shell, unified storage, accounting and Firebase sync -->
     <link rel="icon" href="icon-192.png">
     <link rel="stylesheet" href="cashtop-core.css?v=56">
-    <script src="cashtop-core.js?v=56"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
+    <script src="cashtop-core.js?v=69"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
     <script src="multi-system.js?v=57"></script>
-    <script src="firebase-config.js?v=65"></script><script src="firestore-bridge.js?v=65"></script>
+    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=69"></script>
     <script src="accounting-engine.js"></script>
-    <script src="firebase-sync.js?v=65"></script>
+    <script src="firebase-sync.js?v=69"></script>
 <script src="cashtop-download-fix.js"></script>
 </head>
 <body>
@@ -505,9 +505,7 @@
             setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
-        let savedLogoData = null;
-        let savedLogoSource = '';
-        const LOCAL_LOGO_KEY = 'cashtop_local_company_logo_v1';
+        let savedLogoData = null; // متغير لحفظ الصورة كـ Base64
 
         function syncInvoiceDesignLogo(newLogo) {
             try {
@@ -574,12 +572,9 @@
                 updateFractionSettingsState();
                 updateCustomerPortalUrl(sysSettings);
                 
-                const deviceLocalLogo = localStorage.getItem(LOCAL_LOGO_KEY) || '';
-                const displayLogo = deviceLocalLogo || sysSettings.logo || '';
-                if (displayLogo) {
-                    savedLogoData = displayLogo;
-                    savedLogoSource = deviceLocalLogo ? 'device' : (/^https?:\/\//i.test(displayLogo) ? 'url' : '');
-                    document.getElementById('logoPreviewBox').innerHTML = `<img src="${displayLogo}" alt="الشعار">`;
+                if (sysSettings.logo) {
+                    savedLogoData = sysSettings.logo;
+                    document.getElementById('logoPreviewBox').innerHTML = `<img src="${sysSettings.logo}" alt="الشعار">`;
                 }
 
                 // تحميل إعدادات الـ SMS
@@ -606,17 +601,13 @@
                     input.value = '';
                     previewBox.innerHTML = '<i class="fa-solid fa-image"></i>';
                     savedLogoData = null;
-                    savedLogoSource = '';
-                    localStorage.removeItem(LOCAL_LOGO_KEY);
                     return;
                 }
                 errorElement.style.display = 'none';
                 
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    savedLogoData = e.target.result;
-                    savedLogoSource = 'device';
-                    localStorage.setItem(LOCAL_LOGO_KEY, savedLogoData);
+                    savedLogoData = e.target.result; // حفظ كـ Base64 لرفعه للـ LocalStorage
                     previewBox.innerHTML = `<img src="${e.target.result}" alt="الشعار">`;
                 };
                 reader.readAsDataURL(file);
@@ -649,8 +640,6 @@
                     image.src = url;
                 });
                 savedLogoData = url;
-                savedLogoSource = 'url';
-                localStorage.removeItem(LOCAL_LOGO_KEY);
                 document.getElementById('logoPreviewBox').innerHTML = `<img src="${url.replace(/"/g, '&quot;')}" alt="الشعار">`;
                 const settings = JSON.parse(localStorage.getItem('cashtop_settings')) || {};
                 settings.logo = url;
@@ -658,7 +647,7 @@
                 syncInvoiceDesignLogo(url);
                 closeLogoUrlModal();
                 window.Cashtop?.applySystemBranding?.();
-                showToast('تم حفظ رابط الشعار وإضافته إلى مزامنة قاعدة البيانات.', 'success');
+                showToast('تم حفظ رابط الشعار وإضافته إلى مزامنة Firestore.', 'success');
             } catch (_) {
                 showToast('تعذر تحميل الصورة من الرابط. تأكد أن الرابط مباشر ومتاح.', 'error');
             } finally {
@@ -883,9 +872,6 @@
                 logo: savedLogoData || previousSettings.logo || '' // حفظ مسار الشعار
             };
 
-            // الصورة المختارة من الجهاز تبقى في كاش هذا الجهاز فقط، أما رابط الصورة فيدخل بالمزامنة.
-            if (savedLogoSource === 'device' && savedLogoData) localStorage.setItem(LOCAL_LOGO_KEY, savedLogoData);
-            else if (savedLogoSource === 'url') localStorage.removeItem(LOCAL_LOGO_KEY);
             // الحفظ في التخزين المحلي
             localStorage.setItem('cashtop_settings', JSON.stringify(settingsObj));
             const currentNotificationSettings = JSON.parse(localStorage.getItem('cashtop_notification_settings')||'{}');

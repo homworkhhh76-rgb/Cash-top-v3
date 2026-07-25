@@ -22,7 +22,6 @@ const META_DOCUMENT = String(fsSettings.metaDocument || 'state');
 const GENERIC_NODES_COLLECTION = String(fsSettings.genericNodesCollection || 'nodes');
 const ADMIN_STATE_FIELDS = new Set(['superAdmin','companies','keyIndex','retiredKeys','updatedAt']);
 const CHUNK_CHARS = Math.max(40000, Math.min(180000, Number(fsSettings.chunkChars || 140000)));
-const CLOSE_IDLE_MS = Math.max(80, Number(fsSettings.closeIdleMs || 320));
 const adminRoot = cleanPath(settings.adminRootPath || 'cashTopExchange/cashTopAdmin');
 const companyRoots = [...new Set([
   cleanPath(settings.rootPath || 'cashTopExchange/cashTopPOS'),
@@ -32,12 +31,10 @@ const companyRoots = [...new Set([
 let modulesPromise = null;
 let authModulePromise = null;
 let contextPromise = null;
-let networkUsers = 0;
-let transition = Promise.resolve();
-let closeTimer = null;
-let pendingWrite = false;
+let contextEpoch = 0;
 let anonymousAuthPromise = null;
 let anonymousAuthFailedAt = 0;
+const retiredContexts = new Set();
 
 function cleanPath(value){ return String(value || '').replace(/^\/+|\/+$/g, ''); }
 function safeSegment(value){ return String(value || '').trim().replace(/[.#$\[\]\/]/g, '_') || '_'; }
@@ -51,7 +48,16 @@ function isEmbeddedAndroidWebView(){
 }
 function isInternalAssertion(error){
   const text=String(error?.message||error?.code||error||'').toLowerCase();
-  return text.includes('internal assertion failed')||text.includes('unexpected state')||text.includes('pendingresponses less than 0');
+  return text.includes('internal assertion failed')||text.includes('unexpected state')||
+    text.includes('pendingresponses less than 0')||
+    text.includes("cannot read properties of null (reading 'database')")||
+    text.includes('cannot read properties of null (reading "database")')||
+    text.includes('client has already been terminated')||text.includes('the client has already been terminated');
+}
+function hash(value){
+  let h=2166136261;
+  for(const char of String(value||'')){h^=char.charCodeAt(0);h=Math.imul(h,16777619);}
+  return (h>>>0).toString(36);
 }
 function isOfflineReadableError(error){
   const text=String(error?.code||error?.message||error||'').toLowerCase();
@@ -60,17 +66,11 @@ function isOfflineReadableError(error){
     text.includes('client is offline') || text.includes('could not reach cloud firestore backend');
 }
 async function getDocFresh(ctx,ref){
-  if(navigator.onLine!==false&&typeof ctx.firestore.getDocFromServer==='function'){
-    try{return await ctx.firestore.getDocFromServer(ref);}
-    catch(error){if(!isOfflineReadableError(error))throw error;}
-  }
+  // Firestore Lite always reads directly from the server and has no IndexedDB,
+  // listen stream, or WebChannel state that can become internally corrupted.
   return await ctx.firestore.getDoc(ref);
 }
 async function getDocsFresh(ctx,queryRef){
-  if(navigator.onLine!==false&&typeof ctx.firestore.getDocsFromServer==='function'){
-    try{return await ctx.firestore.getDocsFromServer(queryRef);}
-    catch(error){if(!isOfflineReadableError(error))throw error;}
-  }
   return await ctx.firestore.getDocs(queryRef);
 }
 function splitText(text){
@@ -135,7 +135,7 @@ async function loadModules(){
     // Keep the mandatory path identical to the supplied working test: app + Firestore only.
     modulesPromise = Promise.all([
       import(`https://www.gstatic.com/firebasejs/${sdkVersion}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${sdkVersion}/firebase-firestore.js`)
+      import(`https://www.gstatic.com/firebasejs/${sdkVersion}/firebase-firestore-lite.js`)
     ]).then(([app, firestore]) => ({ app, firestore }));
   }
   return modulesPromise;
@@ -156,24 +156,14 @@ async function initializeContext(){
     contextPromise = (async () => {
       const modules = await loadModules();
       const appOptions = { apiKey:config.apiKey, authDomain:config.authDomain, projectId:config.projectId, storageBucket:config.storageBucket, messagingSenderId:config.messagingSenderId, appId:config.appId, measurementId:config.measurementId };
-      const app = modules.app.getApps().find(item => item.options?.projectId === config.projectId && item.options?.appId === config.appId) || modules.app.initializeApp(appOptions);
+      const appName=`cashtop-main-${safeSegment(config.projectId)}-${hash(`${config.appId}|${databaseId}`)}-${contextEpoch}`;
+      const app = modules.app.getApps().find(item => item.name === appName) || modules.app.initializeApp(appOptions,appName);
 
-      // Same successful sequence supplied by the user: initializeApp -> Firestore.
-      // Authentication is not allowed to block the first database operation.
+      // Firestore Lite is intentionally used here. CASH TOP already owns its local
+      // cache/retry layer, so the full SDK's IndexedDB + WebChannel state is unnecessary
+      // and was the source of the recurring null internal `database` context error.
       let db;
-      const embeddedWebView=isEmbeddedAndroidWebView();
-      const firestoreOptions={
-        localCache:embeddedWebView
-          ?modules.firestore.memoryLocalCache()
-          :modules.firestore.persistentLocalCache({tabManager:modules.firestore.persistentMultipleTabManager()}),
-        ignoreUndefinedProperties:true
-      };
-      if(embeddedWebView){
-        firestoreOptions.experimentalForceLongPolling=true;
-        firestoreOptions.experimentalLongPollingOptions={timeoutSeconds:25};
-      }else{
-        firestoreOptions.experimentalAutoDetectLongPolling=true;
-      }
+      const firestoreOptions={ignoreUndefinedProperties:true};
       try {
         db = databaseId && databaseId !== '(default)'
           ? modules.firestore.initializeFirestore(app, firestoreOptions, databaseId)
@@ -186,11 +176,7 @@ async function initializeContext(){
           : modules.firestore.getFirestore(app);
       }
 
-      const context = { ...modules, appModule:modules.app, app, auth:null, authModule:null, db, authMode:'firestore-rules', authError:'' };
-
-      // Start closed. Every task explicitly opens Firestore and closes it again.
-      try { await modules.firestore.disableNetwork(db); } catch (_) {}
-      return context;
+      return { ...modules, appModule:modules.app, app, auth:null, authModule:null, db, authMode:'firestore-rules', authError:'', activeUsers:0, retired:false, cleanupPromise:null, epoch:contextEpoch, transport:'firestore-lite-rest' };
     })().catch(error => {
       contextPromise = null;
       throw error;
@@ -250,45 +236,25 @@ async function ensureAnonymousAuth(ctx){
   return await anonymousAuthPromise;
 }
 
-async function transitionNetwork(change){
-  const task = transition.then(change, change);
-  transition = task.catch(() => null);
-  return task;
+async function cleanupRetiredContext(ctx){
+  if(!ctx||!ctx.retired||Number(ctx.activeUsers||0)>0)return;
+  if(ctx.cleanupPromise)return await ctx.cleanupPromise;
+  // Never terminate/delete a Firebase app at runtime. A late Promise may still hold
+  // a reference to it, and terminating it recreates the exact null-context failure.
+  ctx.cleanupPromise=Promise.resolve().then(()=>{retiredContexts.delete(ctx);});
+  return await ctx.cleanupPromise;
 }
 
 async function beginNetwork(){
-  clearTimeout(closeTimer);
-  closeTimer = null;
-  const ctx = await initializeContext();
-  await transitionNetwork(async () => {
-    networkUsers += 1;
-    if (networkUsers === 1) {
-      try { await ctx.firestore.enableNetwork(ctx.db); } catch (_) {}
-    }
-  });
+  const ctx=await initializeContext();
+  ctx.activeUsers=Number(ctx.activeUsers||0)+1;
   return ctx;
 }
 
-async function finishNetwork(){
-  await transitionNetwork(async () => {
-    networkUsers = Math.max(0, networkUsers - 1);
-    if (networkUsers !== 0) return;
-    clearTimeout(closeTimer);
-    closeTimer = setTimeout(() => {
-      transitionNetwork(async () => {
-        if (networkUsers !== 0) return;
-        const ctx = await initializeContext();
-        if (pendingWrite) {
-          pendingWrite = false;
-          await Promise.race([
-            ctx.firestore.waitForPendingWrites(ctx.db).catch(() => null),
-            delay(1400)
-          ]);
-        }
-        try { await ctx.firestore.disableNetwork(ctx.db); } catch (_) {}
-      }).catch(() => null);
-    }, CLOSE_IDLE_MS);
-  });
+async function finishNetwork(ctx){
+  if(!ctx)return;
+  ctx.activeUsers=Math.max(0,Number(ctx.activeUsers||0)-1);
+  if(ctx.retired&&ctx.activeUsers===0)await cleanupRetiredContext(ctx);
 }
 
 async function executeFirestoreWorker(ctx,worker){
@@ -300,28 +266,35 @@ async function executeFirestoreWorker(ctx,worker){
     throw error;
   }
 }
-async function resetFirestoreContext(){
-  clearTimeout(closeTimer);closeTimer=null;networkUsers=0;pendingWrite=false;
-  const previous=contextPromise;contextPromise=null;
-  const ctx=await Promise.resolve(previous).catch(()=>null);
-  if(!ctx)return;
-  try{await ctx.firestore.terminate(ctx.db);}catch(_){}
-  try{await ctx.appModule?.deleteApp?.(ctx.app);}catch(_){}
+async function resetFirestoreContext(failedCtx){
+  if(!failedCtx)return;
+  const current=await Promise.resolve(contextPromise).catch(()=>null);
+  failedCtx.retired=true;
+  retiredContexts.add(failedCtx);
+  if(current===failedCtx){
+    contextPromise=null;
+    contextEpoch+=1;
+  }
+  if(Number(failedCtx.activeUsers||0)===0)await cleanupRetiredContext(failedCtx);
 }
 async function withFirestoreTask(worker, options={}){
   let ctx=await beginNetwork();
-  if(options.write)pendingWrite=true;
+  let released=false;
   try{
     try{return await executeFirestoreWorker(ctx,worker);}
     catch(error){
       if(!isInternalAssertion(error))throw error;
-      console.warn('[CASH TOP Firestore] Internal state error detected; rebuilding Firestore once.',error);
-      await resetFirestoreContext();
+      console.warn('[CASH TOP Firestore] Invalid SDK context detected; rotating Firestore safely once.',error);
+      await resetFirestoreContext(ctx);
+      await finishNetwork(ctx);
+      released=true;
       ctx=await beginNetwork();
-      if(options.write)pendingWrite=true;
-      return await executeFirestoreWorker(ctx,worker);
+      released=false;
+          return await executeFirestoreWorker(ctx,worker);
     }
-  }finally{await finishNetwork();}
+  }finally{
+    if(!released)await finishNetwork(ctx);
+  }
 }
 
 function adminRef(ctx){ return ctx.firestore.doc(ctx.db, ADMIN_COLLECTION, ADMIN_DOCUMENT); }
@@ -775,27 +748,21 @@ window.fetch = function(input, init){
 window.CashtopFirestore = Object.freeze({
   ready: initializeContext,
   runTask: withFirestoreTask,
-  closeNetwork: async () => {
-    clearTimeout(closeTimer);
-    networkUsers = 0;
-    const ctx = await initializeContext();
-    try { await ctx.firestore.disableNetwork(ctx.db); } catch (_) {}
-    return true;
-  },
+  closeNetwork: async () => true,
   terminate: async () => {
     const ctx = await initializeContext();
-    try { await ctx.firestore.terminate(ctx.db); } catch (_) {}
-    contextPromise = null;
+    await resetFirestoreContext(ctx);
+    if(Number(ctx.activeUsers||0)===0)await cleanupRetiredContext(ctx);
     return true;
   },
   getInfo: async () => {
     const ctx = await initializeContext();
-    return { projectId:config.projectId, databaseId, backend:'Cloud Firestore', persistentCache:true, closesAfterTask:true, authMode:ctx.authMode, authError:ctx.authError };
+    return { projectId:config.projectId, databaseId, backend:'Cloud Firestore', persistentCache:false, closesAfterTask:false, transport:'Firestore Lite REST', authMode:ctx.authMode, authError:ctx.authError };
   }
 });
 
 window.addEventListener('pagehide', () => {
-  clearTimeout(closeTimer);
-  window.CashtopFirestore?.closeNetwork?.().catch(() => null);
+  // Let the browser close the stable Firestore transport naturally. Explicitly
+  // disabling it here can race with the last write while the page is unloading.
 }, { once:true });
 })();

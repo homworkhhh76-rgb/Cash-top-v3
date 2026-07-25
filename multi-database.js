@@ -7,8 +7,6 @@ const masterConfig = normalizeConfig(settings.masterConfig || settings.config ||
 const fsSettings = settings.firestore || {};
 const multi = settings.multiDatabase || {};
 const ACTIVE_STORAGE_KEY = String(settings.activeDatabaseStorageKey || 'cashtop_active_database_v1');
-const ROUTE_CACHE_STORAGE_KEY = String(settings.routeCacheStorageKey || 'cashtop_database_route_cache_v2');
-const ROUTE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DATABASES_COLLECTION = String(multi.databasesCollection || 'cashtopDatabases');
 const ROUTES_COLLECTION = String(multi.routesCollection || 'cashtopDatabaseRoutes');
 const ROOT_COLLECTION = String(multi.rootCollection || 'cashtopRoot');
@@ -348,46 +346,26 @@ async function findKeyInDatabase(database,companyKey){
     return {databaseId:database.id,databaseName:database.name,key,companyKey:key,tenantId:String(entry.tenantId||entry.companyId||''),companyId:String(entry.tenantId||entry.companyId||''),projectId:database.config.projectId};
   });
 }
-function readRouteCache(){const value=parse(Storage.prototype.getItem.call(localStorage,ROUTE_CACHE_STORAGE_KEY),{});return value&&typeof value==='object'?value:{}}
-function writeRouteCache(value){Storage.prototype.setItem.call(localStorage,ROUTE_CACHE_STORAGE_KEY,JSON.stringify(value&&typeof value==='object'?value:{}));return value}
-function cacheResolvedRoute(database,route={}){
-  const key=normalizeKey(route.key||route.companyKey);if(!key||!database?.config)return null;
-  const cache=readRouteCache();
-  cache[key]={database:databaseRecord(database),route:{...clone(route),key,companyKey:key},cachedAt:Date.now()};
-  writeRouteCache(cache);return cache[key];
-}
-function getCachedResolvedRoute(companyKey){
-  const key=normalizeKey(companyKey),entry=readRouteCache()[key];
-  if(!entry||Date.now()-Number(entry.cachedAt||0)>ROUTE_CACHE_TTL_MS)return null;
-  try{return {database:databaseRecord(entry.database),route:{...clone(entry.route),key,companyKey:key}}}catch(_){return null}
-}
-function clearCachedResolvedRoute(companyKey){const key=normalizeKey(companyKey),cache=readRouteCache();if(key)delete cache[key];else Object.keys(cache).forEach(k=>delete cache[k]);writeRouteCache(cache)}
 async function resolveKey(companyKey){
   const key=normalizeKey(companyKey);if(!key)return null;
-  const cached=getCachedResolvedRoute(key);
-  if(cached?.database?.enabled!==false){
-    const verified=await findKeyInDatabase(cached.database,key).catch(()=>null);
-    if(verified?.tenantId){const result={route:{...cached.route,...verified},database:cached.database};cacheResolvedRoute(result.database,result.route);return result;}
-    clearCachedResolvedRoute(key);
-  }
   const direct=await getRoute(key).catch(()=>null);
   if(direct?.databaseId){
     const database=await getDatabase(direct.databaseId);
     if(database?.enabled!==false){
       const verified=await findKeyInDatabase(database,key).catch(()=>null);
-      if(verified?.tenantId){const result={route:{...direct,...verified},database};cacheResolvedRoute(result.database,result.route);return result;}
+      if(verified?.tenantId)return {route:{...direct,...verified},database};
     }
   }
   const databases=(await listDatabases()).filter(item=>item.enabled!==false);
   const matches=[];
   for(const database of databases){const match=await findKeyInDatabase(database,key).catch(()=>null);if(match?.tenantId)matches.push({route:match,database});}
   if(matches.length>1){const error=new Error('المفتاح موجود في أكثر من قاعدة بيانات. صحح التكرار من لوحة الأدمن.');error.code='CASHTOP_DUPLICATE_DATABASE_KEY';throw error;}
-  if(matches.length===1){await saveRoute(matches[0].route);cacheResolvedRoute(matches[0].database,matches[0].route);return matches[0];}
+  if(matches.length===1){await saveRoute(matches[0].route);return matches[0];}
   return null;
 }
 function cacheActiveDatabase(database,route={}){
   const payload={databaseId:database.id,databaseName:database.name,projectId:database.config.projectId,config:normalizeConfig(database.config),companyKey:normalizeKey(route.key||route.companyKey),tenantId:String(route.tenantId||route.companyId||''),cachedAt:Date.now()};
-  Storage.prototype.setItem.call(localStorage,ACTIVE_STORAGE_KEY,JSON.stringify(payload));cacheResolvedRoute(database,route);return payload;
+  Storage.prototype.setItem.call(localStorage,ACTIVE_STORAGE_KEY,JSON.stringify(payload));return payload;
 }
 function getCachedActiveDatabase(){return parse(Storage.prototype.getItem.call(localStorage,ACTIVE_STORAGE_KEY),null);}
 function clearCachedActiveDatabase(){Storage.prototype.removeItem.call(localStorage,ACTIVE_STORAGE_KEY);}
@@ -438,7 +416,6 @@ window.CashtopMultiDatabase=Object.freeze({
   readAdminState,writeAdminState,writeCompanyAccess,deleteChildKey,readDataset,writeDataset,readLoginBootstrap,
   readCompanyNode,writeCompanyNode,deleteCompanyData,
   cacheActiveDatabase,getCachedActiveDatabase,clearCachedActiveDatabase,
-  cacheResolvedRoute,getCachedResolvedRoute,clearCachedResolvedRoute,
-  activeStorageKey:ACTIVE_STORAGE_KEY,routeCacheStorageKey:ROUTE_CACHE_STORAGE_KEY
+  activeStorageKey:ACTIVE_STORAGE_KEY
 });
 })();
