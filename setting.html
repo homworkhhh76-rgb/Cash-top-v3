@@ -143,9 +143,9 @@
     <link rel="stylesheet" href="cashtop-core.css?v=56">
     <script src="cashtop-core.js?v=69"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
     <script src="multi-system.js?v=57"></script>
-    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=69"></script>
+    <script src="firebase-config.js?v=70"></script><script src="firestore-bridge.js?v=70"></script>
     <script src="accounting-engine.js"></script>
-    <script src="firebase-sync.js?v=69"></script>
+    <script src="firebase-sync.js?v=70"></script>
 <script src="cashtop-download-fix.js"></script>
 </head>
 <body>
@@ -505,7 +505,7 @@
             setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
-        let savedLogoData = null; // متغير لحفظ الصورة كـ Base64
+        let savedLogoData = null; // يحفظ رابط HTTPS فقط؛ الملفات ترفع إلى Storage خارج مستند Firestore
 
         function syncInvoiceDesignLogo(newLogo) {
             try {
@@ -573,8 +573,9 @@
                 updateCustomerPortalUrl(sysSettings);
                 
                 if (sysSettings.logo) {
-                    savedLogoData = sysSettings.logo;
+                    savedLogoData = /^https?:\/\//i.test(sysSettings.logo) ? sysSettings.logo : null;
                     document.getElementById('logoPreviewBox').innerHTML = `<img src="${sysSettings.logo}" alt="الشعار">`;
+                    if (!savedLogoData && /^data:/i.test(sysSettings.logo)) showToast('الشعار القديم محفوظ بصيغة Base64 محلياً. استبدله برابط Storage حتى تتم مزامنته.', 'warning');
                 }
 
                 // تحميل إعدادات الـ SMS
@@ -588,30 +589,13 @@
             }
         }
 
-        // معاينة وحفظ الشعار كـ Base64
+        // لا نحفظ الصور كـ Base64 داخل البيانات المتزامنة. استخدم رابط Firebase Storage أو رابط HTTPS مباشر.
         function previewAndValidateLogo(input) {
-            const file = input.files[0];
-            const errorElement = document.getElementById('logoError');
-            const previewBox = document.getElementById('logoPreviewBox');
-
-            if (file) {
-                // التحقق من الحجم (100KB = 102400 Bytes)
-                if (file.size > 102400) {
-                    errorElement.style.display = 'block';
-                    input.value = '';
-                    previewBox.innerHTML = '<i class="fa-solid fa-image"></i>';
-                    savedLogoData = null;
-                    return;
-                }
-                errorElement.style.display = 'none';
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    savedLogoData = e.target.result; // حفظ كـ Base64 لرفعه للـ LocalStorage
-                    previewBox.innerHTML = `<img src="${e.target.result}" alt="الشعار">`;
-                };
-                reader.readAsDataURL(file);
-            }
+            if (!input.files?.[0]) return;
+            input.value = '';
+            document.getElementById('logoError').style.display = 'none';
+            showToast('لخفض تخزين Firestore، ارفع الشعار إلى Firebase Storage ثم أدخل رابطه.', 'warning');
+            openLogoUrlModal();
         }
 
         function openLogoUrlModal() {
@@ -869,7 +853,7 @@
                 quantityStep: String(document.getElementById('sysQuantityStep').value || '').trim() === '' ? (previousSettings.quantityStep ?? null) : Math.max(0.000001, parseFloat(document.getElementById('sysQuantityStep').value)),
                 appName: 'كاش توب 2',
                 customerPortalUrl: buildCustomerPortalUrl(),
-                logo: savedLogoData || previousSettings.logo || '' // حفظ مسار الشعار
+                logo: /^https?:\/\//i.test(savedLogoData || '') ? savedLogoData : (/^https?:\/\//i.test(previousSettings.logo || '') ? previousSettings.logo : '') // رابط Storage/HTTPS فقط
             };
 
             // الحفظ في التخزين المحلي

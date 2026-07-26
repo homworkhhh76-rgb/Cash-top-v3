@@ -21,6 +21,8 @@ const META_COLLECTION = String(fsSettings.metaCollection || 'meta');
 const META_DOCUMENT = String(fsSettings.metaDocument || 'state');
 const GENERIC_NODES_COLLECTION = String(fsSettings.genericNodesCollection || 'nodes');
 const CHUNK_CHARS = Math.max(40000, Math.min(180000, Number(fsSettings.chunkChars || 140000)));
+const INLINE_JSON_MAX_BYTES=Math.max(120000,Math.min(850000,Number(fsSettings.inlineJsonMaxBytes||720000)));
+const PAGE_SIZE=Math.max(10,Math.min(100,Number(fsSettings.pageSize||20)));
 
 let modulesPromise = null;
 let authPromise = null;
@@ -70,6 +72,19 @@ function randomVersion(){
   const random=crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,14):Math.random().toString(36).slice(2,16);
   return `${Date.now()}_${random}`;
 }
+function utf8Size(text){try{return new TextEncoder().encode(String(text||'')).byteLength}catch(_){return unescape(encodeURIComponent(String(text||''))).length}}
+function assertNoInlineBase64(text){if(/data:[^;,]{1,120}(?:;[^,]{0,120})?;base64,/i.test(String(text||''))){const error=new Error('INLINE_BASE64_NOT_ALLOWED: استخدم Firebase Storage واحفظ الرابط فقط.');error.code='invalid-argument';throw error;}}
+async function getDocsPaginated(ctx,baseRef,options={}){
+  const pageSize=Math.max(1,Math.min(100,Number(options.pageSize||PAGE_SIZE))),maxDocs=Number.isFinite(Number(options.maxDocs))?Math.max(0,Number(options.maxDocs)):Infinity,docs=[];
+  let cursor=null;
+  while(docs.length<maxDocs){
+    const remaining=Math.min(pageSize,maxDocs-docs.length);if(remaining<=0)break;
+    const constraints=[];if(cursor)constraints.push(ctx.firestore.startAfter(cursor));constraints.push(ctx.firestore.limit(remaining));
+    const snaps=await ctx.firestore.getDocs(ctx.firestore.query(baseRef,...constraints));if(!snaps.docs.length)break;
+    docs.push(...snaps.docs);cursor=snaps.docs[snaps.docs.length-1];if(snaps.docs.length<remaining)break;
+  }
+  return docs;
+}
 async function loadModules(){
   if(!modulesPromise){
     modulesPromise=Promise.all([
@@ -112,8 +127,14 @@ async function contextFor(rawConfig){
     const appName=`cashtop-db-${safeSegment(config.projectId)}-${hash(id)}-${epoch}`;
     const appOptions={apiKey:config.apiKey,authDomain:config.authDomain,projectId:config.projectId,storageBucket:config.storageBucket,messagingSenderId:config.messagingSenderId,appId:config.appId,measurementId:config.measurementId};
     const app=modules.app.getApps().find(item=>item.name===appName)||modules.app.initializeApp(appOptions,appName);
+    const persistentCacheSupported=!isEmbeddedAndroidWebView()&&typeof modules.firestore.persistentLocalCache==='function';
+    const tabManager=persistentCacheSupported&&typeof modules.firestore.persistentMultipleTabManager==='function'
+      ?modules.firestore.persistentMultipleTabManager()
+      :null;
     const firestoreOptions={
-      localCache:modules.firestore.memoryLocalCache(),
+      localCache:persistentCacheSupported
+        ?modules.firestore.persistentLocalCache(tabManager?{tabManager}:{})
+        :modules.firestore.memoryLocalCache(),
       ignoreUndefinedProperties:true
     };
     if(isEmbeddedAndroidWebView()){
@@ -177,36 +198,49 @@ async function deleteVersion(ctx,ref,version){
   if(!version)return;
   try{
     const vRef=versionRef(ctx,ref,version);
-    const snaps=await ctx.firestore.getDocs(ctx.firestore.collection(vRef,'chunks'));
-    await commitInBatches(ctx,[...snaps.docs.map(snap=>({type:'delete',ref:snap.ref})),{type:'delete',ref:vRef}]);
+    const docs=await getDocsPaginated(ctx,ctx.firestore.collection(vRef,'chunks'));
+    await commitInBatches(ctx,[...docs.map(snap=>({type:'delete',ref:snap.ref})),{type:'delete',ref:vRef}]);
   }catch(_){}
 }
 async function writeJsonRef(ctx,ref,value){
-  const previous=await ctx.firestore.getDoc(ref).catch(()=>null);
-  const previousVersion=previous?.exists?.()?String(previous.data()?.version||''):'';
-  const text=JSON.stringify(value==null?null:value),chunks=splitText(text),version=randomVersion(),vRef=versionRef(ctx,ref,version);
-  const operations=[{type:'set',ref:vRef,data:{chunkCount:chunks.length,createdAt:Date.now()}}];
+  const previous=await ctx.firestore.getDoc(ref).catch(()=>null),previousData=previous?.exists?.()?(previous.data()||{}):{},previousVersion=String(previousData.version||'');
+  const text=JSON.stringify(value==null?null:value);assertNoInlineBase64(text);const contentHash=hash(text);
+  if(String(previousData.contentHash||'')===contentHash&&Number(previousData.jsonLength||-1)===text.length)return value;
+  const updatedAt=Date.now();
+  if(utf8Size(text)<=INLINE_JSON_MAX_BYTES){
+    await ctx.firestore.setDoc(ref,{storage:'cashtop-inline-json-v2',payload:text,contentHash,jsonLength:text.length,updatedAt});
+    if(previousVersion)deleteVersion(ctx,ref,previousVersion).catch(()=>null);return value;
+  }
+  const chunks=splitText(text),version=randomVersion(),vRef=versionRef(ctx,ref,version);
+  const operations=[{type:'set',ref:vRef,data:{chunkCount:chunks.length,contentHash,createdAt:updatedAt}}];
   chunks.forEach((data,index)=>operations.push({type:'set',ref:ctx.firestore.doc(ctx.firestore.collection(vRef,'chunks'),String(index).padStart(6,'0')),data:{index,data}}));
   await commitInBatches(ctx,operations);
-  await ctx.firestore.setDoc(ref,{storage:'cashtop-chunked-json-v1',version,chunkCount:chunks.length,jsonLength:text.length,updatedAt:Date.now()});
-  if(previousVersion&&previousVersion!==version)deleteVersion(ctx,ref,previousVersion).catch(()=>null);
-  return value;
+  await ctx.firestore.setDoc(ref,{storage:'cashtop-chunked-json-v2',version,chunkCount:chunks.length,contentHash,jsonLength:text.length,updatedAt});
+  if(previousVersion&&previousVersion!==version)deleteVersion(ctx,ref,previousVersion).catch(()=>null);return value;
 }
-async function readJsonRef(ctx,ref,fallback=null){
-  const snap=await ctx.firestore.getDoc(ref);
-  if(!snap.exists())return fallback;
-  const data=snap.data()||{};
-  if(data.storage==='cashtop-chunked-json-v1'&&data.version){
-    const chunks=await ctx.firestore.getDocs(chunksCollection(ctx,ref,data.version));
-    const text=chunks.docs.sort((a,b)=>a.id.localeCompare(b.id)).map(item=>String(item.data()?.data||'')).join('');
+
+async function decodeJsonData(ctx,ref,data,fallback=null){
+  if((data.storage==='cashtop-chunked-json-v1'||data.storage==='cashtop-chunked-json-v2')&&data.version){
+    const chunks=await getDocsPaginated(ctx,chunksCollection(ctx,ref,data.version));
+    const text=chunks.sort((a,b)=>a.id.localeCompare(b.id)).map(item=>String(item.data()?.data||'')).join('');
     return parse(text,fallback);
   }
   if(typeof data.payload==='string')return parse(data.payload,fallback);
   if(Object.prototype.hasOwnProperty.call(data,'value')&&Object.keys(data).length<=4)return clone(data.value);
   return clone(data);
 }
-async function deleteJsonRef(ctx,ref){
-  const snap=await ctx.firestore.getDoc(ref).catch(()=>null);const version=snap?.exists?.()?String(snap.data()?.version||''):'';
+async function readJsonSnapshot(ctx,snap,fallback=null){
+  if(!snap?.exists?.())return fallback;
+  return decodeJsonData(ctx,snap.ref,snap.data()||{},fallback);
+}
+async function readJsonRef(ctx,ref,fallback=null){
+  const snap=await ctx.firestore.getDoc(ref);
+  return readJsonSnapshot(ctx,snap,fallback);
+}
+async function deleteJsonRef(ctx,ref,knownData){
+  let data=knownData;
+  if(data===undefined){const snap=await ctx.firestore.getDoc(ref).catch(()=>null);data=snap?.exists?.()?(snap.data()||{}):null;}
+  const version=String(data?.version||'');
   if(version)await deleteVersion(ctx,ref,version);await ctx.firestore.deleteDoc(ref).catch(()=>null);
 }
 function rootAdminRef(ctx){return ctx.firestore.doc(ctx.db,ROOT_COLLECTION,ROOT_DOCUMENT);}
@@ -223,8 +257,8 @@ function databaseRecord(value){
 }
 async function listDatabases(){
   return run(masterConfig,async ctx=>{
-    const snaps=await ctx.firestore.getDocs(ctx.firestore.collection(ctx.db,DATABASES_COLLECTION));
-    return snaps.docs.map(snap=>({id:snap.id,...clone(snap.data())})).map(record=>({...record,config:normalizeConfig(record.config||record)})).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ar'));
+    const docs=await getDocsPaginated(ctx,ctx.firestore.collection(ctx.db,DATABASES_COLLECTION));
+    return docs.map(snap=>({id:snap.id,...clone(snap.data())})).map(record=>({...record,config:normalizeConfig(record.config||record)})).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ar'));
   });
 }
 async function getDatabase(id){
@@ -260,7 +294,7 @@ async function readAdminState(config){
   return run(config,async ctx=>{
     const stored=await readJsonRef(ctx,adminRef(ctx),null);
     if(stored&&typeof stored==='object')return stored;
-    const snaps=await ctx.firestore.getDocs(ctx.firestore.collection(ctx.db,COMPANIES_COLLECTION));
+    const snaps={docs:await getDocsPaginated(ctx,ctx.firestore.collection(ctx.db,COMPANIES_COLLECTION))};
     const companies={},keyIndex={};
     snaps.docs.forEach(snap=>{
       const company=clone(snap.data())||{};
@@ -372,19 +406,19 @@ function clearCachedActiveDatabase(){Storage.prototype.removeItem.call(localStor
 async function readCompanyNode(config,tenantId){
   return run(config,async ctx=>{
     const company=companyRef(ctx,tenantId);
-    const [meta,datasetsSnap,nodesSnap,auditSnap,recentSnap]=await Promise.all([
+    const [meta,datasetDocs,nodeDocs,auditDocs,recentDocs]=await Promise.all([
       readJsonRef(ctx,metaRef(ctx,tenantId),{}),
-      ctx.firestore.getDocs(ctx.firestore.collection(company,DATASET_COLLECTION)),
-      ctx.firestore.getDocs(ctx.firestore.collection(company,GENERIC_NODES_COLLECTION)),
-      ctx.firestore.getDocs(ctx.firestore.collection(company,'auditTrail')),
-      ctx.firestore.getDocs(ctx.firestore.collection(company,'auditTrailRecent'))
+      getDocsPaginated(ctx,ctx.firestore.collection(company,DATASET_COLLECTION)),
+      getDocsPaginated(ctx,ctx.firestore.collection(company,GENERIC_NODES_COLLECTION)),
+      getDocsPaginated(ctx,ctx.firestore.collection(company,'auditTrail')),
+      getDocsPaginated(ctx,ctx.firestore.collection(company,'auditTrailRecent'),{maxDocs:Number(fsSettings.auditRecentLimit||100)})
     ]);
     const datasets={},nodes={};
-    for(const snap of datasetsSnap.docs)datasets[snap.id]=await readJsonRef(ctx,snap.ref,null);
-    for(const snap of nodesSnap.docs)nodes[snap.id]=await readJsonRef(ctx,snap.ref,null);
+    for(const snap of datasetDocs)datasets[snap.id]=await readJsonSnapshot(ctx,snap,null);
+    for(const snap of nodeDocs)nodes[snap.id]=await readJsonSnapshot(ctx,snap,null);
     const auditTrail={},auditTrailRecent={};
-    auditSnap.docs.forEach(snap=>{const row=snap.data()||{};auditTrail[row.day]=auditTrail[row.day]||{};auditTrail[row.day][row.hour]=auditTrail[row.day][row.hour]||{};auditTrail[row.day][row.hour][row.recordId||snap.id]=clone(row.value);});
-    recentSnap.docs.forEach(snap=>{const row=snap.data()||{};auditTrailRecent[row.recordId||snap.id]=clone(row.value);});
+    auditDocs.forEach(snap=>{const row=snap.data()||{};auditTrail[row.day]=auditTrail[row.day]||{};auditTrail[row.day][row.hour]=auditTrail[row.day][row.hour]||{};auditTrail[row.day][row.hour][row.recordId||snap.id]=clone(row.value);});
+    recentDocs.forEach(snap=>{const row=snap.data()||{};auditTrailRecent[row.recordId||snap.id]=clone(row.value);});
     return {...nodes,meta,datasets,auditTrail,auditTrailRecent};
   });
 }
@@ -402,8 +436,8 @@ async function writeCompanyNode(config,tenantId,node){
 async function deleteCompanyData(config,tenantId){
   return run(config,async ctx=>{
     for(const collectionName of [DATASET_COLLECTION,GENERIC_NODES_COLLECTION,META_COLLECTION,'auditTrail','auditTrailRecent']){
-      const snaps=await ctx.firestore.getDocs(ctx.firestore.collection(companyRef(ctx,tenantId),collectionName));
-      for(const snap of snaps.docs){if([DATASET_COLLECTION,GENERIC_NODES_COLLECTION,META_COLLECTION].includes(collectionName))await deleteJsonRef(ctx,snap.ref);else await ctx.firestore.deleteDoc(snap.ref);}
+      const docs=await getDocsPaginated(ctx,ctx.firestore.collection(companyRef(ctx,tenantId),collectionName));
+      for(const snap of docs){if([DATASET_COLLECTION,GENERIC_NODES_COLLECTION,META_COLLECTION].includes(collectionName))await deleteJsonRef(ctx,snap.ref,snap.data()||{});else await ctx.firestore.deleteDoc(snap.ref);}
     }
     await ctx.firestore.deleteDoc(companyRef(ctx,tenantId)).catch(()=>null);
   });

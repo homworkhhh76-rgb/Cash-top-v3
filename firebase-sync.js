@@ -16,6 +16,12 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   const backendAuthMode = token => isFirestoreBridge ? 'firestore-sdk' : (token ? 'anonymous' : 'database-rules');
   const backendSource = isFirestoreBridge ? 'firestore-sdk' : 'firebase-rtdb-rest';
   const CLOUD_DATA_KEYS = core.DATA_KEYS.filter(key => key !== 'cashtop_audit_log');
+  const syncOptions = settings.sync || {};
+  const DATASET_CACHE_TTL_MS = Math.max(15000, Number(syncOptions.datasetCacheTtlMs || 120000));
+  const ACTIVE_POLL_MS = Math.max(30000, Number(syncOptions.activePollMs || 120000));
+  const BACKGROUND_FULL_PULL_MS = Math.max(ACTIVE_POLL_MS, Number(syncOptions.backgroundFullPullMs || 900000));
+  const WRITE_DEBOUNCE_MS = Math.max(250, Number(syncOptions.writeDebounceMs || 1200));
+  const MAX_FAILED_OPERATIONS = Math.max(20, Number(syncOptions.maxFailedOperations || 200));
   const rawStorage = {
     get: key => Storage.prototype.getItem.call(localStorage, key),
     set: (key, value) => Storage.prototype.setItem.call(localStorage, key, String(value)),
@@ -44,6 +50,10 @@ if (settings.enabled && core && settings.config?.databaseURL) {
 
   const stateKey = `${STATE_KEY_PREFIX}::${encodeURIComponent(canonicalCompanyId)}`;
   const locationKey = `${LOCATION_KEY_PREFIX}::${encodeURIComponent(canonicalCompanyId)}`;
+  const persistentCacheKey = `ct_firestore_pull_cache_v1::${encodeURIComponent(canonicalCompanyId)}`;
+  const failedQueueKey = `ct_firestore_failed_queue_v1::${encodeURIComponent(canonicalCompanyId)}`;
+  const auditMaintenanceKey = `ct_firestore_audit_maintenance_v1::${encodeURIComponent(canonicalCompanyId)}`;
+  const legacyAuditCleanupKey = `ct_firestore_legacy_audit_cleanup_v1::${encodeURIComponent(canonicalCompanyId)}`;
   let syncing = false;
   let scheduledSync = null;
   let pollTimer = null;
@@ -81,6 +91,99 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     const next = { ...readState(), ...patch };
     try { sessionStorage.setItem(stateKey, JSON.stringify(next)); } catch (_) {}
     return next;
+  }
+
+  function readPersistentCache() {
+    try {
+      const value = JSON.parse(rawStorage.get(persistentCacheKey) || '{}');
+      return value && typeof value === 'object' ? value : {};
+    } catch (_) { return {}; }
+  }
+
+  function writePersistentCache(next) {
+    try { rawStorage.set(persistentCacheKey, JSON.stringify(next && typeof next === 'object' ? next : {})); } catch (_) {}
+    return next;
+  }
+
+  function markDatasetChecked(key, payload = null) {
+    const cache = readPersistentCache();
+    const normalized = payload == null ? null : normalizeRemotePayload(payload);
+    cache[key] = {
+      checkedAt: Date.now(),
+      exists: payload != null,
+      updatedAt: Number(normalized?.updatedAt || 0),
+      revision: Number(normalized?.revision || 0)
+    };
+    cache.lastCheckAt = Date.now();
+    writePersistentCache(cache);
+  }
+
+  function hasLocalDataset(key) {
+    const raw = core.getRawCompanyDataset ? core.getRawCompanyDataset(key) : localStorage.getItem(key);
+    return raw !== null && raw !== undefined;
+  }
+
+  function isDatasetCacheFresh(key, now = Date.now(), cache = readPersistentCache()) {
+    const entry = cache?.[key];
+    const checkedAt = Number(entry?.checkedAt || 0);
+    if (!checkedAt || now - checkedAt >= DATASET_CACHE_TTL_MS) return false;
+    const hasLocal = hasLocalDataset(key);
+    // نحفظ نتيجة "غير موجود" أيضاً حتى لا نعيد قراءة مستند مفقود كل دقيقتين.
+    return entry?.exists === false ? !hasLocal : hasLocal;
+  }
+
+  function datasetsNeedingRefresh(keys, options = {}) {
+    const unique = [...new Set((Array.isArray(keys) ? keys : []).filter(key => CLOUD_DATA_KEYS.includes(key)))];
+    if (options.force === true || options.forceRefresh === true || options.initialBootstrap === true || options.manual === true || options.realtime === true) return unique;
+    const now = Date.now();
+    const cache = readPersistentCache();
+    return unique.filter(key => !isDatasetCacheFresh(key, now, cache));
+  }
+
+  function readFailedQueue() {
+    try {
+      const value = JSON.parse(rawStorage.get(failedQueueKey) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch (_) { return []; }
+  }
+
+  function writeFailedQueue(queue) {
+    const normalized = (Array.isArray(queue) ? queue : []).slice(-MAX_FAILED_OPERATIONS);
+    try { rawStorage.set(failedQueueKey, JSON.stringify(normalized)); } catch (_) {}
+    window.dispatchEvent(new CustomEvent('cashtop:sync-failed-queue-changed', { detail: { count: normalized.length } }));
+    return normalized;
+  }
+
+  function isPermanentSyncError(error) {
+    const status = Number(error?.httpStatus || 0);
+    const text = String(error?.firebaseCode || error?.code || error?.message || error || '').toLowerCase();
+    if ([400, 401, 403, 404].includes(status)) return true;
+    return /permission-denied|permission_denied|unauthenticated|invalid-argument|invalid_argument|failed-precondition|failed_precondition|not-found|not_found|invalid data|document too large/.test(text);
+  }
+
+  function quarantineFailure(kind, key, payload, error) {
+    const queue = readFailedQueue();
+    queue.push({
+      id: crypto.randomUUID ? crypto.randomUUID() : `FAILED_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      kind,
+      key: String(key || ''),
+      payload: payload == null ? null : payload,
+      message: safeSyncMessage(error),
+      code: String(error?.firebaseCode || error?.code || ''),
+      httpStatus: Number(error?.httpStatus || 0),
+      failedAt: Date.now()
+    });
+    writeFailedQueue(queue);
+  }
+
+  function quarantinePendingKey(key, error) {
+    const pending = core.getSyncQueue().filter(item => item.key === key);
+    if (!pending.length) return 0;
+    quarantineFailure('dataset', key, pending, error);
+    pending.forEach(item => core.completeSyncOperation(item.id));
+    clearDatasetFailure(key);
+    console.warn('[CASH TOP 2] skipped permanent dataset sync failure:', key, error);
+    return pending.length;
   }
 
   function errorMessage(error) {
@@ -359,8 +462,11 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     return `${baseUrl}/${locationPath(location)}/auditTrail/${sanitizeSegment(day)}${hourPath}${suffix}.json${query}`;
   }
 
-  function auditTrailRecentEndpoint(location, recordId = '', token = '') {
-    const query = token ? `?auth=${encodeURIComponent(token)}` : '';
+  function auditTrailRecentEndpoint(location, recordId = '', token = '', options = {}) {
+    const params = new URLSearchParams();
+    if (token) params.set('auth', token);
+    if (isFirestoreBridge && Number(options.limit || 0) > 0) params.set('ctLimit', String(Math.max(1, Number(options.limit))));
+    const query = params.toString() ? `?${params.toString()}` : '';
     const suffix = recordId ? `/${sanitizeSegment(recordId)}` : '';
     return `${baseUrl}/${locationPath(location)}/auditTrailRecent${suffix}.json${query}`;
   }
@@ -407,9 +513,9 @@ if (settings.enabled && core && settings.config?.databaseURL) {
         if (core.getSyncQueue().length) {
           await syncAll({ manual: false, forceCheck: false, realtime: true });
         } else if (keys.length) {
-          await pullDatasetKeys(keys, { concurrency: 8 });
+          await pullDatasetKeys(keys, { concurrency: 8, realtime: true, forceRefresh: true });
         } else {
-          await pullPriorityDatasets({ concurrency: 8, silentProgress: true });
+          await pullPriorityDatasets({ concurrency: 8, silentProgress: true, realtime: true, forceRefresh: true });
         }
       } catch (error) {
         console.warn('[CASH TOP 2] realtime pull deferred:', error);
@@ -462,19 +568,29 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     }
   }
 
-  async function readDatasetLocation(location, key, token = '') {
+  async function readDatasetLocation(location, key, token = '', options = {}) {
     const response = await fetchWithTimeout(datasetEndpoint(location, key, token), {
       method: 'GET',
-      headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache, no-store, max-age=0', 'Pragma': 'no-cache' }
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        'Pragma': 'no-cache',
+        'X-Cashtop-Cache-Mode': options.forceServer === false ? 'cache-first' : 'server'
+      }
     }, 16000);
     if (!response.ok) throw await firebaseError(response);
     return await response.json();
   }
 
-  async function readMetaLocation(location, token = '') {
+  async function readMetaLocation(location, token = '', options = {}) {
     const response = await fetchWithTimeout(metaEndpoint(location, token), {
       method: 'GET',
-      headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache, no-store, max-age=0', 'Pragma': 'no-cache' }
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        'Pragma': 'no-cache',
+        'X-Cashtop-Cache-Mode': options.forceServer === false ? 'cache-first' : 'server'
+      }
     }, 10000);
     if (!response.ok) throw await firebaseError(response);
     return (await response.json()) || {};
@@ -491,8 +607,18 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   }
 
   async function writeMetaLocation(location, token = '', patch = {}) {
+    const nextPatch = { ...(patch || {}), updatedAt: Date.now() };
+    if (isFirestoreBridge) {
+      const response = await fetchWithTimeout(metaEndpoint(location, token), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Cache-Control': 'no-cache, no-store, max-age=0' },
+        body: JSON.stringify(nextPatch)
+      }, 12000);
+      if (!response.ok) throw await firebaseError(response);
+      return (await response.json().catch(() => null)) || nextPatch;
+    }
     const current = await readMetaLocation(location, token).catch(() => ({}));
-    const next = { ...(current || {}), ...(patch || {}), updatedAt: Date.now() };
+    const next = { ...(current || {}), ...nextPatch };
     const response = await fetchWithTimeout(metaEndpoint(location, token), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Cache-Control': 'no-cache, no-store, max-age=0' },
@@ -553,15 +679,17 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   async function openLightDatabaseAccess() {
     const location = exactLocation();
     try {
-      const accessPayload = await readDatasetLocation(location, 'cashtop_company_access', '');
+      const accessPayload = await readDatasetLocation(location, 'cashtop_company_access', '', { forceServer: true });
       assertAccessIdentity(accessPayload, location);
+      markDatasetChecked('cashtop_company_access', accessPayload);
       saveSelectedLocation(location);
       return { token: '', location, accessPayload };
     } catch (error) {
       if (!isPermissionError(error)) throw error;
       const token = await requireDatabaseToken();
-      const accessPayload = await readDatasetLocation(location, 'cashtop_company_access', token);
+      const accessPayload = await readDatasetLocation(location, 'cashtop_company_access', token, { forceServer: true });
       assertAccessIdentity(accessPayload, location);
+      markDatasetChecked('cashtop_company_access', accessPayload);
       saveSelectedLocation(location);
       return { token, location, accessPayload };
     }
@@ -931,8 +1059,12 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     if (core.localReady && typeof core.localReady.then === 'function') {
       try { await core.localReady; } catch (_) {}
     }
-    const requested = [...new Set((Array.isArray(keys) ? keys : []).filter(key => CLOUD_DATA_KEYS.includes(key)))];
-    if (!requested.length) return { hasRemote: false, count: 0, applied: 0 };
+    const allRequested = [...new Set((Array.isArray(keys) ? keys : []).filter(key => CLOUD_DATA_KEYS.includes(key)))];
+    const requested = datasetsNeedingRefresh(allRequested, options);
+    if (!requested.length) {
+      writeState({ initialLoaded: true, progressiveLoaded: true, loadedAt: Date.now(), cacheHitAt: Date.now(), lastError: '' });
+      return { hasRemote: false, count: 0, applied: 0, failed: 0, skipped: allRequested.length, cacheHit: true, bootstrapped: hasCompletedDeviceBootstrap() };
+    }
     const showProgress = options.silentProgress !== true;
     if (showProgress) {
       reportPullStart(requested[0] || '', 0, requested.length);
@@ -965,7 +1097,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       for (let i = 0; i < rest.length; i += concurrency) {
         const chunk = rest.slice(i, i + concurrency);
         const results = await Promise.all(chunk.map(async key => {
-          try { return { key, raw: await readDatasetLocation(location, key, token) }; }
+          try { return { key, raw: await readDatasetLocation(location, key, token, { forceServer: true }) }; }
           catch (error) { return { key, error }; }
         }));
         for (const result of results) {
@@ -976,6 +1108,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
             if (showProgress) reportSyncProgress(processed, requested.length, `تعذر سحب ${result.key} مؤقتاً؛ متابعة بقية البيانات...`);
             continue;
           }
+          markDatasetChecked(result.key, result.raw);
           if (result.raw != null) {
             found += 1;
             const payload = normalizeRemotePayload(result.raw);
@@ -986,21 +1119,23 @@ if (settings.enabled && core && settings.config?.databaseURL) {
         }
       }
 
-      const meta = await readMetaLocation(location, token).catch(() => ({}));
+      const shouldReadMeta = options.initialBootstrap === true || options.manual === true || options.forceCheck === true;
+      const meta = shouldReadMeta ? await readMetaLocation(location, token, { forceServer: true }).catch(() => ({})) : {};
       writeState({
         initialLoaded: true,
         progressiveLoaded: true,
         loadedAt: Date.now(),
-        lastRemoteUpdatedAt: Number(meta?.updatedAt || 0),
+        cacheMissAt: Date.now(),
+        lastRemoteUpdatedAt: Number(meta?.updatedAt || readState().lastRemoteUpdatedAt || 0),
         lastSuccessAt: Date.now(),
         lastError: '',
         authMode: backendAuthMode(token),
         remotePath: locationPath(location)
       });
       core.updateSyncBadge();
-      if (failed === 0 && (options.initialBootstrap === true || requested.length === CLOUD_DATA_KEYS.length)) markDeviceBootstrapComplete();
+      if (failed === 0 && (options.initialBootstrap === true || allRequested.length === CLOUD_DATA_KEYS.length)) markDeviceBootstrapComplete();
       if (applied > 0) window.dispatchEvent(new CustomEvent('cashtop:sync-complete', { detail: { processed: 0, pulled: applied, uploaded: 0, progressive: true } }));
-      return { hasRemote: found > 0, count: found, applied, failed, path: locationPath(location), progressive: true, bootstrapped: hasCompletedDeviceBootstrap() };
+      return { hasRemote: found > 0, count: found, applied, failed, skipped: Math.max(0, allRequested.length - requested.length), path: locationPath(location), progressive: true, bootstrapped: hasCompletedDeviceBootstrap() };
     } finally {
       if (showProgress) {
         reportPullEnd(requested[requested.length - 1] || '', processed, requested.length);
@@ -1013,8 +1148,9 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     return pullDatasetKeys(pagePriorityDatasets(), options);
   }
 
-  function scheduleBackgroundFullPull(delay = 300) {
+  function scheduleBackgroundFullPull(delay = BACKGROUND_FULL_PULL_MS) {
     clearTimeout(backgroundPullTimer);
+    const effectiveDelay = Math.max(BACKGROUND_FULL_PULL_MS, Number(delay || 0));
     backgroundPullTimer = setTimeout(async () => {
       if (backgroundPullRunning || core.getSyncQueue().length) return;
       backgroundPullRunning = true;
@@ -1033,7 +1169,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       } finally {
         backgroundPullRunning = false;
       }
-    }, Math.max(0, Number(delay) || 0));
+    }, effectiveDelay);
   }
 
   async function reconcileLegacyAll(options = {}) {
@@ -1336,6 +1472,7 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     let uploaded = 0;
     let pulled = 0;
     const failedKeys = [];
+    const skippedKeys = [];
     const errorSummaries = [];
 
     try {
@@ -1359,11 +1496,11 @@ if (settings.enabled && core && settings.config?.databaseURL) {
         try {
           let remoteRaw;
           try {
-            remoteRaw = await readDatasetLocation(location, key, token);
+            remoteRaw = await readDatasetLocation(location, key, token, { forceServer: true });
           } catch (error) {
             if (!token && isPermissionError(error)) {
               token = await requireDatabaseToken();
-              remoteRaw = await readDatasetLocation(location, key, token);
+              remoteRaw = await readDatasetLocation(location, key, token, { forceServer: true });
             } else {
               throw error;
             }
@@ -1393,7 +1530,8 @@ if (settings.enabled && core && settings.config?.databaseURL) {
                 throw error;
               }
             }
-            const verifiedRaw = await readDatasetLocation(location, key, token);
+            const verifiedRaw = await readDatasetLocation(location, key, token, { forceServer: true });
+            markDatasetChecked(key, verifiedRaw);
             committed = pendingChangesPresent(verifiedRaw, desired, sourcePending);
             remote = verifiedRaw == null ? null : normalizeRemotePayload(verifiedRaw);
             if (!committed) await new Promise(resolve => setTimeout(resolve, 55 * (attempt + 1)));
@@ -1420,10 +1558,16 @@ if (settings.enabled && core && settings.config?.databaseURL) {
           }
           clearDatasetFailure(key);
         } catch (error) {
-          noteDatasetFailure(key, error);
-          failedKeys.push(key);
-          errorSummaries.push({ key, message: safeSyncMessage(error) });
-          console.warn('[CASH TOP 2] deferred dataset sync:', key, error);
+          if (isPermanentSyncError(error)) {
+            quarantinePendingKey(key, error);
+            skippedKeys.push(key);
+            errorSummaries.push({ key, skipped: true, permanent: true, message: safeSyncMessage(error) });
+          } else {
+            noteDatasetFailure(key, error);
+            failedKeys.push(key);
+            errorSummaries.push({ key, message: safeSyncMessage(error) });
+            console.warn('[CASH TOP 2] deferred dataset sync:', key, error);
+          }
           // مهم: لا نرمي الخطأ هنا حتى تكمل بقية العمليات الجاهزة في الطابور.
         } finally {
           pendingProgress += 1;
@@ -1435,7 +1579,12 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       // محمية داخل applyRemote ولن تُستبدل بنسخة بعيدة أقدم.
       const pullKeys = options.manual === true || options.forceCheck === true ? CLOUD_DATA_KEYS : pagePriorityDatasets();
       try {
-        const pullResult = await pullDatasetKeys(pullKeys, { force: options.force === true, concurrency: 4 });
+        const pullResult = await pullDatasetKeys(pullKeys, {
+          force: options.force === true,
+          forceRefresh: options.manual === true || options.forceCheck === true,
+          manual: options.manual === true,
+          concurrency: 4
+        });
         pulled = Number(pullResult?.applied || 0);
       } catch (error) {
         errorSummaries.push({ key: '__pull__', message: safeSyncMessage(error) });
@@ -1462,17 +1611,19 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       });
       core.updateSyncBadge();
       window.dispatchEvent(new CustomEvent('cashtop:sync-complete', {
-        detail: { processed: uploaded, pulled, uploaded, failed: failedKeys.length, remaining, partial: failedKeys.length > 0 }
+        detail: { processed: uploaded, pulled, uploaded, failed: failedKeys.length, skipped: skippedKeys.length, remaining, partial: failedKeys.length > 0 || skippedKeys.length > 0 }
       }));
       return {
         processed: uploaded,
         pulled,
         uploaded,
         failed: failedKeys.length,
+        skipped: skippedKeys.length,
+        skippedKeys,
         failedKeys,
         errors: errorSummaries,
         remaining,
-        partial: failedKeys.length > 0,
+        partial: failedKeys.length > 0 || skippedKeys.length > 0,
         deferred: failedKeys.length > 0,
         projectId: cfg.projectId,
         path: locationPath(location),
@@ -1554,35 +1705,50 @@ if (settings.enabled && core && settings.config?.databaseURL) {
       job.then(result => {
         if (core.getSyncQueue().length) {
           // تبقى العمليات المتعثرة معلقة ويُعاد فحصها لاحقاً، من دون تعطيل ما بعدها.
-          scheduleSync(result?.networkDeferred ? 2500 : 800);
+          scheduleSync(result?.networkDeferred ? 15000 : 8000);
         } else {
-          scheduleBackgroundFullPull(300);
+          scheduleBackgroundFullPull(BACKGROUND_FULL_PULL_MS);
         }
       }).catch(error => {
         console.warn('[CASH TOP 2] scheduled database sync:', error);
-        if (core.getSyncQueue().length) scheduleSync(2800);
+        if (core.getSyncQueue().length) scheduleSync(15000);
       });
     }, delay);
   }
 
 
-  let legacyAuditCleanupDone = false;
+  let legacyAuditCleanupDone = rawStorage.get(legacyAuditCleanupKey) === '1';
+  function auditMaintenanceDue(intervalMs = 6 * 60 * 60 * 1000) {
+    const last = Number(rawStorage.get(auditMaintenanceKey) || 0);
+    return !last || Date.now() - last >= intervalMs;
+  }
   async function pruneRemoteAuditTrailRecent(location, token, limit = 100) {
     try {
-      const response = await fetchWithTimeout(auditTrailRecentEndpoint(location, '', token), { method:'GET', headers:{Accept:'application/json'} }, 12000);
+      const keep = Math.max(1, Number(limit) || 100);
+      // نقرأ هامشاً صغيراً فقط بدلاً من المجموعة كاملة، ثم نحذف الزائد.
+      const response = await fetchWithTimeout(auditTrailRecentEndpoint(location, '', token, { limit: keep + 50 }), { method:'GET', headers:{Accept:'application/json'} }, 12000);
       if (!response.ok) return 0;
       const payload = await response.json().catch(()=>null);
       const rows = payload && typeof payload === 'object' ? Object.values(payload).filter(Boolean) : [];
       rows.sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0));
-      const remove = rows.slice(Math.max(1, Number(limit)||100));
+      const remove = rows.slice(keep);
       await Promise.allSettled(remove.map(item=>fetchWithTimeout(auditTrailRecentEndpoint(location, item.id, token), {method:'DELETE'}, 9000)));
+      rawStorage.set(auditMaintenanceKey, String(Date.now()));
       return remove.length;
     } catch (_) { return 0; }
   }
   async function cleanupLegacyAuditTrail(location, token) {
     if (legacyAuditCleanupDone) return;
     legacyAuditCleanupDone = true;
-    try { await fetchWithTimeout(auditTrailLegacyRootEndpoint(location, token), {method:'DELETE'}, 12000); } catch (_) {}
+    try {
+      const response = await fetchWithTimeout(auditTrailLegacyRootEndpoint(location, token), {method:'DELETE'}, 12000);
+      if (response.ok) rawStorage.set(legacyAuditCleanupKey, '1');
+      else legacyAuditCleanupDone = false;
+    } catch (_) { legacyAuditCleanupDone = false; }
+  }
+  async function runAuditMaintenance(location, token) {
+    if (auditMaintenanceDue()) await pruneRemoteAuditTrailRecent(location, token, 100);
+    await cleanupLegacyAuditTrail(location, token);
   }
 
   let auditTrailSyncing = false;
@@ -1594,6 +1760,8 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     if (navigator.onLine === false && options.force !== true) return { uploaded: 0, remaining: pending.length, offline: true };
     auditTrailSyncing = true;
     const succeeded = [];
+    const resolvedIds = [];
+    let skipped = 0;
     try {
       const { token, location } = await openLightDatabaseAccess();
       const batch = pending.slice(0, limit);
@@ -1613,21 +1781,28 @@ if (settings.enabled && core && settings.config?.databaseURL) {
             }, 9000);
             if (!response.ok) throw await firebaseError(response);
             succeeded.push(String(record.id));
+            resolvedIds.push(String(record.id));
           } catch (error) {
-            if (!isTransientNetworkError(error)) console.warn('[CASH TOP 2] audit upload:', error);
+            if (isPermanentSyncError(error)) {
+              quarantineFailure('audit', String(record.id), record, error);
+              resolvedIds.push(String(record.id));
+              skipped += 1;
+            } else if (!isTransientNetworkError(error)) {
+              console.warn('[CASH TOP 2] audit upload:', error);
+            }
           }
         }
       }
       await Promise.all(Array.from({ length: Math.min(concurrency, batch.length) }, () => worker()));
-      if (succeeded.length) {
-        if (core.completeAuditPendingAsync) await core.completeAuditPendingAsync(succeeded);
-        else core.completeAuditPending?.(succeeded);
-        await pruneRemoteAuditTrailRecent(location, token, 100);
-        cleanupLegacyAuditTrail(location, token).catch(() => null);
+      if (resolvedIds.length) {
+        const uniqueResolved = [...new Set(resolvedIds)];
+        if (core.completeAuditPendingAsync) await core.completeAuditPendingAsync(uniqueResolved);
+        else core.completeAuditPending?.(uniqueResolved);
       }
+      if (succeeded.length) runAuditMaintenance(location, token).catch(() => null);
       const remaining = core.getAuditPendingCountAsync ? await core.getAuditPendingCountAsync() : (core.getAuditPending?.().length || 0);
-      if (remaining && navigator.onLine !== false) setTimeout(() => flushAuditTrailPending({ limit: 80 }).catch(() => null), 600);
-      return { uploaded: succeeded.length, remaining };
+      if (remaining && navigator.onLine !== false) setTimeout(() => flushAuditTrailPending({ limit: 80 }).catch(() => null), 8000);
+      return { uploaded: succeeded.length, skipped, remaining };
     } finally {
       auditTrailSyncing = false;
     }
@@ -1636,11 +1811,12 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   async function fetchAuditTrailRecent(limit = 100) {
     const { token, location } = await openLightDatabaseAccess();
     cleanupLegacyAuditTrail(location, token).catch(() => null);
-    const response = await fetchWithTimeout(auditTrailRecentEndpoint(location, '', token), { method:'GET', headers:{Accept:'application/json'} }, 12000);
+    const requestedLimit = Math.max(1, Number(limit) || 100);
+    const response = await fetchWithTimeout(auditTrailRecentEndpoint(location, '', token, { limit: requestedLimit }), { method:'GET', headers:{Accept:'application/json'} }, 12000);
     if (!response.ok) throw await firebaseError(response);
     const payload = await response.json().catch(()=>null);
     const rows = payload && typeof payload === 'object' ? Object.values(payload).filter(Boolean) : [];
-    return rows.sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0)).slice(0, Math.max(1, Number(limit)||100));
+    return rows.sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0)).slice(0, requestedLimit);
   }
 
   async function fetchAuditTrailHour(day, hour) {
@@ -1656,12 +1832,56 @@ if (settings.enabled && core && settings.config?.databaseURL) {
 
   async function fetchAuditTrailDay(day) {
     const normalizedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? String(day) : new Date().toISOString().slice(0,10);
-    const result = [];
-    for (let hour = 23; hour >= 0; hour -= 1) {
-      const rows = await fetchAuditTrailHour(normalizedDay, hour).catch(() => []);
-      result.push(...rows);
+    const { token, location } = await openLightDatabaseAccess();
+    const response = await fetchWithTimeout(auditTrailEndpoint(location, normalizedDay, '', '', token), { method:'GET', headers:{Accept:'application/json'} }, 12000);
+    if (!response.ok) throw await firebaseError(response);
+    const payload = await response.json().catch(() => null);
+    const rows = [];
+    Object.values(payload && typeof payload === 'object' ? payload : {}).forEach(hourRecords => {
+      Object.values(hourRecords && typeof hourRecords === 'object' ? hourRecords : {}).forEach(record => { if (record) rows.push(record); });
+    });
+    return rows.sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+  }
+
+  function getFailedOperations() {
+    return readFailedQueue().map(item => ({ ...item }));
+  }
+
+  function clearFailedOperations(ids = []) {
+    const selected = new Set((Array.isArray(ids) ? ids : []).map(String));
+    if (!selected.size) return writeFailedQueue([]).length;
+    return writeFailedQueue(readFailedQueue().filter(item => !selected.has(String(item.id)))).length;
+  }
+
+  function retryFailedOperations(ids = []) {
+    const selected = new Set((Array.isArray(ids) ? ids : []).map(String));
+    const failed = readFailedQueue();
+    const keep = [];
+    let restored = 0;
+    for (const item of failed) {
+      if (selected.size && !selected.has(String(item.id))) { keep.push(item); continue; }
+      if (item.kind !== 'dataset' || !item.key) { keep.push(item); continue; }
+      const operations = Array.isArray(item.payload) ? item.payload : [];
+      if (operations.length) {
+        for (const operation of operations) {
+          core.enqueueSyncOperation(item.key, {
+            touchedIds: operation?.touchedIds || [],
+            deletedIds: operation?.deletedIds || [],
+            touchedFields: operation?.touchedFields || [],
+            deletedFields: operation?.deletedFields || [],
+            nestedArrayChanges: operation?.nestedArrayChanges || {},
+            deletedDataset: operation?.deletedDataset === true,
+            forceReplace: operation?.forceReplace === true
+          });
+        }
+      } else {
+        core.enqueueSyncOperation(item.key);
+      }
+      restored += 1;
     }
-    return result.sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+    writeFailedQueue(keep);
+    if (restored) scheduleSync(20);
+    return { restored, remainingFailed: keep.length, pending: core.getSyncQueue().length };
   }
 
   function signOut() {
@@ -1683,11 +1903,15 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     pullDatasetKeys,
     pullPriorityDatasets,
     checkRemoteAndPull,
+    getFailedOperations,
+    retryFailedOperations,
+    clearFailedOperations,
     signOut,
     getState: readState,
     resetRemotePath: () => {
       rawStorage.remove(locationKey);
       rawStorage.remove(deviceBootstrapKey);
+      rawStorage.remove(persistentCacheKey);
       selectedLocation = null;
       return Promise.resolve(true);
     },
@@ -1701,8 +1925,8 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     })
   };
 
-  window.addEventListener('cashtop:data-changed', () => scheduleSync(45));
-  window.addEventListener('cashtop:audit-pending', () => setTimeout(() => flushAuditTrailPending().catch(() => null), 80));
+  window.addEventListener('cashtop:data-changed', () => scheduleSync(WRITE_DEBOUNCE_MS));
+  window.addEventListener('cashtop:audit-pending', () => setTimeout(() => flushAuditTrailPending().catch(() => null), Math.min(WRITE_DEBOUNCE_MS, 900)));
   window.addEventListener('cashtop:sync-now', () => scheduleSync(20));
   window.addEventListener('cashtop:sync-queue-restored', () => scheduleSync(35));
   window.addEventListener('online', () => {
@@ -1711,16 +1935,20 @@ if (settings.enabled && core && settings.config?.databaseURL) {
     flushAuditTrailPending({ limit: 120 }).catch(() => null);
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') scheduleSync(90);
+    if (document.visibilityState === 'hidden') {
+      stopRealtimeStream();
+      return;
+    }
+    scheduleSync(90);
   });
 
-  /* Firebase يستخدم بث SSE لحظياً بين الأجهزة. يبقى polling سريعاً كخطة احتياطية،
-     وFirestore يعتمد polling خفيفاً لأن الاتصال الشبكي يُغلق بعد كل دفعة مع بقاء الكاش المحلي. */
+  /* لا يوجد onSnapshot في مسار Firestore الحالي. تستخدم البيانات المحلية فوراً،
+     ثم يجري فحص متباعد للمجموعات المطلوبة فقط. أما SSE في RTDB فيُغلق عند إخفاء الصفحة. */
   pollTimer = setInterval(() => {
     if (document.hidden || core.getSyncQueue().length) return;
     const realtimeHealthy = !isFirestoreBridge && realtimeSource && realtimeSource.readyState === EventSource.OPEN;
     if (!realtimeHealthy) pullPriorityDatasets({ concurrency: 8, silentProgress: true }).catch(() => null);
-  }, isFirestoreBridge ? 3000 : 5000);
+  }, isFirestoreBridge ? ACTIVE_POLL_MS : Math.max(5000, Math.min(ACTIVE_POLL_MS, 30000)));
 
   window.addEventListener('pagehide', () => {
     clearTimeout(scheduledSync);
@@ -1731,11 +1959,11 @@ if (settings.enabled && core && settings.config?.databaseURL) {
   }, { once: true });
 
   // تنظيف سجل التدقيق القديم مرة واحدة والاحتفاظ بآخر 100 حركة فقط.
-  setTimeout(async()=>{if(navigator.onLine===false)return;try{const {token,location}=await openLightDatabaseAccess();await pruneRemoteAuditTrailRecent(location,token,100);await cleanupLegacyAuditTrail(location,token)}catch(_){}},1800);
+  setTimeout(async()=>{if(navigator.onLine===false||(!auditMaintenanceDue()&&legacyAuditCleanupDone))return;try{const {token,location}=await openLightDatabaseAccess();await runAuditMaintenance(location,token)}catch(_){}},1800);
   // أول دخول: نحاول قاعدة البيانات مباشرة حتى لو كانت navigator.onLine غير دقيقة.
   scheduleSync(10);
   setTimeout(() => flushAuditTrailPending({ limit: 120 }).catch(() => null), 350);
-  if (!core.getSyncQueue().length) scheduleBackgroundFullPull(220);
+  if (!core.getSyncQueue().length) scheduleBackgroundFullPull(BACKGROUND_FULL_PULL_MS);
 } else if (core) {
   console.warn('[CASH TOP 2] Firebase sync configuration is incomplete.');
   core.updateSyncBadge();

@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = 'v69-r63-firestore-cross-device-sync';
+const CACHE_VERSION = 'v70-firestore-cost-cache-queue';
 const APP_CACHE = `cash-top-2-app-${CACHE_VERSION}`;
 const REMOTE_STATIC_CACHE = `cash-top-2-remote-static-${CACHE_VERSION}`;
 
@@ -81,6 +81,7 @@ const REMOTE_STATIC_ASSETS = [
   'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js',
   'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js',
+  'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-lite.js',
   'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap',
   'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap',
   'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap',

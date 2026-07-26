@@ -221,10 +221,10 @@
         <div id="receipt" class="receipt-container size-80"></div>
     </div>
 
-    <script src="firebase-config.js?v=61"></script><script src="firestore-bridge.js?v=69"></script>
+    <script src="firebase-config.js?v=70"></script><script src="firestore-bridge.js?v=70"></script>
     <script src="cashtop-core.js"></script><script src="push-config.js?v=56"></script><script src="push-client.js?v=56"></script><script src="transient-notifications.js?v=56"></script>
     <script src="multi-system.js?v=57"></script>
-    <script src="firebase-sync.js?v=69"></script>
+    <script src="firebase-sync.js?v=70"></script>
     <script>
         let selectedElements = new Set();
         let zIndexCounter = 10;
@@ -323,24 +323,22 @@
         }
 
         function addLogo(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const el = document.createElement('div');
-                    el.className = 'draggable-item type-image';
-                    el.style.left = '20px'; el.style.top = '20px';
-                    el.style.width = '100px'; el.style.height = '100px';
-                    el.style.zIndex = zIndexCounter++;
-                    el.innerHTML = `<div class="content" style="background-image: url('${e.target.result}'); background-size: contain; background-position: center; background-repeat: no-repeat;"></div>
-                        <div class="resizer w"></div><div class="resizer h"></div><div class="resizer wh"></div>`;
-                    document.getElementById('receipt').appendChild(el);
-                    makeInteractable(el);
-                    clearSelection();
-                    setActive(el);
-                }
-                reader.readAsDataURL(file);
-            }
+            if (event?.target) event.target.value = '';
+            const url = prompt('ألصق رابط الصورة من Firebase Storage أو رابط HTTPS مباشر:');
+            if (!url) return;
+            if (!/^https?:\/\//i.test(url.trim())) return alert('يجب أن يبدأ رابط الصورة بـ http أو https.');
+            const safeUrl = url.trim().replace(/'/g, '%27');
+            const el = document.createElement('div');
+            el.className = 'draggable-item type-image';
+            el.style.left = '20px'; el.style.top = '20px';
+            el.style.width = '100px'; el.style.height = '100px';
+            el.style.zIndex = zIndexCounter++;
+            el.innerHTML = `<div class="content" style="background-image: url('${safeUrl}'); background-size: contain; background-position: center; background-repeat: no-repeat;"></div>
+                <div class="resizer w"></div><div class="resizer h"></div><div class="resizer wh"></div>`;
+            document.getElementById('receipt').appendChild(el);
+            makeInteractable(el);
+            clearSelection();
+            setActive(el);
         }
 
         // محرك السحب وتغيير الحجم
@@ -673,15 +671,24 @@
             clearSelection();
             syncDesignerPreview();
             const receipt = document.getElementById('receipt');
+            const safeReceipt = receipt.cloneNode(true);
+            let removedInlineImages = 0;
+            safeReceipt.querySelectorAll('.type-image .content').forEach(content => {
+                if (/data:/i.test(content.style.backgroundImage || '')) {
+                    content.style.backgroundImage = 'none';
+                    removedInlineImages += 1;
+                }
+            });
             const data = {
-                version: 2,
+                version: 3,
                 paperSize: document.getElementById('paperSize').value,
-                receiptHTML: receipt.innerHTML,
+                receiptHTML: safeReceipt.innerHTML,
                 receiptHeight: receipt.style.height || receipt.offsetHeight + 'px',
                 savedAt: new Date().toISOString(),
                 updatedAt: Date.now()
             };
             localStorage.setItem(CASH_TOP_DESIGN_KEY, JSON.stringify(data));
+            if (removedInlineImages) window.Cashtop?.showToast?.('تم حذف صور Base64 من التصميم. أعد إضافتها عبر رابط Firebase Storage.', 'warning', 5200);
             window.dispatchEvent(new CustomEvent('cashtop:data-changed', { detail: { key: CASH_TOP_DESIGN_KEY, source: 'invoice-designer' } }));
             try {
                 const uploaded = await window.CashtopFirebase?.uploadDataset?.(CASH_TOP_DESIGN_KEY);

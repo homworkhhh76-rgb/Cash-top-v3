@@ -63,7 +63,18 @@ window.CASHTOP_FIREBASE=Object.freeze({
     genericNodesCollection:'nodes',
     authPolicy:'auto',
     chunkChars:140000,
+    inlineJsonMaxBytes:720000,
+    pageSize:20,
+    auditRecentLimit:100,
+    auditRangeLimit:500,
     closeIdleMs:320
+  }),
+  sync:Object.freeze({
+    datasetCacheTtlMs:120000,
+    activePollMs:120000,
+    backgroundFullPullMs:900000,
+    writeDebounceMs:1200,
+    maxFailedOperations:200
   }),
   multiDatabase:Object.freeze({
     databasesCollection:'cashtopDatabases',
